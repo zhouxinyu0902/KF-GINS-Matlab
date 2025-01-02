@@ -83,7 +83,7 @@ git clone https://github.com/i2Nav-WHU/KF-GINS-Matlab.git ~/
 
 1）Add the `plot-function` folder to the workspace: right-click the folder and select "Add to Path" -> "Selected Folders and Subfolders."
 
-2）Expand the `plot-function` folder, and execute `plot_function.m` to plot navigation results or `calc_error.m` to plot positioning errors.
+2）Expand the `plot-function` folder, and execute `plot_result.m` to plot navigation results or `calc_error.m` to plot positioning errors.
 
 ### 2.4 Notes
 

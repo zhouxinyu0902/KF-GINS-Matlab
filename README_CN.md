@@ -85,7 +85,7 @@ git clone https://github.com/i2Nav-WHU/KF-GINS-Matlab.git ~/
 
 1）将plot-function文件夹添加到工作区：右键单击plot-function文件夹，选择“添加到路径”->“选定的文件夹和子文件夹”
 
-2）展开plot-function文件夹，执行plot_function.m绘制定位结果，执行clac_error.m绘制定位误差
+2）展开plot-function文件夹，执行plot_result.m绘制定位结果，执行clac_error.m绘制定位误差
 
 ### 2.4 注意事项
 
@@ -102,8 +102,6 @@ GetOdoVel.m函数中，对更新时刻前后各10个历元的ODO数据平均得�
 ## 3 测试数据
 
 ### 3.1 测试数据
-
-KF-GINS-Matlab提供了三套测试数据，并在主文件夹下提供对应数据的参数配置文件。三套测试数据记为dataset1，dataset2和dataset3。其中dataset1为GNSS位置/INS测试数据，与KF-GINS中的测试数据相同；dataset2为GNSS速度/INS测试数据；dataset3为ODO/NHC测试数据。
 
 KF-GINS-Matlab提供了三套测试数据，并在主文件夹下提供对应数据的参数配置文件。三套测试数据记为dataset1，dataset2和dataset3。其中dataset1为GNSS位置/INS测试数据，与KF-GINS中的测试数据相同；dataset2为GNSS速度/INS测试数据；dataset3为ODO/NHC测试数据。
 
