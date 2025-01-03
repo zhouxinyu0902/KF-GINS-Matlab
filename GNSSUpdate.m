@@ -56,7 +56,7 @@ function kf = GNSSUpdate(navstate, gnssdata, kf, antlever, usegnssvel, thisimu, 
             R = diag(power(gnssvelstd, 2));
             H = zeros(3, kf.RANK);
             H(1:3, 4:6) = eye(3);
-            H(1:3, 7:9) = -skew(win_n) * skew(navstate.cbn * antlever) - navstate.cbn * skew(skew(antlever) * wib_b);
+            H(1:3, 7:9) = -skew(win_n) * skew(navstate.cbn * antlever) - skew(navstate.cbn * skew(antlever) * wib_b);
             H(1:3, 10:12) = -navstate.cbn * skew(antlever);
             H(1:3, 16:18) = -navstate.cbn * skew(antlever) * diag(wib_b);
     
