@@ -21,10 +21,13 @@ function rotvec = quat2rotvec(quat)
     y = quat(3);
     z = quat(4);
 
+    qv_norm = sqrt(x * x + y * y + z * z);
+
     if w == 0
         rotvec = pi * [x; y; z];
-    else 
-        qv_norm = sqrt(x * x + y * y + z * z);
+    elseif qv_norm < 1e-10
+        rotvec = [0; 0; 0];
+    else
         temp = qv_norm / (2 * w);
         f = sin(temp / 2) / temp;
         rotvec = [x; y; z] * f;
