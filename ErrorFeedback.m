@@ -20,7 +20,7 @@ function [kf, navstate] = ErrorFeedback(kf, navstate)
     qpn = rotvec2quat(kf.x(7:9, 1));
     navstate.qbn = quatProd(qpn, navstate.qbn);
     navstate.cbn = quat2dcm(navstate.qbn);
-    navstate.qtt = dcm2euler(navstate.cbn);
+    navstate.att = dcm2euler(navstate.cbn);
 
     % imu error
     navstate.gyrbias = navstate.gyrbias + kf.x(10:12, 1);
