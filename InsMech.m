@@ -65,7 +65,7 @@ function navstate = InsMech(laststate, lastimu, thisimu)
     qne = bl2qne(lastpos(1), lastpos(2));
     qne = quatProd(quatProd(qee, qne), qnn);
     [midlat, midlon] = qne2bl(qne);
-    midheight = lastpos(3) + midvel(3) * this_dt / 2;
+    midheight = lastpos(3) - midvel(3) * this_dt / 2;
     midpos = [midlat; midlon; midheight];
 
     % geometric parameters at k-1/2, 重新计算中间时刻的rmrn, wie_e, wen_n
