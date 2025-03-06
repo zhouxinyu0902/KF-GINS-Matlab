@@ -28,8 +28,8 @@ function rotvec = quat2rotvec(quat)
     elseif qv_norm < 1e-10
         rotvec = [0; 0; 0];
     else
-        temp = qv_norm / (2 * w);
+        temp = 2 * atan(qv_norm / w);
         f = sin(temp / 2) / temp;
-        rotvec = [x; y; z] * f;
+        rotvec = [x; y; z] / f;
     end
 end
