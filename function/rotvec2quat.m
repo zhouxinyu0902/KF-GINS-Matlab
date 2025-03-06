@@ -21,4 +21,8 @@ function quat = rotvec2quat(vec)
     quat(2) = index * vec(1);
     quat(3) = index * vec(2);
     quat(4) = index * vec(3);
+
+    if quat(1) < 0
+        quat = -quat;
+    end
 end
