@@ -95,8 +95,8 @@ function navstate = InsMech(laststate, lastimu, thisimu)
 
     % recompute geometric parameters, 重新计算中间时刻地理参数
     [rm, rn] = getRmRn(midpos(1), param);
-    wie_n = [param.WGS84_WIE * cos(lastpos(1)); 0; -param.WGS84_WIE * sin(lastpos(1))];
-    wen_n = [lastvel(2) / (rn + lastpos(3)); -lastvel(1) / (rm + lastpos(3)); -lastvel(2) * tan(lastpos(1)) / (rn + lastpos(3))];
+    wie_n = [param.WGS84_WIE * cos(midpos(1)); 0; -param.WGS84_WIE * sin(midpos(1))];
+    wen_n = [midvel(2) / (rn + midpos(3)); -midvel(1) / (rm + midpos(3)); -midvel(2) * tan(midpos(1)) / (rn + midpos(3))];
 
     % recompute n-frame rotation vector (n(k) with respect to n(k-1)-frame)
     % 重新计算k时刻到k-1时刻 n系旋转矢量
