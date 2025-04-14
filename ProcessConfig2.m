@@ -42,10 +42,10 @@ function cfg = ProcessConfig2()
 
     cfg.initgyrbiasstd = [50; 50; 50]; % [deg/h]
     cfg.initaccbiasstd = [50; 50; 50]; % [mGal]
-    cfg.initgyrscalestd = [1000; 1000; 1000]; % [deg/h]
-    cfg.initaccscalestd = [1000; 1000; 1000]; % [deg/h]
+    cfg.initgyrscalestd = [1000; 1000; 1000]; % [ppm]
+    cfg.initaccscalestd = [1000; 1000; 1000]; % [ppm]
 
-    cfg.gyrarw = 0.1; % [deg/s/sqrt(h)]
+    cfg.gyrarw = 0.1; % [deg/sqrt(h)]
     cfg.accvrw = 0.1; % [m/s/sqrt(h)]
     cfg.gyrbiasstd = 50; % [deg/h]
     cfg.accbiasstd = 50; % [mGal]
