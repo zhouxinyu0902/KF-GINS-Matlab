@@ -8,7 +8,7 @@
 %    Date : 2023.3.3
 % -------------------------------------------------------------------------
 
-function cfg = ProcessConfig()
+function cfg = ProcessConfig1()
 
     param = Param();
 
@@ -25,7 +25,8 @@ function cfg = ProcessConfig()
 
     %% initial information
     cfg.starttime = 456300;
-    cfg.endtime = inf;
+    % cfg.endtime = inf;
+    cfg.endtime = 456900;
 
     cfg.initpos = [30.4447873701; 114.4718632047; 20.899]; % [deg, deg, m]
     cfg.initvel = [0; 0; 0]; % [m/s]

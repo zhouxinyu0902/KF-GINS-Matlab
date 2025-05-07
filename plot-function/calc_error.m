@@ -10,6 +10,9 @@
 
 
 %% importdata data （nav文件第一列为0，不需要用）
+% testnavpath = 'dataset1/pure_ins_PSINS.txt';
+% testnavpath = 'dataset1/pcafile.txt';
+% testnavpath = 'dataset1/pure_ins.txt';
 testnavpath = 'dataset1/NavResult.nav';
 truthpath = 'dataset1/truth.nav';
 temp = importdata(testnavpath);
@@ -105,30 +108,34 @@ temp = error(:, 8:10);
 disp("attitude error: " + num2str(sqrt(mean(temp .^2))) + " deg");
 
 %% plot error
-figure;
+myfigurestartup(12,4,'prese')
+subplot 131
 plot(error(:,1),error(:,2:4));
 title('Position Error');
 xlabel('Time[s]');
 ylabel('Error[m]');
 legend('North', 'East', 'Down');
 grid("on");
+xlim([error(1,1) error(end,1)])
 
-figure;
+% figure;
+subplot 132
 plot(error(:,1),error(:,5:7));
 title('Velocity Error');
 xlabel('Time[s]');
 ylabel('Error[m/s]');
 legend('North', 'East', 'Down');
 grid("on");
+xlim([error(1,1) error(end,1)])
 
-figure;
+subplot 133
 plot(error(:,1),error(:,8:10));
 title('Attitude Error');
 xlabel('Time[s]');
 ylabel('Error[deg]');
 legend('Roll', 'Pitch', 'Yaw');
 grid("on");
-
+xlim([error(1,1) error(end,1)])
 
 
 % %% 找到共同的开始时间点

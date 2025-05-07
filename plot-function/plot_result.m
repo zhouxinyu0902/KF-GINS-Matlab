@@ -10,6 +10,10 @@
 
 % importdata navresult
 navpath = "dataset1/NavResult.nav";
+% navpath = 'dataset1/pcafile.txt';
+% navpath = 'dataset1/pure_ins_PSINS.txt';
+% navpath = 'dataset1/pure_ins.txt';
+
 navdata = importdata(navpath);
 
 % velocity
