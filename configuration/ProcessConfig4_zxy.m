@@ -8,16 +8,21 @@
 %    Date : 2023.3.3
 % -------------------------------------------------------------------------
 
-function cfg = ProcessConfig1()
+function cfg = ProcessConfig4_zxy()
 
     param = Param();
 
     %% filepath
-    cfg.imufilepath = 'dataset1/Leador-A15.txt';
-    cfg.gnssfilepath = 'dataset1/GNSS-RTK.txt';
-    cfg.depthfilepath = 'dataset1/height.txt';
+    % cfg.imufilepath = 'dataset1\Leador-A15.txt';
+    % cfg.gnssfilepath = 'dataset1\GNSS_RTK.pos';
+    % cfg.odofilepath = '';
+    % cfg.outputfolder = 'dataset1';
+
+    cfg.imufilepath = 'dataset4\i300.txt';
+    cfg.depthfilepath = 'dataset4\i300.txt';
+    cfg.gnssfilepath = 'dataset4\GNSS_RTK.pos';
     cfg.odofilepath = '';
-    cfg.outputfolder = 'dataset1';
+    cfg.outputfolder = 'dataset4';
 
     %% configure
     cfg.usegnssvel = false;
@@ -25,14 +30,22 @@ function cfg = ProcessConfig1()
     cfg.odoupdaterate = 1; % [Hz]
 
     %% initial information
-    cfg.starttime = 456300;
+    cfg.starttime = 357473;
     % cfg.endtime = inf;
-    cfg.endtime = 456300+3600;
+    cfg.endtime = 357473+300;
+    cfg.initpos = [30.4604283861;114.4725033030;22.77916]; % [deg, deg, m]
+    cfg.initvel = [ 0 ; 0; 0]; % [m/s]
+    cfg.initatt = [ 1.50689;-0.07204;278.53459]; % [deg]
 
-    cfg.initpos = [30.4447873701; 114.4718632047; 20.899]; % [deg, deg, m]
-    cfg.initvel = [0; 0; 0]; % [m/s]
-    cfg.initatt = [0.854; -2.034; 185.702]; % [deg]
 
+    % cfg.starttime = 456300;
+    % % cfg.endtime = inf;
+    % cfg.endtime = 456900;
+    % cfg.initpos = [30.4447873701; 114.4718632047; 20.899]; % [deg, deg, m]
+    % cfg.initvel = [0; 0; 0]; % [m/s]
+    % cfg.initatt = [0.854; -2.034; 185.702]; % [deg]
+
+    
     cfg.initposstd = [0.005; 0.004; 0.008]; %[m]
     cfg.initvelstd = [0.003; 0.004; 0.004]; %[m/s]
     cfg.initattstd = [0.003; 0.003; 0.023]; %[deg]
@@ -47,28 +60,28 @@ function cfg = ProcessConfig1()
     cfg.initgyrscalestd = [300; 300; 300]; % [ppm]
     cfg.initaccscalestd = [300; 300; 300]; % [ppm]
 
-    cfg.gyrarw = 0.003; % [deg/sqrt(h)] 角度随机游走
-    cfg.accvrw = 0.03; % [m/s/sqrt(h)] 加速度计随机游走
-    cfg.gyrbiasstd = 0.027; % [deg/h] 陀螺仪零偏标准差
-    cfg.accbiasstd = 15; % [mGal] 加速度计零偏标准差
-    cfg.gyrscalestd = 300; % [ppm] 刻度系数标准差，即0.03%
-    cfg.accscalestd = 300; % [ppm] 
-    cfg.corrtime = 4; % [h] 时间相关系数，衡量系统误差随时间相关程度的重要指标
-
-    %% install parameters 安装参数
+    cfg.gyrarw = 0.003; % [deg/sqrt(h)]
+    cfg.accvrw = 0.03; % [m/s/sqrt(h)]
+    cfg.gyrbiasstd = 0.027; % [deg/h]
+    cfg.accbiasstd = 15; % [mGal]
+    cfg.gyrscalestd = 300; % [ppm]
+    cfg.accscalestd = 300; % [ppm]
+    cfg.corrtime = 4; % [h]
+    % 
+    % %% install parameters 安装参数
     cfg.antlever = [0.136; -0.301; -0.184]; % [m]
     cfg.odolever = [0; 0; 0]; %[m]
     cfg.installangle = [0; 0; 0]; %[deg]
-
-    %% ODO/NHC measurement noise 观测噪声
+    % 
+    % %% ODO/NHC measurement noise 观测噪声
     cfg.odonhc_measnoise = [0.1; 0.1; 0.1]; % [m/s]
-
-
+    % 
+    % 
     %% convert unit to standard unit (单位转换)
     cfg.initpos(1) = cfg.initpos(1) * param.D2R;
     cfg.initpos(2) = cfg.initpos(2) * param.D2R;
     cfg.initatt = cfg.initatt * param.D2R;
-
+    % 
     cfg.initattstd = cfg.initattstd * param.D2R;
 
     cfg.initgyrbias = cfg.initgyrbias * param.D2R / 3600;

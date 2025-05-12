@@ -10,9 +10,7 @@
 
 % GNSS位置更新和速度更新
 function kf = GNSSUpdate(navstate, gnssdata, kf, antlever, usegnssvel, thisimu, dt)
-
     param = Param();
-
     %% GNSS position update
     % abandon gnss vel outlier 
     gnssposstd = gnssdata(5:7, 1);
@@ -21,7 +19,7 @@ function kf = GNSSUpdate(navstate, gnssdata, kf, antlever, usegnssvel, thisimu, 
     else
         % measurement innovation
         DR = diag([navstate.Rm + navstate.pos(3), (navstate.Rn + navstate.pos(3))*cos(navstate.pos(1)), -1]);
-        Z = DR*(navstate.pos - gnssdata(2:4, 1))+navstate.cbn*antlever;%N系下的NED
+        Z = DR*(navstate.pos - gnssdata(2:4, 1))+navstate.cbn*antlever;% N系下的NED
         
         % measurement matrix and noise matrix
         R = diag(power(gnssdata(5:7, 1), 2));%m m m

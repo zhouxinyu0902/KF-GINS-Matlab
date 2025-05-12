@@ -142,7 +142,7 @@ for imuindex = 2:ll
 
     % % INS mechanization
     navstate = InsMech(laststate, lastimu, thisimu);
-    navstate.pos(3)=-3000;
+    navstate.pos(3)=depthdata(imuindex,2);
 
     % write navresult to file
     nav = zeros(11, 1);

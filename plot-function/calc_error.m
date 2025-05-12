@@ -8,13 +8,13 @@
 %    Date : 2022.11.30
 % -------------------------------------------------------------------------
 
-
+function calc_error(testnavpath,truthpath)
 %% importdata data （nav文件第一列为0，不需要用）
 % testnavpath = 'dataset1/pure_ins_PSINS.txt';
 % testnavpath = 'dataset1/pcafile.txt';
 % testnavpath = 'dataset1/pure_ins.txt';
-testnavpath = 'dataset1/NavResult.nav';
-truthpath = 'dataset1/truth.nav';
+% testnavpath = 'dataset1/NavResult.nav';
+% truthpath = 'dataset1/truth.nav';
 temp = importdata(testnavpath);
 result_all = temp(:, 2:end);
 temp=importdata(truthpath);
@@ -89,7 +89,7 @@ end
 param = Param();
 first_blh = result_all(1, 2:4);
 [rm, rn] = getRmRn(first_blh(1) * param.D2R, param);
-h = first_blh(2);
+h = first_blh(3);
 DR = diag([rm + h, (rn + h)*cos(first_blh(1) * param.D2R), -1]);
 
 error(:, 2:3) = error(:, 2:3) * param.D2R;
@@ -106,10 +106,9 @@ temp = error(:, 5:7);
 disp("velocity error: " + num2str(sqrt(mean(temp .^2))) + " m/s");
 temp = error(:, 8:10);
 disp("attitude error: " + num2str(sqrt(mean(temp .^2))) + " deg");
-
 %% plot error
-myfigurestartup(12,4,'prese')
-subplot 131
+myfigurestartup(10,10,'prese')
+subplot 221
 plot(error(:,1),error(:,2:4));
 title('Position Error');
 xlabel('Time[s]');
@@ -117,9 +116,9 @@ ylabel('Error[m]');
 legend('North', 'East', 'Down');
 grid("on");
 xlim([error(1,1) error(end,1)])
-
+ConvertXtime
 % figure;
-subplot 132
+subplot 222
 plot(error(:,1),error(:,5:7));
 title('Velocity Error');
 xlabel('Time[s]');
@@ -127,8 +126,8 @@ ylabel('Error[m/s]');
 legend('North', 'East', 'Down');
 grid("on");
 xlim([error(1,1) error(end,1)])
-
-subplot 133
+ConvertXtime
+subplot 223
 plot(error(:,1),error(:,8:10));
 title('Attitude Error');
 xlabel('Time[s]');
@@ -136,7 +135,16 @@ ylabel('Error[deg]');
 legend('Roll', 'Pitch', 'Yaw');
 grid("on");
 xlim([error(1,1) error(end,1)])
-
+ConvertXtime
+% 画位置误差
+subplot 224
+RadiusError=sqrt(sum(error(:,2:4).^2,2));
+plot(error(:,1),RadiusError);
+title('Radial Error');
+xlabel('Time[s]');
+ylabel('Error[deg]');
+grid("on");
+ConvertXtime
 
 % %% 找到共同的开始时间点
 % for m=1:size(ref,1)

@@ -8,16 +8,16 @@
 %    Date : 2023.3.3
 % -------------------------------------------------------------------------
 
-function cfg = ProcessConfig1()
+function cfg = ProcessConfigsimu()
 
     param = Param();
 
     %% filepath
-    cfg.imufilepath = 'dataset1/Leador-A15.txt';
-    cfg.gnssfilepath = 'dataset1/GNSS-RTK.txt';
-    cfg.depthfilepath = 'dataset1/height.txt';
+    cfg.imufilepath = 'dataset-simu\imu-simu.txt';
+    cfg.gnssfilepath = 'dataset-simu\gnss.nav';
     cfg.odofilepath = '';
-    cfg.outputfolder = 'dataset1';
+    cfg.rangefilepath = 'dataset-simu\range.txt';
+    cfg.outputfolder = 'dataset-simu';
 
     %% configure
     cfg.usegnssvel = false;
@@ -25,35 +25,37 @@ function cfg = ProcessConfig1()
     cfg.odoupdaterate = 1; % [Hz]
 
     %% initial information
-    cfg.starttime = 456300;
+    cfg.starttime = 0.005;
     % cfg.endtime = inf;
-    cfg.endtime = 456300+3600;
+    cfg.endtime = 3600;
 
-    cfg.initpos = [30.4447873701; 114.4718632047; 20.899]; % [deg, deg, m]
-    cfg.initvel = [0; 0; 0]; % [m/s]
-    cfg.initatt = [0.854; -2.034; 185.702]; % [deg]
+    cfg.initpos = [15;115;-3000]; % [deg, deg, m]
+    cfg.initvel = [0;0;0]; % [m/s]
+    cfg.initatt = [0.002; 0.002; 0.023]; % [deg]
 
     cfg.initposstd = [0.005; 0.004; 0.008]; %[m]
     cfg.initvelstd = [0.003; 0.004; 0.004]; %[m/s]
     cfg.initattstd = [0.003; 0.003; 0.023]; %[deg]
 
+    % imu初始偏差
     cfg.initgyrbias = [0; 0; 0]; % [deg/h]
     cfg.initaccbias = [0; 0; 0]; % [mGal]
     cfg.initgyrscale = [0; 0; 0]; % [ppm]
     cfg.initaccscale = [0; 0; 0]; % [ppm]
-
+    
+    % imu噪声参数
     cfg.initgyrbiasstd = [0.027; 0.027; 0.027]; % [deg/h]
     cfg.initaccbiasstd = [15; 15; 15]; % [mGal]
     cfg.initgyrscalestd = [300; 300; 300]; % [ppm]
     cfg.initaccscalestd = [300; 300; 300]; % [ppm]
 
-    cfg.gyrarw = 0.003; % [deg/sqrt(h)] 角度随机游走
-    cfg.accvrw = 0.03; % [m/s/sqrt(h)] 加速度计随机游走
-    cfg.gyrbiasstd = 0.027; % [deg/h] 陀螺仪零偏标准差
-    cfg.accbiasstd = 15; % [mGal] 加速度计零偏标准差
-    cfg.gyrscalestd = 300; % [ppm] 刻度系数标准差，即0.03%
-    cfg.accscalestd = 300; % [ppm] 
-    cfg.corrtime = 4; % [h] 时间相关系数，衡量系统误差随时间相关程度的重要指标
+    cfg.gyrarw = 0.003; % [deg/sqrt(h)]
+    cfg.accvrw = 0.03; % [m/s/sqrt(h)]
+    cfg.gyrbiasstd = 0.027; % [deg/h]
+    cfg.accbiasstd = 15; % [mGal]
+    cfg.gyrscalestd = 300; % [ppm]
+    cfg.accscalestd = 300; % [ppm]
+    cfg.corrtime = 4; % [h]
 
     %% install parameters 安装参数
     cfg.antlever = [0.136; -0.301; -0.184]; % [m]

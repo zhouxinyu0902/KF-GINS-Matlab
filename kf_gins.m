@@ -15,8 +15,8 @@ addpath("function\");
 
 %% define parameters and importdata process config
 param = Param();
-cfg = ProcessConfig1();
-% cfg = ProcessConfig2();
+% cfg = ProcessConfig1();
+cfg = ProcessConfig2();
 % cfg = ProcessConfig3();
 
 
@@ -271,3 +271,6 @@ fclose(stdfp);
 
 disp("GNSS/INS Integration Processing Finished!");
 
+%%
+plot_result(navpath)
+plot_result("dataset2/truth.nav")
