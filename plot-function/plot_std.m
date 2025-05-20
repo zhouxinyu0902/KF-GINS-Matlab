@@ -10,7 +10,8 @@
 
 
 %% importdata std
-stdfile = 'dataset1/NavSTD.txt';
+% stdfile = 'dataset1/NavSTD.txt';
+stdfile = 'dataset-simu/result/NavSTD.txt';
 std = importdata(stdfile);
 
 figure()

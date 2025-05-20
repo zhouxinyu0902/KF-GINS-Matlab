@@ -1,8 +1,7 @@
 function [SlantR,HorizR]=caldot2dot(dot1,dot2)
-% dot1，dot2，单位为deg,deg,m
+% dot1，dot2，单位为rad,rad,m
 param = Param();
 sub=dot1-dot2;
-sub(:,1:2)=sub(:,1:2)*param.D2R;
 
 [rm, rn] = getRmRn(dot1(1) * param.D2R, param);
 h = dot1(3);

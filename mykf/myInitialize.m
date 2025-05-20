@@ -17,7 +17,7 @@ function [kf, navstate] = myInitialize(cfg)
     kf.P(7:9, 7:9) = diag(power(cfg.initattstd, 2));
     kf.P(10:12, 10:12) = diag(power(cfg.initgyrbiasstd, 2));
     kf.P(13:15, 13:15) = diag(power(cfg.initaccbiasstd, 2));
-
+    kf.P0 = kf.P;
 
     % navigation state initialization
     navstate.time = cfg.starttime;

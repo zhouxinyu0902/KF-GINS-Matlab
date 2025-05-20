@@ -27,7 +27,7 @@ function cfg = ProcessConfig1()
     %% initial information
     cfg.starttime = 456300;
     % cfg.endtime = inf;
-    cfg.endtime = 456300+3600;
+    cfg.endtime = 456300+1200;
 
     cfg.initpos = [30.4447873701; 114.4718632047; 20.899]; % [deg, deg, m]
     cfg.initvel = [0; 0; 0]; % [m/s]

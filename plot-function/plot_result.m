@@ -74,8 +74,15 @@ if type=="full"
     grid("on");
 
     %% height
+    % subplot 325
+    % plot(navdata(:, 2), navdata(:, 5));
+    % title('Height');
+    % xlabel('Time[s]');
+    % ylabel('Height[m]');
+    % grid("on");
+
     subplot 325
-    plot(navdata(:, 2), navdata(:, 5));
+    plot(navdata(:, 2), pos(:, 1),navdata(:, 2), pos(:, 2),navdata(:, 2), pos(:, 3));
     title('Height');
     xlabel('Time[s]');
     ylabel('Height[m]');

@@ -1,41 +1,46 @@
 %% 距离更新
-function kf = myRangeUpdate(navstate, Rangedata, depthdata, kf)
+function kf = my2RangeUpdate(navstate, Rangedata1, Rangedata2, depthdata, kf)
 param = Param();
-% % 根据惯导和信标位置计算水平距离
-bcn=Rangedata(4:6)';
-bcn(1:2)=bcn(1:2)*param.D2R;
-[~,range_ins]=caldot2dot(navstate.pos',bcn'); 
+% measurement innovation
+% 信标位置
+bcn1=Rangedata1(4:6)';
+bcn1(1:2)=bcn1(1:2)*param.D2R;
+[~,range_ins1]=caldot2dot(navstate.pos',bcn1'); % 根据惯导和信标位置计算水平距离
 
-% % 量测矩阵和噪声矩阵
-vk = [1,0.2];
-R = diag(vk.^2);
-H = zeros(2, kf.RANK);
-b = (bcn'-navstate.pos')*diag([(navstate.Rm + navstate.pos(3))^2,...
-    ((navstate.Rn + navstate.pos(3))*cos(navstate.pos(1)))^2,...
-    1])/range_ins;
-H(1, 1:2) =  b(1:2);
-H(2, 3) = -1;
+bcn2=Rangedata2(4:6)';
+bcn2(1:2)=bcn2(1:2)*param.D2R;
+[~,range_ins2]=caldot2dot(navstate.pos',bcn2'); 
 
-% % 明确测量值
-% % 更新一步预测量测值
-
-Z = [Rangedata(3)-range_ins;
+Z = [Rangedata1(3)-range_ins1;
+    Rangedata2(3)-range_ins2;
     depthdata(2)-navstate.pos(3)];
-kf.Zkk_1 = H * kf.x;
 
-% 非线性更新一步量测预测值---无用
+% measurement matrix and noise matrix
+vk = [1,1,0.2];
+R = diag(vk.^2);
+H = zeros(3, kf.RANK);
+b1 = (bcn1'-navstate.pos')*diag([(navstate.Rm + navstate.pos(3))^2,...
+    ((navstate.Rn + navstate.pos(3))*cos(navstate.pos(1)))^2,...
+    1])/range_ins1;
+H(1, 1:2) = b1(1:2);
+
+b2 = (bcn2'-navstate.pos')*diag([(navstate.Rm + navstate.pos(3))^2,...
+    ((navstate.Rn + navstate.pos(3))*cos(navstate.pos(1)))^2,...
+    1])/range_ins2;
+H(2, 1:2) = b2(1:2);
+H(3, 3) = -1;
+
+
+% update covariance and state vector
+
+% % 非线性更新一步量测预测值---无用
 % lonlath=navstate.pos(1:3)-kf.x(1:3);
 % h=navstate.pos(3)-kf.x(3);
 % [~,range]=caldot2dot(lonlath',bcn');
 % kf.Zkk_1 = [Rangedata(3)-range;
 %             depthdata(2)-h];
 
-% Z = [Rangedata(3);
-%     depthdata(2)];
-% [~,range_ins_non]=caldot2dot((navstate.pos-kf.x(1:3))',bcn'); 
-% kf.Zkk_1 =[range_ins_non;navstate.pos(3)-kf.x(3)];
-
-% % 更新协方差和状态量
+kf.Zkk_1 = H * kf.x;
 K = kf.P * H' / (H * kf.P * H' + R);
 kf.x = kf.x + K*(Z - kf.Zkk_1 );
 kf.P =(eye(kf.RANK) - K*H) * kf.P * (eye(kf.RANK) - K*H)' + K * R * K';

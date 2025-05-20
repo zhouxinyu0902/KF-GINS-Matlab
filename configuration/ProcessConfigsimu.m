@@ -14,10 +14,13 @@ function cfg = ProcessConfigsimu()
 
     %% filepath
     cfg.imufilepath = 'dataset-simu\imu-simu.txt';
-    cfg.gnssfilepath = 'dataset-simu\gnss.nav';
+    cfg.gnssfilepath = 'dataset-simu\gnss-2m.nav';
+    cfg.depthfilepath = 'dataset-simu\depth.txt';
     cfg.odofilepath = '';
     cfg.rangefilepath = 'dataset-simu\range.txt';
-    cfg.outputfolder = 'dataset-simu';
+    cfg.rangefilepath2 = 'dataset-simu\range-3.txt';
+    cfg.compassfilepath = 'dataset-simu\compass.nav';
+    cfg.outputfolder = 'dataset-simu\result';
 
     %% configure
     cfg.usegnssvel = false;
@@ -27,16 +30,26 @@ function cfg = ProcessConfigsimu()
     %% initial information
     cfg.starttime = 0.005;
     % cfg.endtime = inf;
-    cfg.endtime = 3600;
+    cfg.endtime = 1200;
 
-    cfg.initpos = [15;115;-3000]; % [deg, deg, m]
-    cfg.initvel = [0;0;0]; % [m/s]
-    cfg.initatt = [0.002; 0.002; 0.023]; % [deg]
+    % 仿真设置
+    cfg.trueinitpos = [15;115;-1200]; % [deg, deg, m]
+    cfg.trueinitvel = [0; 0; 0]; % [m/s]
+    cfg.trueinitatt = [0; 0; 0]; % [deg]
 
-    cfg.initposstd = [0.005; 0.004; 0.008]; %[m]
+    [rm, rn] = getRmRn(cfg.trueinitpos(1)*param.D2R, param);
+    DR = diag([rm + cfg.trueinitpos(3), (rn + cfg.trueinitpos(3))*cos(cfg.trueinitpos(1)*param.D2R), -1]);    
+    cfg.initposstd = DR^-1*[0.005; 0.004; 0.008]; %[m] 转为弧度
     cfg.initvelstd = [0.003; 0.004; 0.004]; %[m/s]
     cfg.initattstd = [0.003; 0.003; 0.023]; %[deg]
 
+    dll = cfg.initposstd(1:2)*param.R2D;
+    dh = cfg.initposstd(3);
+    cfg.initpos = cfg.trueinitpos+[dll;dh]; % [deg, deg, m]
+    cfg.initvel = cfg.trueinitvel+cfg.initvelstd; % [m/s]
+    cfg.initatt = cfg.trueinitatt+cfg.initattstd; % [deg]
+
+    
     % imu初始偏差
     cfg.initgyrbias = [0; 0; 0]; % [deg/h]
     cfg.initaccbias = [0; 0; 0]; % [mGal]
