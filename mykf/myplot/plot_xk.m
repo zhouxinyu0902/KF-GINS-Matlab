@@ -1,6 +1,5 @@
-function plot_xk(xkpath,navpath,refpath)
+function plot_xk(xkpath,stdpath,navpath,refpath)
 param=Param();
-xk=importdata(xkpath);
 
 nav=importdata(navpath);
 ref=importdata(refpath);
@@ -11,6 +10,16 @@ err(:,2:10)=nav(:,3:11)-ref(:,3:11);
 err(:,2:3)=err(:,2:3)*param.D2R;
 err(:,8:10)=err(:,8:10)*param.D2R;
 err(err(:,10)<-pi,10)=err(err(:,10)<-pi,10)+2*pi;
+
+[rm,rn]=getRmRn(d2r(ref(1,3)),param);
+err(:,2)=err(:,2)*(rm+ref(1,5));
+err(:,3)=err(:,3)*cos(ref(1,3))*rn;
+err(:,8:9)=err(:,8:9)*param.R2D;
+
+xk=importdata(xkpath);
+xk(:,2)=xk(:,2)*(rm+ref(1,5));
+xk(:,3)=xk(:,3)*cos(ref(1,3))*rn;
+xk(:,8:9)=xk(:,8:9)*param.R2D;
 
 myfigurestartup(10,10,'prese')
 subplot(3,3,1)
@@ -44,3 +53,23 @@ legend('dpitch','estimated dpitch')
 subplot(3,3,9)
 plot(err(:,1),err(:,10),xk(:,1),xk(:,10))
 legend('dheading','estimated dheading')
+
+std=importdata(stdpath);
+myfigurestartup(7,7,'prese')
+subplot 221,plot(xk(:,1),xk(:,11:13)* param.R2D *3600)
+title('estimated eb/(deg/h)')
+subplot 222,plot(xk(:,1),xk(:,14:16)* 1e5)
+title('estimated db/(mGal)')
+subplot 223,plot(std(:,1),std(:,11:13))
+title('diag(PX)')
+subplot 224,plot(std(:,1),std(:,14:16))
+title('diag(PX)')
+
+
+myfigurestartup(10,3,'prese')
+subplot 131,plot(std(:,1),std(:,2:4))
+title('diag(PX) position')
+subplot 132,plot(std(:,1),std(:,5:7))
+title('diag(PX) velocity')
+subplot 133,plot(std(:,1),std(:,8:10))
+title('diag(PX) attitude')

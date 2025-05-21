@@ -41,7 +41,7 @@ switch(chosenmode)
         rangeendtime = Rangedata(end, 1);
         pvapath=[cfg.outputfolder,'/ins','_range.txt'];
         pvafp = fopen(pvapath,"wt");
-        xkpath = [cfg.outputfolder, '/xk_range-5.txt'];
+        xkpath = [cfg.outputfolder, '/xk_range-100m.txt'];
         xkfp = fopen(xkpath, 'wt');
     case 'ins/gnss'
         gnssdata = importdata(cfg.gnssfilepath);
@@ -65,13 +65,13 @@ switch(chosenmode)
         pvafp=fopen(pvapath,"wt");
 end
 %% 保存结果
-truthpath = 'dataset-simu/truth.nav';
+truthpath ='dataset-simu-circle/truth.nav';
 
 % imuerrpath = [cfg.outputfolder, '/ImuError.txt'];
 % imuerrfp = fopen(imuerrpath, 'wt');
 % 
-% stdpath = [cfg.outputfolder, '/NavSTD.txt'];
-% stdfp = fopen(stdpath, 'wt');
+stdpath = [cfg.outputfolder, '/NavSTD.txt'];
+stdfp = fopen(stdpath, 'wt');
 
 
 %% 统一处理时间
@@ -177,7 +177,7 @@ for imuindex = 2:ll-1
         % 测量值更新
         kf = myRangeUpdate(navstate, Range, depth, kf);
         % 估计状态值反馈
-        [kf, navstate] = myErrorFeedback(kf, navstate);
+        % [kf, navstate] = myErrorFeedback(kf, navstate);
         % 取下一个测量值
         id=id+1;
         Range=Rangedata(id*20000,:);
@@ -213,16 +213,16 @@ for imuindex = 2:ll-1
     xk(2:16) = kf.x;
     fprintf(xkfp, '%12.6f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f\n', xk);
 
-    % % write state std, convert to common unit
-    % std = zeros(1, 22);
-    % std(1) = navstate.time;
-    % for idx=1:15
-    %     std(idx + 1) = sqrt(kf.P(idx, idx));
-    % end
-    % std(8:10) = std(8:10) * param.R2D;
-    % std(11:13) = std(11:13) * param.R2D *3600;
-    % std(14:16) = std(14:16) * 1e5;
-    % fprintf(stdfp, '%12.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f \n', std);
+    % 保存协方差矩阵对角元素
+    std = zeros(1, 16);
+    std(1) = navstate.time;
+    for idx=1:15
+        std(idx + 1) = sqrt(kf.P(idx, idx));
+    end
+    std(8:10) = std(8:10) * param.R2D;
+    std(11:13) = std(11:13) * param.R2D *3600;
+    std(14:16) = std(14:16) * 1e5;
+    fprintf(stdfp, '%12.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f \n', std);
     % 
     % % write imu error, convert to common unit
     % imuerror = zeros(13, 1);
@@ -255,7 +255,7 @@ fclose(xkfp);
 %%
 % calc_error(pvapath,truthpath)
 %%
-plot_xk(xkpath,pvapath,truthpath)
+plot_xk(xkpath,stdpath,pvapath,truthpath)
 close all
 plot_xk('xk_range-4.txt',pvapath,truthpath)
 plot_xk('xk_range-3.txt',pvapath,truthpath)

@@ -13,15 +13,21 @@ function cfg = ProcessConfigsimu()
     param = Param();
 
     %% filepath
-    cfg.imufilepath = 'dataset-simu\imu-simu.txt';
-    cfg.gnssfilepath = 'dataset-simu\gnss-2m.nav';
-    cfg.depthfilepath = 'dataset-simu\depth.txt';
-    cfg.odofilepath = '';
-    cfg.rangefilepath = 'dataset-simu\range.txt';
-    cfg.rangefilepath2 = 'dataset-simu\range-3.txt';
-    cfg.compassfilepath = 'dataset-simu\compass.nav';
-    cfg.outputfolder = 'dataset-simu\result';
+    % cfg.imufilepath = 'dataset-simu\imu-simu.txt';
+    % cfg.gnssfilepath = 'dataset-simu\gnss-2m.nav';
+    % cfg.depthfilepath = 'dataset-simu\depth.txt';
+    % cfg.odofilepath = '';
+    % 
+    % cfg.rangefilepath = 'dataset-simu\range-5.txt';
+    % cfg.rangefilepath2 = 'dataset-simu\range-3.txt';
+    % cfg.compassfilepath = 'dataset-simu\compass.nav';
 
+    % cfg.outputfolder = 'dataset-simu\result';
+
+    cfg.imufilepath = 'dataset-simu-circle\imu.txt';
+    cfg.rangefilepath = 'dataset-simu-circle\range-100m.txt';
+    cfg.depthfilepath = 'dataset-simu-circle\depth.txt';
+    cfg.outputfolder = 'dataset-simu-circle\result';
     %% configure
     cfg.usegnssvel = false;
     cfg.useodonhc = false;
