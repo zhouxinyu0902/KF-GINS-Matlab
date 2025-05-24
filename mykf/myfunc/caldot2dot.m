@@ -3,9 +3,9 @@ function [SlantR,HorizR]=caldot2dot(dot1,dot2)
 param = Param();
 sub=dot1-dot2;
 
-[rm, rn] = getRmRn(dot1(1) * param.D2R, param);
+[rm, rn] = getRmRn(dot1(1) , param);
 h = dot1(3);
-DR = diag([rm + h, (rn + h)*cos(dot1(1) * param.D2R), -1]);
+DR = diag([rm + h, (rn + h)*cos(dot1(1)), -1]);
 
 delta_pos =( DR * sub')';
 SlantR=sqrt(sum(delta_pos(:,1:3).^2,2));

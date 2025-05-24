@@ -11,7 +11,7 @@ err(:,2:3)=err(:,2:3)*param.D2R;
 err(:,8:10)=err(:,8:10)*param.D2R;
 err(err(:,10)<-pi,10)=err(err(:,10)<-pi,10)+2*pi;
 
-[rm,rn]=getRmRn(d2r(ref(1,3)),param);
+[rm,rn]=getRmRn(ref(1,3)*param.D2R,param);
 err(:,2)=err(:,2)*(rm+ref(1,5));
 err(:,3)=err(:,3)*cos(ref(1,3))*rn;
 err(:,8:9)=err(:,8:9)*param.R2D;

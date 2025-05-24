@@ -1,9 +1,9 @@
 clear all
 glvs
 pos0 = [d2r([15;115]);-1200];
-R=100;
+R=10;
 V=1;
-N=6;
+N=60;
 avp_circle = circle_seg(pos0,R,V,N);
 
 insplot(avp_circle)
@@ -33,7 +33,7 @@ imu(:,5)=trjimu(:,5);
 imu(:,6)=trjimu(:,4);
 imu(:,7)=-trjimu(:,6);
 
-imupath="dataset-simu-circle\imu.txt";
+imupath="dataset-simu-circle\imu-10.txt";
 imufp=fopen(imupath,'wt');
 for i=1:length(imu)
     fprintf(imufp, '%.9f %.10f %.10f %.10f %.10f %.10f %.10f \n', imu(i,:));
@@ -54,7 +54,7 @@ pva_ref(:,11)=r2d(yawcvt(avp_circle(:,3),"cc180c360"));
 pva_ref(:,2)=avp_circle(:,end);
 pva_ref(:,1)=zeros(size(pva_ref(:,11)));
 
-truthpath="dataset-simu-circle\truth.nav";
+truthpath="dataset-simu-circle\truth-10.nav";
 truthfp=fopen(truthpath,'wt');
 for i=1:length(pva_ref)
     fprintf(truthfp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', pva_ref(i,:));
@@ -67,17 +67,27 @@ bcn=dxyz2pos([-R,0,0],avp_circle(1,7:9)');
 bcn(1:2)=r2d(bcn(1:2));
 range1=bcn2range(pva_ref,bcn);
 range1(:,2:3)=range1(:,2:3)+normrnd(0,1,size(range1(:,2:3)));
-rangepath="dataset-simu-circle\range-100m.txt";
+rangepath="dataset-simu-circle\range-10m-1.txt";
 rangefp=fopen(rangepath,'wt');
 for i=1:length(range1)
     fprintf(rangefp,'%12.6f %.8f %.8f %12.8f %12.8f %8.4f\n', range1(i,:));
 end
 fclose(rangefp);
 
+bcn=dxyz2pos([-R,0,0],avp_circle(1,7:9)');
+bcn(1:2)=r2d(bcn(1:2));
+range1=bcn2range(pva_ref,bcn);
+range1(:,2:3)=range1(:,2:3)+normrnd(0,0.1,size(range1(:,2:3)));
+rangepath="dataset-simu-circle\range-10m-0.1.txt";
+rangefp=fopen(rangepath,'wt');
+for i=1:length(range1)
+    fprintf(rangefp,'%12.6f %.8f %.8f %12.8f %12.8f %8.4f\n', range1(i,:));
+end
+fclose(rangefp);
 %% depth数据
 depth=[avp_circle(:,end),avp_circle(:,end-1)];
 depth(:,2)=depth(:,2)+normrnd(0,0.2,size(depth(:,2)));
-depthpath="dataset-simu-circle\depth.txt";
+depthpath="dataset-simu-circle\depth-10.txt";
 depthfp=fopen(depthpath,'wt');
 for i=1:length(range1)
     fprintf(depthfp,'%12.6f %.8f\n', depth(i,:));

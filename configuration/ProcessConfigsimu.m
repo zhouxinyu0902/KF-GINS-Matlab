@@ -24,9 +24,9 @@ function cfg = ProcessConfigsimu()
 
     % cfg.outputfolder = 'dataset-simu\result';
 
-    cfg.imufilepath = 'dataset-simu-circle\imu.txt';
-    cfg.rangefilepath = 'dataset-simu-circle\range-100m.txt';
-    cfg.depthfilepath = 'dataset-simu-circle\depth.txt';
+    cfg.imufilepath = 'dataset-simu-circle\imu-10.txt';
+    cfg.rangefilepath = 'dataset-simu-circle\range-10m-0.1.txt';
+    cfg.depthfilepath = 'dataset-simu-circle\depth-10.txt';
     cfg.outputfolder = 'dataset-simu-circle\result';
     %% configure
     cfg.usegnssvel = false;

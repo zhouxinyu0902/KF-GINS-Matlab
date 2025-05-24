@@ -104,8 +104,8 @@ switch(chosenmode)
         Rangedata = Rangedata(Rangedata(:,1) >= cfg.starttime, :);
         Rangedata = Rangedata(Rangedata(:,1) <= cfg.endtime, :);
         id=1;
-        Range=Rangedata(id*20000,:);
-        depth=depthdata(id*20000,:);
+        Range=Rangedata(id*200,:);
+        depth=depthdata(id*200,:);
         disp("Start RANGE/INS Processing!");
     case 'ins/gnss'
         gnssdata = gnssdata(gnssdata(:,1) >= cfg.starttime, :);
@@ -180,8 +180,8 @@ for imuindex = 2:ll-1
         % [kf, navstate] = myErrorFeedback(kf, navstate);
         % 取下一个测量值
         id=id+1;
-        Range=Rangedata(id*20000,:);
-        depth=depthdata(id*20000,:);
+        Range=Rangedata(id*200,:);
+        depth=depthdata(id*200,:);
     end
     
     % % 罗盘信息进行约束
@@ -256,6 +256,8 @@ fclose(xkfp);
 % calc_error(pvapath,truthpath)
 %%
 plot_xk(xkpath,stdpath,pvapath,truthpath)
+
+
 close all
 plot_xk('xk_range-4.txt',pvapath,truthpath)
 plot_xk('xk_range-3.txt',pvapath,truthpath)
