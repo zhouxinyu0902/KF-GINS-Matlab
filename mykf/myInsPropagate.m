@@ -41,12 +41,12 @@ function kf = myInsPropagate(navstate, thisimu, dt, kf)
     
     % velocity error
     Fvr = zeros(3, 3);
-    Fvr(1, 1) = -2 * vel(2) * param.WGS84_WIE * cos(pos(1)) / rmh - pow2(vel(2)) / rmh / rnh / pow2(cos(pos(1)));
-    Fvr(1, 3) = vel(1) * vel(3) / rmh / rmh - pow2(vel(2)) * tan(pos(1)) / rnh / rnh;
-    Fvr(2, 1) = 2 * param.WGS84_WIE * (vel(1) * cos(pos(1)) - vel(3) * sin(pos(1))) / rmh + vel(1) * vel(2) / rmh / rnh / pow2(cos(pos(1)));
+    Fvr(1, 1) = -2 * vel(2) * param.WGS84_WIE * cos(pos(1)) / rmh - vel(2)^2 / rmh / rnh / cos(pos(1))^2;
+    Fvr(1, 3) = vel(1) * vel(3) / rmh / rmh - (vel(2)) * tan(pos(1))^2 / rnh / rnh;
+    Fvr(2, 1) = 2 * param.WGS84_WIE * (vel(1) * cos(pos(1)) - vel(3) * sin(pos(1))) / rmh + vel(1) * vel(2) / rmh / rnh / cos(pos(1))^2;
     Fvr(2, 3) = (vel(2) * vel(3) + vel(1) * vel(2) * tan(pos(1))) / rnh / rnh;
     Fvr(3, 1) = 2 * param.WGS84_WIE * vel(2) * sin(pos(1)) / rmh;
-    Fvr(3, 3) = -pow2(vel(2)) / rnh / rnh - pow2(vel(1)) / rmh / rmh + 2 * gravity / (sqrt(rm * rn) + pos(3));
+    Fvr(3, 3) = -vel(2)^2 / rnh / rnh - vel(1)^2 / rmh / rmh + 2 * gravity / (sqrt(rm * rn) + pos(3));
     Fvr(:,1)=Fvr(:,1)*rmh;% 修改
     Fvr(:,3)=-Fvr(:,3);
     F(4:6, 1:3) = Fvr;
@@ -70,7 +70,7 @@ function kf = myInsPropagate(navstate, thisimu, dt, kf)
     Fphir(1, 1) = -param.WGS84_WIE * sin(pos(1)) / rmh;
     Fphir(1, 3) = vel(2) / rnh / rnh;
     Fphir(2, 3) = -vel(1) / rmh / rmh;
-    Fphir(3, 1) = -param.WGS84_WIE * cos(pos(1)) / rmh - vel(2) / rmh / rnh / pow2(cos(pos(1)));
+    Fphir(3, 1) = -param.WGS84_WIE * cos(pos(1)) / rmh - vel(2) / rmh / rnh / cos(pos(1))^2;
     Fphir(3, 3) = -vel(2) * tan(pos(1)) / rnh / rnh;
     Fphir(:,1) = Fphir(:,1)*rmh; % 修改
     Fphir(:,3) = -Fphir(:,3);

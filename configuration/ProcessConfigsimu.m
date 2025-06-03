@@ -13,21 +13,20 @@ function cfg = ProcessConfigsimu()
     param = Param();
 
     %% filepath
-    % cfg.imufilepath = 'dataset-simu\imu-simu.txt';
-    % cfg.gnssfilepath = 'dataset-simu\gnss-2m.nav';
-    % cfg.depthfilepath = 'dataset-simu\depth.txt';
-    % cfg.odofilepath = '';
+    cfg.imufilepath = 'dataset-simu\imu-simu.txt';
+    cfg.gnssfilepath = 'dataset-simu\gnss-2m.nav';
+    cfg.depthfilepath = 'dataset-simu\depth.nav';
+    cfg.odofilepath = '';
     % 
-    % cfg.rangefilepath = 'dataset-simu\range-5.txt';
-    % cfg.rangefilepath2 = 'dataset-simu\range-3.txt';
-    % cfg.compassfilepath = 'dataset-simu\compass.nav';
+    cfg.rangefilepath = 'dataset-simu\range-2.txt';
+    cfg.rangefilepath2 = 'dataset-simu\range-3.txt';
+    cfg.compassfilepath = 'dataset-simu\compass.nav';
+    cfg.outputfolder = 'dataset-simu\result';
 
-    % cfg.outputfolder = 'dataset-simu\result';
-
-    cfg.imufilepath = 'dataset-simu-circle\imu-10.txt';
-    cfg.rangefilepath = 'dataset-simu-circle\range-10m-0.1.txt';
-    cfg.depthfilepath = 'dataset-simu-circle\depth-10.txt';
-    cfg.outputfolder = 'dataset-simu-circle\result';
+    % cfg.imufilepath = 'dataset-simu-circle\imu-10.txt';
+    % cfg.rangefilepath = 'dataset-simu-circle\range-10m-0.1.txt';
+    % cfg.depthfilepath = 'dataset-simu-circle\depth-10.txt';
+    % cfg.outputfolder = 'dataset-simu-circle\result';
     %% configure
     cfg.usegnssvel = false;
     cfg.useodonhc = false;

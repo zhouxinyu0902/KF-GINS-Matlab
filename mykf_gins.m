@@ -65,11 +65,11 @@ switch(chosenmode)
         pvafp=fopen(pvapath,"wt");
 end
 %% 保存结果
-truthpath ='dataset-simu-circle/truth.nav';
+truthpath ='dataset-simu/truth.nav';
 
-% imuerrpath = [cfg.outputfolder, '/ImuError.txt'];
-% imuerrfp = fopen(imuerrpath, 'wt');
-% 
+imuerrpath = [cfg.outputfolder, '/ImuError.txt'];
+imuerrfp = fopen(imuerrpath, 'wt');
+
 stdpath = [cfg.outputfolder, '/NavSTD.txt'];
 stdfp = fopen(stdpath, 'wt');
 
@@ -256,8 +256,6 @@ fclose(xkfp);
 % calc_error(pvapath,truthpath)
 %%
 plot_xk(xkpath,stdpath,pvapath,truthpath)
-
-
 close all
 plot_xk('xk_range-4.txt',pvapath,truthpath)
 plot_xk('xk_range-3.txt',pvapath,truthpath)
