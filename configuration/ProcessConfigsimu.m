@@ -13,14 +13,14 @@ function cfg = ProcessConfigsimu()
     param = Param();
 
     %% filepath
-    cfg.imufilepath = 'dataset-simu\imu-simu.txt';
-    cfg.gnssfilepath = 'dataset-simu\gnss-2m.nav';
+    cfg.imufilepath = 'dataset-simu\imu-simu.nav';
+    % cfg.gnssfilepath = 'dataset-simu\gnss-2m.nav';
     cfg.depthfilepath = 'dataset-simu\depth.nav';
     cfg.odofilepath = '';
     % 
-    cfg.rangefilepath = 'dataset-simu\range-2.txt';
-    cfg.rangefilepath2 = 'dataset-simu\range-3.txt';
-    cfg.compassfilepath = 'dataset-simu\compass.nav';
+    cfg.rangefilepath = 'dataset-simu\range-1.nav';
+    % cfg.rangefilepath2 = 'dataset-simu\range-3.txt';
+    % cfg.compassfilepath = 'dataset-simu\compass.nav';
     cfg.outputfolder = 'dataset-simu\result';
 
     % cfg.imufilepath = 'dataset-simu-circle\imu-10.txt';

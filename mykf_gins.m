@@ -40,8 +40,8 @@ switch(chosenmode)
         rangestarttime = Rangedata(1, 1);
         rangeendtime = Rangedata(end, 1);
         pvapath=[cfg.outputfolder,'/ins','_range.txt'];
-        pvafp = fopen(pvapath,"wt");
-        xkpath = [cfg.outputfolder, '/xk_range-100m.txt'];
+        pvafp = fopen(pvapath,'wt');
+        xkpath = [cfg.outputfolder, '/xk_range.txt'];
         xkfp = fopen(xkpath, 'wt');
     case 'ins/gnss'
         gnssdata = importdata(cfg.gnssfilepath);
@@ -72,8 +72,6 @@ imuerrfp = fopen(imuerrpath, 'wt');
 
 stdpath = [cfg.outputfolder, '/NavSTD.txt'];
 stdfp = fopen(stdpath, 'wt');
-
-
 %% 统一处理时间
 if cfg.starttime < imustarttime
     cfg.starttime = imustarttime;
@@ -104,7 +102,7 @@ switch(chosenmode)
         Rangedata = Rangedata(Rangedata(:,1) >= cfg.starttime, :);
         Rangedata = Rangedata(Rangedata(:,1) <= cfg.endtime, :);
         id=1;
-        Range=Rangedata(id*200,:);
+        Range=Rangedata(id*200,:);% 设置采样时间
         depth=depthdata(id*200,:);
         disp("Start RANGE/INS Processing!");
     case 'ins/gnss'
@@ -142,11 +140,12 @@ for imuindex = 2:ll-1
     % 惯导解算
     navstate = InsMech(laststate, lastimu, thisimu);
     % navstate.pos(3)=-1200;
+    yaw(imuindex)=poscalyaw(laststate.pos',navstate.pos');
     % 惯导传播，计算状态转移矩阵，一步预测
     kf = myInsPropagate(navstate, thisimu, imudt, kf);
     % phi(imuindex,:) = poscalyaw(laststate.pos,navstate.pos);
     % figure,plot(1:length(phi),phi,1:length(trueyaw),trueyaw)
-
+    
     % %gnss位置进行约束
     % if gnss(1)==thisimu(1)
     %     % 测量值更新
@@ -178,6 +177,10 @@ for imuindex = 2:ll-1
         kf = myRangeUpdate(navstate, Range, depth, kf);
         % 估计状态值反馈
         % [kf, navstate] = myErrorFeedback(kf, navstate);
+        pos = navstate.pos - kf.x(1:3);
+        pos_bcn=[Range(4:5)/180*pi,Range(6)];
+        [~,horiR(id)]=caldot2dot(pos',pos_bcn);
+        horiR_m(id)=Range(3);
         % 取下一个测量值
         id=id+1;
         Range=Rangedata(id*200,:);
@@ -199,6 +202,9 @@ for imuindex = 2:ll-1
     % thisimu(2:4, 1) = (thisimu(2:4, 1) - imudt * navstate.gyrbias)./(ones(3, 1) + navstate.gyrscale);
     % thisimu(5:7, 1) = (thisimu(5:7, 1) - imudt * navstate.accbias)./(ones(3, 1) + navstate.accscale);
     
+    % 计算残差
+
+
     % 保存导航结果
     nav = zeros(11, 1);
     nav(2, 1) = navstate.time;
