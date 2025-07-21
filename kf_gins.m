@@ -16,7 +16,7 @@ addpath("function\");
 %% define parameters and importdata process config
 param = Param();
 % cfg = ProcessConfig1();
-cfg = ProcessConfig2();
+cfg = ProcessConfig1();
 % cfg = ProcessConfig3();
 
 

@@ -3,11 +3,11 @@ clear;
 % clc;
 %% 定义参数/加载配置
 param = Param();
-cfg = ProcessConfig1();
+% cfg = ProcessConfig1();
 % cfg = ProcessConfig2();
 % cfg = ProcessConfig3();
 % cfg = ProcessConfigsimu();
-% cfg = ProcessConfig4_zxy();
+cfg = ProcessConfig4_zxy();
 %% 导入数据
 % imudata
 imudata = importdata(cfg.imufilepath);
@@ -15,7 +15,7 @@ imustarttime = imudata(1, 1);
 imuendtime = imudata(end, 1);
 mode={'ins/gnss','ins/range','ins/compass','ins/2range'};
 % 选择模式 %
-chosenmode=mode{2};
+chosenmode=mode{1};
 %%%%%%%%%%%
 switch(chosenmode)
     case 'ins/2range'
@@ -140,23 +140,23 @@ for imuindex = 2:ll-1
     % 惯导解算
     navstate = InsMech(laststate, lastimu, thisimu);
     % navstate.pos(3)=-1200;
-    yaw(imuindex)=poscalyaw(laststate.pos',navstate.pos');
+    % yaw(imuindex)=poscalyaw(laststate.pos',navstate.pos');
     % 惯导传播，计算状态转移矩阵，一步预测
     kf = myInsPropagate(navstate, thisimu, imudt, kf);
     % phi(imuindex,:) = poscalyaw(laststate.pos,navstate.pos);
     % figure,plot(1:length(phi),phi,1:length(trueyaw),trueyaw)
     
     % %gnss位置进行约束
-    % if gnss(1)==thisimu(1)
-    %     % 测量值更新
-    %     kf = myGNSSUpdate(navstate, gnss, kf);
-    % 
-    %     % 估计状态值反馈
-    %     % [kf, navstate] = myErrorFeedback(kf, navstate);
-    %     % 取下一个测量值
-    %     id=id+1;
-    %     gnss=gnssdata(id,:);
-    % end
+    if gnss(1)==thisimu(1)
+        % 测量值更新
+        kf = myGNSSUpdate(navstate, gnss, kf);
+
+        % 估计状态值反馈
+        % [kf, navstate] = myErrorFeedback(kf, navstate);
+        % 取下一个测量值
+        id=id+1;
+        gnss=gnssdata(id,:);
+    end
 
     % % % 两个距离值进行约束
     % if Range1(1)==thisimu(1)
