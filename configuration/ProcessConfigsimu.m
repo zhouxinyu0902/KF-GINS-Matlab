@@ -14,15 +14,15 @@ function cfg = ProcessConfigsimu()
 
     %% filepath
     cfg.imufilepath = 'dataset-simu\imu-simu.nav';
-    % cfg.gnssfilepath = 'dataset-simu\gnss-2m.nav';
+    cfg.gnssfilepath = 'dataset-simu\gnss-2m.txt';
     cfg.depthfilepath = 'dataset-simu\depth.nav';
     cfg.odofilepath = '';
     % 
-    cfg.rangefilepath = 'dataset-simu\range-1.nav';
+    % cfg.rangefilepath = 'dataset-simu\range-1.nav';
     % cfg.rangefilepath2 = 'dataset-simu\range-3.txt';
     % cfg.compassfilepath = 'dataset-simu\compass.nav';
     cfg.outputfolder = 'dataset-simu\result';
-
+    cfg.truthpath = 'dataset-simu\truth.nav';
     % cfg.imufilepath = 'dataset-simu-circle\imu-10.txt';
     % cfg.rangefilepath = 'dataset-simu-circle\range-10m-0.1.txt';
     % cfg.depthfilepath = 'dataset-simu-circle\depth-10.txt';
@@ -35,7 +35,7 @@ function cfg = ProcessConfigsimu()
     %% initial information
     cfg.starttime = 0.005;
     % cfg.endtime = inf;
-    cfg.endtime = 1200;
+    cfg.endtime = 600;
 
     % 仿真设置
     cfg.trueinitpos = [15;115;-1200]; % [deg, deg, m]

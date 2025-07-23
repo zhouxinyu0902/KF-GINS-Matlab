@@ -126,8 +126,7 @@ if cfg.useodonhc
         odoindex = odoindex + 1;
     end
 end
-xkpath = [cfg.outputfolder, '/xk_gnss_kfgins.txt'];
-xkfp = fopen(xkpath, 'wt');
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% MAIN PROCEDD PROCEDURE!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -196,37 +195,37 @@ for imuindex = 2:size(imudata, 1)-1
         % error propagation
         kf = InsPropagate(navstate, thisimu, imudt, kf, cfg.corrtime);
     end
-    xkk(imuindex-1,:)=[navstate.time;kf.x];
-    
-    % if cfg.useodonhc
-    %     %% update odo index
-    %     while ododata(odoindex, 1) < thisimu(1, 1) && odoindex < size(ododata, 1)
-    %         odoindex = odoindex + 1;
-    %     end
-    % 
-    %     %% odonhc udpate
-    %     if (thisimu(1, 1) >= odoupdatetime)
-    %         startindex = odoindex - round(EPOCH_TO_GETVEL / 2);
-    %         endindex = odoindex + round(EPOCH_TO_GETVEL / 2);
-    %         if (startindex < 1)
-    %             startindex = 1;
-    %         end
-    %         if (endindex > size(ododata, 1))
-    %             endindex = size(ododata, 1);
-    %         end
-    % 
-    %         % get odovel and update
-    %         [odovel, valid] = GetOdoVel(ododata(startindex:endindex, :), thisimu(1, 1));
-    %         if valid
-    %             odonhc_vel = [odovel; 0; 0];
-    %             kf = ODONHCUpdate(navstate, odonhc_vel, kf, cfg, thisimu, imudt);
-    %             [kf, navstate] = ErrorFeedback(kf, navstate);
-    %         end
-    %         odoupdatetime = odoupdatetime + 1 / cfg.odoupdaterate;
-    %     end
-    % end
-    % 
-    % 
+
+
+    if cfg.useodonhc
+        %% update odo index
+        while ododata(odoindex, 1) < thisimu(1, 1) && odoindex < size(ododata, 1)
+            odoindex = odoindex + 1;
+        end
+
+        %% odonhc udpate
+        if (thisimu(1, 1) >= odoupdatetime)
+            startindex = odoindex - round(EPOCH_TO_GETVEL / 2);
+            endindex = odoindex + round(EPOCH_TO_GETVEL / 2);
+            if (startindex < 1)
+                startindex = 1;
+            end
+            if (endindex > size(ododata, 1))
+                endindex = size(ododata, 1);
+            end
+           
+            % get odovel and update
+            [odovel, valid] = GetOdoVel(ododata(startindex:endindex, :), thisimu(1, 1));
+            if valid
+                odonhc_vel = [odovel; 0; 0];
+                kf = ODONHCUpdate(navstate, odonhc_vel, kf, cfg, thisimu, imudt);
+                [kf, navstate] = ErrorFeedback(kf, navstate);
+            end
+            odoupdatetime = odoupdatetime + 1 / cfg.odoupdaterate;
+        end
+    end
+
+
     %% save data
     % write navresult to file
     nav = zeros(11, 1);
@@ -235,12 +234,7 @@ for imuindex = 2:size(imudata, 1)-1
     nav(6:8, 1) = navstate.vel;
     nav(9:11, 1) = navstate.att * param.R2D;
     fprintf(navfp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav);
-    % 保存估计的状态值
-    xk = zeros(16, 1);
-    xk(1) = navstate.time;
-    xk(2:16) = kf.x(1:15);
-    fprintf(xkfp, '%12.6f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f\n', xk);
-    % 
+
     % write imu error, convert to common unit
     imuerror = zeros(13, 1);
     imuerror(1, 1) = navstate.time;
@@ -249,18 +243,18 @@ for imuindex = 2:size(imudata, 1)-1
     imuerror(8:10, 1) = navstate.gyrscale * 1e6;
     imuerror(11:13, 1) = navstate.accscale * 1e6;
     fprintf(imuerrfp, '%12.6f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', imuerror);
-    % 
-    % % write state std, convert to common unit
-    % std = zeros(1, 22);
-    % std(1) = navstate.time;
-    % for idx=1:21
-    %     std(idx + 1) = sqrt(kf.P(idx, idx));
-    % end
-    % std(8:10) = std(8:10) * param.R2D;
-    % std(11:13) = std(11:13) * param.R2D *3600;
-    % std(14:16) = std(14:16) * 1e5;
-    % std(17:22) = std(17:22) * 1e6;
-    % fprintf(stdfp, '%12.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f \n', std);
+
+    % write state std, convert to common unit
+    std = zeros(1, 22);
+    std(1) = navstate.time;
+    for idx=1:21
+        std(idx + 1) = sqrt(kf.P(idx, idx));
+    end
+    std(8:10) = std(8:10) * param.R2D;
+    std(11:13) = std(11:13) * param.R2D *3600;
+    std(14:16) = std(14:16) * 1e5;
+    std(17:22) = std(17:22) * 1e6;
+    fprintf(stdfp, '%12.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f \n', std);
 
 
     %% print processing information
@@ -276,43 +270,7 @@ fclose(navfp);
 fclose(stdfp);
 
 disp("GNSS/INS Integration Processing Finished!");
-fclose(xkfp);
-%%
-plot_xk(xkpath,navpath,cfg.truthpath)
+
 %%
 plot_result(navpath)
-plot_result("dataset1/truth.nav")
-%%
-calc_error(navpath,cfg.truthpath)
-myfigurestartup(12,3,'prese')
-subplot 131
-plot(xkk(:,1),xkk(:,11)/ param.D2R * 3600)  
-subplot 132
-plot(xkk(:,1),xkk(:,12)/ param.D2R * 3600)  
-subplot 133
-plot(xkk(:,1),xkk(:,13)/ param.D2R * 3600)  
-
-myfigurestartup(12,3,'prese')
-subplot 131
-plot(xkk(:,1),xkk(:,14)/1e-5)  
-subplot 132
-plot(xkk(:,1),xkk(:,15)/1e-5)  
-subplot 133
-plot(xkk(:,1),xkk(:,16)/1e-5)  
-
-myfigurestartup(12,3,'prese')
-subplot 131
-plot(xkk(:,1),xkk(:,17)/1e-6)  
-subplot 132
-plot(xkk(:,1),xkk(:,18)/1e-6)  
-subplot 133
-plot(xkk(:,1),xkk(:,19)/1e-6)  
-
-myfigurestartup(12,3,'prese')
-
-subplot 131
-plot(xkk(:,1),xkk(:,20)/1e-6)  
-subplot 132
-plot(xkk(:,1),xkk(:,21)/1e-6)  
-subplot 133
-plot(xkk(:,1),xkk(:,22)/1e-6)  
+plot_result("dataset2/truth.nav")

@@ -1,13 +1,16 @@
 function range=bcn2range(truth,bcn)
+% 输入为度数
 param = Param();
-dif(:,1)=truth(:,2);
-dif(:,2:4)=truth(:,3:5)-bcn;
-first_blh = truth(1, 2:4);
-[rm, rn] = getRmRn(first_blh(1) * param.D2R, param);
-h = first_blh(3);
-DR = diag([rm + h, (rn + h)*cos(first_blh(1) * param.D2R), -1]);
+dif(:,1) = truth(:,2);
+truth(:,3:4) = truth(:,3:4)* param.D2R;
+bcn(:,1:2) = bcn(:,1:2)* param.D2R;
 
-dif(:, 2:3) = dif(:, 2:3) * param.D2R;
+dif(:,2:4)= truth(:,3:5)-bcn;
+first_blh = truth(1, 3:5);
+[rm, rn] = getRmRn(first_blh(1), param);
+h = first_blh(3);
+DR = diag([rm + h, (rn + h)*cos(first_blh(1)), 1]);
+
 for i = 1:size(dif, 1)
     delta_pos = DR * (dif(i, 2:4)');
     dif(i, 2:4) = delta_pos';

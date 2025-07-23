@@ -8,7 +8,7 @@
 %    Date : 2023.3.3
 % -------------------------------------------------------------------------
 
-function cfg = ProcessConfig1()
+function cfg =Copy_of_ProcessConfig1()
 
     param = Param();
 
@@ -18,6 +18,8 @@ function cfg = ProcessConfig1()
     cfg.depthfilepath = 'dataset1/height.txt';
     cfg.odofilepath = '';
     cfg.rangefilepath = 'dataset1/range_moving.txt';
+    % cfg.rangefilepath = 'dataset1/range_static.txt';
+    cfg.rangefilepath = 'dataset1/range_3beacon.txt';
     cfg.outputfolder = 'dataset1/output';
     cfg.truthpath='dataset1/truth.nav';
     %% configure
@@ -28,13 +30,19 @@ function cfg = ProcessConfig1()
     %% initial information
     cfg.starttime = 456300;
     % cfg.endtime = inf;
-    cfg.endtime = 456300+600.01;
+    cfg.endtime = 456300+3300;
+    
 
+    
     cfg.initpos = [30.4447873701; 114.4718632047; 20.899]; % [deg, deg, m]
     cfg.initvel = [0; 0; 0]; % [m/s]
     cfg.initatt = [0.854; -2.034; 185.702]; % [deg]
+    
 
-    cfg.initposstd = [0.005; 0.004; 0.008]; %[m]
+    [rm, rn] = getRmRn(cfg.initpos(1)*param.D2R, param);
+    DR = diag([rm + cfg.initpos(3), (rn + cfg.initpos(3))*cos(cfg.initpos(1)*param.D2R), -1]);    
+    cfg.initposstd = DR^-1*[0.005; 0.004; 0.008]; %[m] 转为弧度
+    % cfg.initposstd = [0.005; 0.004; 0.008]; %[m]
     cfg.initvelstd = [0.003; 0.004; 0.004]; %[m/s]
     cfg.initattstd = [0.003; 0.003; 0.023]; %[deg]
 

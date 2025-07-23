@@ -3,10 +3,10 @@ clear;
 % clc;
 %% 定义参数/加载配置
 param = Param();
-cfg = ProcessConfig1();
+% cfg = ProcessConfig1();
 % cfg = ProcessConfig2();
 % cfg = ProcessConfig3();
-% cfg = ProcessConfigsimu();
+cfg = ProcessConfigsimu();
 % cfg = ProcessConfig4_zxy();
 %% 导入数据
 % imudata
@@ -15,7 +15,7 @@ imustarttime = imudata(1, 1);
 imuendtime = imudata(end, 1);
 mode={'ins/gnss','ins/range','ins/compass','ins/2range'};
 % 选择模式 %
-chosenmode=mode{2};
+chosenmode=mode{1};
 %%%%%%%%%%%
 switch(chosenmode)
     case 'ins/2range'
@@ -149,10 +149,10 @@ for imuindex = 2:ll-1
     % %gnss位置进行约束
     % if gnss(1)==thisimu(1)
     %     % 测量值更新
-    %     kf = myGNSSUpdate(navstate, gnss, kf);
+    %     kf = myGNSSUpdate(navstate, gnss', kf);
     % 
     %     % 估计状态值反馈
-    %     % [kf, navstate] = myErrorFeedback(kf, navstate);
+    %     [kf, navstate] = myErrorFeedback(kf, navstate);
     %     % 取下一个测量值
     %     id=id+1;
     %     gnss=gnssdata(id,:);

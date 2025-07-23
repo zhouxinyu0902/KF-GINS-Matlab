@@ -138,7 +138,7 @@ xlim([error(1,1) error(end,1)])
 ConvertXtime
 % 画位置误差
 subplot 224
-RadiusError=sqrt(sum(error(:,2:4).^2,2));
+RadiusError=sqrt(sum(error(:,2:3).^2,2));
 plot(error(:,1),RadiusError);
 title('Radial Error');
 xlabel('Time[s]');

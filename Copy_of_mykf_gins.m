@@ -146,11 +146,10 @@ for imuindex = 2:ll-1
     % phi(imuindex,:) = poscalyaw(laststate.pos,navstate.pos);
     % figure,plot(1:length(phi),phi,1:length(trueyaw),trueyaw)
     
-    %gnss位置进行约束
+    % gnss位置进行约束
     if gnss(1)==thisimu(1)
         % 测量值更新
-        kf = myGNSSUpdate(navstate, gnss, kf);
-
+        kf = myGNSSUpdate(navstate, gnss', kf);
         % 估计状态值反馈
         [kf, navstate] = myErrorFeedback(kf, navstate);
         % 取下一个测量值
@@ -211,12 +210,12 @@ for imuindex = 2:ll-1
     avp_kfgins(imuindex-1,7:9)=[navstate.pos(1),navstate.pos(2),navstate.pos(3)];
     avp_kfgins(imuindex-1,10)=navstate.time;
     % 保存导航结果
-    nav = zeros(11, 1);
-    nav(2, 1) = navstate.time;
-    nav(3:5, 1) = [navstate.pos(1) * param.R2D; navstate.pos(2) * param.R2D; navstate.pos(3)];
-    nav(6:8, 1) = navstate.vel;
-    nav(9:11, 1) = navstate.att * param.R2D;
-    fprintf(pvafp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav);
+    % nav = zeros(11, 1);
+    % nav(2, 1) = navstate.time;
+    % nav(3:5, 1) = [navstate.pos(1) * param.R2D; navstate.pos(2) * param.R2D; navstate.pos(3)];
+    % nav(6:8, 1) = navstate.vel;
+    % nav(9:11, 1) = navstate.att * param.R2D;
+    % fprintf(pvafp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav);
     % 
     % % 保存估计的状态值
     % xk = zeros(16, 1);
@@ -264,11 +263,10 @@ fclose(xkfp);
 % fclose(imuerrfp);
 % disp("GNSS/INS Integration Processing Finished!");
 %%
+truthpath=cfg.truthpath;
 calc_error(pvapath,truthpath)
 %%
-truthpath=cfg.truthpath;
-
-plot_xk(xkpath,stdpath,pvapath,truthpath)
+% plot_xk(xkpath,stdpath,pvapath,truthpath)
 %%
 close all
 % plot_xk('xk_range-4.txt',pvapath,truthpath)

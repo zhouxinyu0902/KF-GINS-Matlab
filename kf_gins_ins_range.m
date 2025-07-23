@@ -16,7 +16,7 @@ addpath("function\");
 %% define parameters and importdata process config
 param = Param();
 % cfg = ProcessConfig1();
-cfg = ProcessConfig1();
+cfg = Copy_of_ProcessConfig1();
 % cfg = ProcessConfig3();
 
 
@@ -40,7 +40,16 @@ if (cfg.useodonhc)
     ododata = importdata(cfg.odofilepath);
 end
 
+% range data
+cfg.userange=1;
+rangedata = importdata(cfg.rangefilepath);
+rangestarttime = rangedata(1, 1);
+rangeendtime = rangedata(end, 1);
 
+% height data
+heightdata = importdata(cfg.depthfilepath);
+heightstarttime = heightdata(1, 1);
+heightendtime = heightdata(end, 1);
 %% save result
 navpath = [cfg.outputfolder, '/NavResult'];
 if cfg.usegnssvel
@@ -51,6 +60,12 @@ if cfg.useodonhc
     navpath = [navpath, '_ODONHC'];
     disp("use ODO velocity!");
 end
+if cfg.userange
+    navpath = [navpath, '_RANGE'];
+    disp("use RANGE data!");
+end
+
+% navpath = [navpath, '_pureINS'];
 navpath = [navpath, '.nav'];
 navfp = fopen(navpath, 'wt');
 
@@ -60,7 +75,8 @@ imuerrfp = fopen(imuerrpath, 'wt');
 stdpath = [cfg.outputfolder, '/NavSTD.txt'];
 stdfp = fopen(stdpath, 'wt');
 
-
+xkpath = [cfg.outputfolder, '/xk_range.txt'];
+xkfp = fopen(xkpath, 'wt');
 %% get process time
 % start time and end time
 if imustarttime > gnssstarttime
@@ -80,54 +96,62 @@ if cfg.endtime > endtime
     cfg.endtime = endtime;
 end
 
-if cfg.useodonhc
-    % epoch to get odo vel
-    EPOCH_TO_GETVEL = 20;
-    ododatarate = 1.0 / mean(diff(ododata(:, 1)));
-    if cfg.odoupdaterate > ododatarate / EPOCH_TO_GETVEL
-        cfg.odoupdaterate = ododatarate / EPOCH_TO_GETVEL;
-        disp("warning: set ODO udpaterate to " + num2str(cfg.odoupdaterate) + "Hz!");
-    end
-
-    % odo update time
-    updateinterval = 1.0 / cfg.odoupdaterate;
-    time_to_nextupdate = updateinterval - mod(cfg.starttime, updateinterval);
-    odoupdatetime = cfg.starttime + time_to_nextupdate;
-end
+% if cfg.useodonhc
+%     % epoch to get odo vel
+%     EPOCH_TO_GETVEL = 20;
+%     ododatarate = 1.0 / mean(diff(ododata(:, 1)));
+%     if cfg.odoupdaterate > ododatarate / EPOCH_TO_GETVEL
+%         cfg.odoupdaterate = ododatarate / EPOCH_TO_GETVEL;
+%         disp("warning: set ODO udpaterate to " + num2str(cfg.odoupdaterate) + "Hz!");
+%     end
+% 
+%     % odo update time
+%     updateinterval = 1.0 / cfg.odoupdaterate;
+%     time_to_nextupdate = updateinterval - mod(cfg.starttime, updateinterval);
+%     odoupdatetime = cfg.starttime + time_to_nextupdate;
+% end
 
 % data in process interval
 imudata = imudata(imudata(:,1) >= cfg.starttime, :);
 imudata = imudata(imudata(:,1) <= cfg.endtime, :);
 gnssdata = gnssdata(gnssdata(:, 1) >= cfg.starttime, :);
 gnssdata = gnssdata(gnssdata(:, 1) <= cfg.endtime, :);
+rangedata = rangedata(rangedata(:, 1) >= cfg.starttime, :);
+rangedata = rangedata(rangedata(:, 1) <= cfg.endtime, :);
 
+rangedata = rangedata(1:420:end,:);
 
+heightdata = heightdata(heightdata(:, 1) >= cfg.starttime, :);
+heightdata = heightdata(heightdata(:, 1) <= cfg.endtime, :);
 %% for debug
-disp("Start GNSS/INS Processing!");
+disp("Start RANGE/INS Processing!");
 lastprecent = 0;
 
-
 %% initialization 
-[kf, navstate] = Initialize(cfg);
+[kf, navstate] = myInitialize(cfg);
 laststate = navstate;
 
 % data index preprocess
 lastimu = imudata(1, :)';
 thisimu = imudata(1, :)';
 imudt = thisimu(1, 1) - lastimu(1, 1);
-gnssindex = 1;
-while gnssdata(gnssindex, 1) < thisimu(1, 1)
-    gnssindex = gnssindex + 1;
-end
 
-if cfg.useodonhc
-    odoindex = 1;
-    while ododata(odoindex, 1) < thisimu(1, 1) && odoindex < size(ododata, 1)
-        odoindex = odoindex + 1;
-    end
+rangeindex = 1;
+while rangedata(rangeindex, 1) < thisimu(1, 1)
+    rangeindex = rangeindex + 1;
 end
-xkpath = [cfg.outputfolder, '/xk_gnss_kfgins.txt'];
-xkfp = fopen(xkpath, 'wt');
+% gnssindex = 1;
+% while gnssdata(gnssindex, 1) < thisimu(1, 1)
+%     gnssindex = gnssindex + 1;
+% end
+
+% if cfg.useodonhc
+%     odoindex = 1;
+%     while ododata(odoindex, 1) < thisimu(1, 1) && odoindex < size(ododata, 1)
+%         odoindex = odoindex + 1;
+%     end
+% end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% MAIN PROCEDD PROCEDURE!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -141,63 +165,120 @@ for imuindex = 2:size(imudata, 1)-1
 
 
     %% compensate IMU error
-    thisimu(2:4, 1) = (thisimu(2:4, 1) - imudt * navstate.gyrbias)./(ones(3, 1) + navstate.gyrscale);
-    thisimu(5:7, 1) = (thisimu(5:7, 1) - imudt * navstate.accbias)./(ones(3, 1) + navstate.accscale);
+    % thisimu(2:4, 1) = (thisimu(2:4, 1) - imudt * navstate.gyrbias)./(ones(3, 1) + navstate.gyrscale);
+    % thisimu(5:7, 1) = (thisimu(5:7, 1) - imudt * navstate.accbias)./(ones(3, 1) + navstate.accscale);
 
     
     %% adjust GNSS index
-    while (gnssindex <= size(gnssdata, 1) && gnssdata(gnssindex, 1) < lastimu(1, 1))
-        gnssindex = gnssindex + 1;
+    % while (gnssindex <= size(gnssdata, 1) && gnssdata(gnssindex, 1) < lastimu(1, 1))
+    %     gnssindex = gnssindex + 1;
+    % end
+    % % check whether gnss data is valid
+    % if (gnssindex > size(gnssdata, 1))
+    %     disp('GNSS file END!');
+    %     break;
+    % end
+
+    %% adjust range index
+    while (rangeindex <= size(rangedata, 1) && rangedata(rangeindex, 1) < lastimu(1, 1))
+        rangeindex = rangeindex + 1;
     end
     % check whether gnss data is valid
-    if (gnssindex > size(gnssdata, 1))
-        disp('GNSS file END!');
+    if (rangeindex > size(rangedata, 1))
+        disp('range file END!');
         break;
     end
+    % %% determine whether gnss update is required
+    % if lastimu(1, 1) == gnssdata(gnssindex, 1)
+    %     % do gnss update for the current state
+    %     thisgnss = gnssdata(gnssindex, :)';
+    %     % kf = GNSSUpdate(navstate, thisgnss, kf, cfg.antlever, cfg.usegnssvel, lastimu, imudt);
+    %     kf = myGNSSUpdate(navstate, thisgnss, kf);
+    %     [kf, navstate] = myErrorFeedback(kf, navstate);
+    %     gnssindex = gnssindex + 1;
+    %     laststate = navstate;
+    % 
+    %     % do propagation for current imu data
+    %     imudt = thisimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, thisimu);
+    %     kf = myInsPropagate(navstate, thisimu, imudt,kf);
+    % elseif (lastimu(1, 1) < gnssdata(gnssindex, 1) && thisimu(1, 1) > gnssdata(gnssindex, 1))
+    %     % ineterpolate imu to gnss time
+    %     [firstimu, secondimu] = interpolate(lastimu, thisimu, gnssdata(gnssindex, 1));
+    % 
+    %     % do propagation for first imu
+    %     imudt = firstimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, firstimu);
+    %     kf = myInsPropagate(navstate, firstimu, imudt, kf);
+    % 
+    %     % do gnss update
+    %     thisgnss = gnssdata(gnssindex, :)';
+    %     % kf = GNSSUpdate(navstate, thisgnss, kf, cfg.antlever, cfg.usegnssvel, firstimu, imudt);
+    %     kf = myGNSSUpdate(navstate, thisgnss, kf);
+    %     [kf, navstate] = myErrorFeedback(kf, navstate);
+    %     gnssindex = gnssindex + 1;
+    %     laststate = navstate;
+    %     lastimu = firstimu;
+    % 
+    %     % do propagation for second imu
+    %     imudt = secondimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, secondimu);
+    %     kf = myInsPropagate(navstate, secondimu, imudt, kf);
+    % else
+    %     %% only do propagation
+    %     % INS mechanization
+    %     navstate = InsMech(laststate, lastimu, thisimu);
+    %     % error propagation
+    %     kf = myInsPropagate(navstate, thisimu, imudt, kf);
+    % end
+    
 
-    %% determine whether gnss update is required
-    if lastimu(1, 1) == gnssdata(gnssindex, 1)
+     %% determine whether range update is required
+    if lastimu(1, 1) == rangedata(rangeindex, 1)
         % do gnss update for the current state
-        thisgnss = gnssdata(gnssindex, :)';
-        kf = GNSSUpdate(navstate, thisgnss, kf, cfg.antlever, cfg.usegnssvel, lastimu, imudt);
-        [kf, navstate] = ErrorFeedback(kf, navstate);
+        thisrange = rangedata(rangeindex, :);
+        thisheight = heightdata(rangeindex, :);
+        kf = myRangeUpdate(navstate, thisrange, thisheight, kf);
+        [kf, navstate] = myErrorFeedback(kf, navstate);
         gnssindex = gnssindex + 1;
         laststate = navstate;
-        
+
         % do propagation for current imu data
         imudt = thisimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, thisimu);
-        kf = InsPropagate(navstate, thisimu, imudt, kf, cfg.corrtime);
-    elseif (lastimu(1, 1) < gnssdata(gnssindex, 1) && thisimu(1, 1) > gnssdata(gnssindex, 1))
+        kf = myInsPropagate(navstate, thisimu, imudt, kf, cfg.corrtime);
+    elseif (lastimu(1, 1) < rangedata(rangeindex, 1) && thisimu(1, 1) > rangedata(rangeindex, 1))
         % ineterpolate imu to gnss time
-        [firstimu, secondimu] = interpolate(lastimu, thisimu, gnssdata(gnssindex, 1));
-        
+        [firstimu, secondimu] = interpolate(lastimu, thisimu, rangedata(rangeindex, 1));
+
         % do propagation for first imu
         imudt = firstimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, firstimu);
-        kf = InsPropagate(navstate, firstimu, imudt, kf, cfg.corrtime);
+        kf = myInsPropagate(navstate, firstimu, imudt, kf, cfg.corrtime);
 
         % do gnss update
-        thisgnss = gnssdata(gnssindex, :)';
-        kf = GNSSUpdate(navstate, thisgnss, kf, cfg.antlever, cfg.usegnssvel, firstimu, imudt);
-        [kf, navstate] = ErrorFeedback(kf, navstate);
-        gnssindex = gnssindex + 1;
+        thisrange = rangedata(rangeindex, :);
+        thisheight = heightdata(rangeindex, :);
+        kf = myRangeUpdate(navstate, thisrange, thisheight, kf);
+        [kf, navstate] = myErrorFeedback(kf, navstate);
+        rangeindex = rangeindex + 1;
         laststate = navstate;
         lastimu = firstimu;
 
         % do propagation for second imu
         imudt = secondimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, secondimu);
-        kf = InsPropagate(navstate, secondimu, imudt, kf, cfg.corrtime);
+        kf = myInsPropagate(navstate, secondimu, imudt, kf, cfg.corrtime);
+        % navstate.pos(3)=heightdata(rangeindex,2); % 使用深度计直接修正
     else
-        %% only do propagation
+    % only do propagation
         % INS mechanization
         navstate = InsMech(laststate, lastimu, thisimu);
         % error propagation
-        kf = InsPropagate(navstate, thisimu, imudt, kf, cfg.corrtime);
+        kf = myInsPropagate(navstate, thisimu, imudt, kf, cfg.corrtime);
     end
-    xkk(imuindex-1,:)=[navstate.time;kf.x];
     
+
     % if cfg.useodonhc
     %     %% update odo index
     %     while ododata(odoindex, 1) < thisimu(1, 1) && odoindex < size(ododata, 1)
@@ -225,8 +306,8 @@ for imuindex = 2:size(imudata, 1)-1
     %         odoupdatetime = odoupdatetime + 1 / cfg.odoupdaterate;
     %     end
     % end
-    % 
-    % 
+
+
     %% save data
     % write navresult to file
     nav = zeros(11, 1);
@@ -261,58 +342,40 @@ for imuindex = 2:size(imudata, 1)-1
     % std(14:16) = std(14:16) * 1e5;
     % std(17:22) = std(17:22) * 1e6;
     % fprintf(stdfp, '%12.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f \n', std);
-
+    % 
 
     %% print processing information
-    if (imuindex / size(imudata, 1) - lastprecent > 0.01) 
+    if (imuindex / size(imudata, 1) - lastprecent > 0.05) 
         disp("processing " + num2str(floor(imuindex * 100 / size(imudata, 1))) + " %!");
         lastprecent = imuindex / size(imudata, 1);
     end
 end
 
 % close file
-fclose(imuerrfp);
+% fclose(imuerrfp);
 fclose(navfp);
-fclose(stdfp);
-
-disp("GNSS/INS Integration Processing Finished!");
+% fclose(stdfp);
 fclose(xkfp);
+disp("range/INS Integration Processing Finished!");
 %%
-plot_xk(xkpath,navpath,cfg.truthpath)
+truthpath=cfg.truthpath;
+%%
+% plot_xk(xkpath,navpath,truthpath)
+% 
+%%
+% plot_imuerror
+%%
+calc_error(navpath,cfg.truthpath)
+% calc_error("dataset1/output/NavResult_pureINS.nav",cfg.truthpath)
+calc_error("dataset1/output/NavResult_full_pureINS.nav",cfg.truthpath)
+calc_error("dataset1/output/NavResult_depth_full_pureINS.nav",cfg.truthpath)
 %%
 plot_result(navpath)
 plot_result("dataset1/truth.nav")
 %%
-calc_error(navpath,cfg.truthpath)
-myfigurestartup(12,3,'prese')
-subplot 131
-plot(xkk(:,1),xkk(:,11)/ param.D2R * 3600)  
-subplot 132
-plot(xkk(:,1),xkk(:,12)/ param.D2R * 3600)  
-subplot 133
-plot(xkk(:,1),xkk(:,13)/ param.D2R * 3600)  
-
-myfigurestartup(12,3,'prese')
-subplot 131
-plot(xkk(:,1),xkk(:,14)/1e-5)  
-subplot 132
-plot(xkk(:,1),xkk(:,15)/1e-5)  
-subplot 133
-plot(xkk(:,1),xkk(:,16)/1e-5)  
-
-myfigurestartup(12,3,'prese')
-subplot 131
-plot(xkk(:,1),xkk(:,17)/1e-6)  
-subplot 132
-plot(xkk(:,1),xkk(:,18)/1e-6)  
-subplot 133
-plot(xkk(:,1),xkk(:,19)/1e-6)  
-
-myfigurestartup(12,3,'prese')
-
-subplot 131
-plot(xkk(:,1),xkk(:,20)/1e-6)  
-subplot 132
-plot(xkk(:,1),xkk(:,21)/1e-6)  
-subplot 133
-plot(xkk(:,1),xkk(:,22)/1e-6)  
+plot_cmp(navpath,cfg.truthpath)
+%%
+load('D:\GitHub\PSINS\psins2401\mytest\06_anlysis\WHU\Leador-A15\data_Leador-A15.mat')
+avp_Ref=avpref(2:120001,[1:9,11]);
+trjsee(avp_Ref,'2d',avp_kfgins)
+plotTrajectoriesComparison(avp_Ref, avp_kfgins, 0.005);

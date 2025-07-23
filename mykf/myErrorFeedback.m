@@ -13,6 +13,8 @@ function [kf, navstate] = myErrorFeedback(kf, navstate)
     % imu error
     navstate.gyrbias = navstate.gyrbias + kf.x(10:12, 1);
     navstate.accbias = navstate.accbias + kf.x(13:15, 1);
+    navstate.gyrscale = navstate.gyrscale + kf.x(16:18, 1);
+    navstate.accscale = navstate.accscale + kf.x(19:21, 1);
 
     % update some parameters
     param = Param();
@@ -21,5 +23,4 @@ function [kf, navstate] = myErrorFeedback(kf, navstate)
 
     % reset state vector
     kf.x = zeros(kf.RANK, 1);
-    % kf.P = kf.P0;
 end

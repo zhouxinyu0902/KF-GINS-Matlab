@@ -1,8 +1,8 @@
 function [kf, navstate] = myInitialize(cfg)
     
     % kalman parameters initialization
-    kf.RANK = 15;
-    kf.NOISE_RANK = 6;
+    kf.RANK = 21;
+    kf.NOISE_RANK = 18;
     kf.P = zeros(kf.RANK, kf.RANK);
     kf.Qc = zeros(kf.NOISE_RANK, kf.NOISE_RANK);
     kf.x = zeros(kf.RANK, 1);
@@ -10,6 +10,10 @@ function [kf, navstate] = myInitialize(cfg)
     % Qc
     kf.Qc(1:3, 1:3) = power(cfg.accvrw, 2) * eye(3, 3);
     kf.Qc(4:6, 4:6) = power(cfg.gyrarw, 2) * eye(3, 3);
+    kf.Qc(7:9, 7:9) = 2 * power(cfg.gyrbiasstd, 2) / cfg.corrtime * eye(3, 3);
+    kf.Qc(10:12, 10:12) = 2 * power(cfg.accbiasstd, 2) / cfg.corrtime * eye(3, 3);
+    kf.Qc(13:15, 13:15) = 2 * power(cfg.gyrscalestd, 2) / cfg.corrtime * eye(3, 3);
+    kf.Qc(16:18, 16:18) = 2 * power(cfg.accscalestd, 2) / cfg.corrtime * eye(3, 3);
 
     % P0
     kf.P(1:3, 1:3) = diag(power(cfg.initposstd, 2));
@@ -17,6 +21,8 @@ function [kf, navstate] = myInitialize(cfg)
     kf.P(7:9, 7:9) = diag(power(cfg.initattstd, 2));
     kf.P(10:12, 10:12) = diag(power(cfg.initgyrbiasstd, 2));
     kf.P(13:15, 13:15) = diag(power(cfg.initaccbiasstd, 2));
+    kf.P(16:18, 16:18) = diag(power(cfg.initgyrscalestd, 2));
+    kf.P(19:21, 19:21) = diag(power(cfg.initaccscalestd, 2));
     kf.P0 = kf.P;
 
     % navigation state initialization

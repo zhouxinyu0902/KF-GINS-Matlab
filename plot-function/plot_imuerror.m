@@ -10,7 +10,8 @@
 
 %% importdata imuerror
 % imuerrorfile = 'dataset1/ImuError.txt';
-imuerrorfile = 'dataset-simu/ImuError.txt';
+% imuerrorfile = 'dataset-simu/ImuError.txt';
+imuerrorfile =imuerrpath;
 err = importdata(imuerrorfile);
 
 figure()
