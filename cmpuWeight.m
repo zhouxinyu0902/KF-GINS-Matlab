@@ -1,14 +1,14 @@
-clear;
+% clear;
 
 % 几何参数 (单位：厘米)
-thickness = 1; % 厚度
+thickness = 2.2; % 厚度
 R1 = 20;       % 外半径
 R2 = R1 - thickness; % 内半径
 h = 50;        % 高度
 
 % 材料选择
-material = "7075-T6"; % 当前选择 7075-T6
-% material = "6061-T6";
+% material = "7075-T6"; % 当前选择 7075-T6
+material = "6061-T6";
 % 根据材料选择弹性模量 E 和密度
 if material == "6061-T6"
     E = 68900; % MPa

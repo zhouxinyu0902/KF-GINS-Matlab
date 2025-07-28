@@ -8,40 +8,35 @@
 %    Date : 2023.3.3
 % -------------------------------------------------------------------------
 
-function cfg = ProcessConfigsimu()
+function cfg = ProcessConfigsimu(filepath)
 
     param = Param();
 
     %% filepath
-    cfg.imufilepath = 'dataset-simu\imu-simu.nav';
-    cfg.gnssfilepath = 'dataset-simu\gnss-2m.txt';
-    cfg.depthfilepath = 'dataset-simu\depth.nav';
-    cfg.odofilepath = '';
-    % 
-    % cfg.rangefilepath = 'dataset-simu\range-1.nav';
-    % cfg.rangefilepath2 = 'dataset-simu\range-3.txt';
-    % cfg.compassfilepath = 'dataset-simu\compass.nav';
-    cfg.outputfolder = 'dataset-simu\result';
-    cfg.truthpath = 'dataset-simu\truth.nav';
-    % cfg.imufilepath = 'dataset-simu-circle\imu-10.txt';
-    % cfg.rangefilepath = 'dataset-simu-circle\range-10m-0.1.txt';
-    % cfg.depthfilepath = 'dataset-simu-circle\depth-10.txt';
-    % cfg.outputfolder = 'dataset-simu-circle\result';
-    %% configure
-    cfg.usegnssvel = false;
-    cfg.useodonhc = false;
-    cfg.odoupdaterate = 1; % [Hz]
+    cfg.imufilepath = filepath+"\imu.nav";
+    cfg.gnssfilepath = filepath+"\gnss-2m.txt";
+    cfg.depthfilepath = filepath+"\depth.nav";
+ 
+    cfg.outputfolder =filepath+ "\result";
+    cfg.truthpath = filepath+"\truth.nav";
 
+    cfg.rangefile1path = filepath+"//range-1.nav";
+    cfg.rangefile2path = filepath+"//range-2.nav";
+    cfg.rangefile3path = filepath+"//range-3.nav";
+    %% configure
+    cfg.usegnss = false;
+    cfg.userange = false;
+    cfg.usepureins = true;
     %% initial information
-    cfg.starttime = 0.005;
+    cfg.starttime = 30;
     % cfg.endtime = inf;
-    cfg.endtime = 600;
+    cfg.endtime = 3600;
 
     % 仿真设置
     cfg.trueinitpos = [15;115;-1200]; % [deg, deg, m]
     cfg.trueinitvel = [0; 0; 0]; % [m/s]
     cfg.trueinitatt = [0; 0; 0]; % [deg]
-
+    % 初始偏差设置
     [rm, rn] = getRmRn(cfg.trueinitpos(1)*param.D2R, param);
     DR = diag([rm + cfg.trueinitpos(3), (rn + cfg.trueinitpos(3))*cos(cfg.trueinitpos(1)*param.D2R), -1]);    
     cfg.initposstd = DR^-1*[0.005; 0.004; 0.008]; %[m] 转为弧度
@@ -50,6 +45,7 @@ function cfg = ProcessConfigsimu()
 
     dll = cfg.initposstd(1:2)*param.R2D;
     dh = cfg.initposstd(3);
+    % 初始设置
     cfg.initpos = cfg.trueinitpos+[dll;dh]; % [deg, deg, m]
     cfg.initvel = cfg.trueinitvel+cfg.initvelstd; % [m/s]
     cfg.initatt = cfg.trueinitatt+cfg.initattstd; % [deg]
@@ -67,13 +63,13 @@ function cfg = ProcessConfigsimu()
     cfg.initgyrscalestd = [300; 300; 300]; % [ppm]
     cfg.initaccscalestd = [300; 300; 300]; % [ppm]
 
-    cfg.gyrarw = 0.003; % [deg/sqrt(h)]
-    cfg.accvrw = 0.03; % [m/s/sqrt(h)]
-    cfg.gyrbiasstd = 0.027; % [deg/h]
-    cfg.accbiasstd = 15; % [mGal]
-    cfg.gyrscalestd = 300; % [ppm]
-    cfg.accscalestd = 300; % [ppm]
-    cfg.corrtime = 4; % [h]
+    cfg.gyrarw = 0.0003; % [deg/sqrt(h)]
+    cfg.accvrw = 0.01; % [m/s/sqrt(h)]
+    cfg.gyrbiasstd = 0.005; % [deg/h]
+    cfg.accbiasstd = 20; % [mGal]
+    cfg.gyrscalestd = 5; % [ppm]
+    cfg.accscalestd = 5; % [ppm]
+    cfg.corrtime = 1; % [h]
 
     %% install parameters 安装参数
     cfg.antlever = [0.136; -0.301; -0.184]; % [m]

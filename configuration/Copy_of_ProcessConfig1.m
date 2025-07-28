@@ -17,9 +17,9 @@ function cfg =Copy_of_ProcessConfig1()
     cfg.gnssfilepath = 'dataset1/GNSS-RTK.txt';
     cfg.depthfilepath = 'dataset1/height.txt';
     cfg.odofilepath = '';
-    cfg.rangefilepath = 'dataset1/range_moving.txt';
-    % cfg.rangefilepath = 'dataset1/range_static.txt';
-    cfg.rangefilepath = 'dataset1/range_3beacon.txt';
+    % cfg.rangefilepath = 'dataset1/range_moving.txt';
+    cfg.rangefilepath = 'dataset1/range_static.txt';
+    % cfg.rangefilepath = 'dataset1/range_3beacon.txt';
     cfg.outputfolder = 'dataset1/output';
     cfg.truthpath='dataset1/truth.nav';
     %% configure

@@ -8,7 +8,7 @@
 %    Date : 2022.11.30
 % -------------------------------------------------------------------------
 
-function calc_error(testnavpath,truthpath)
+function RadialERfind(testnavpath,truthpath)
 %% importdata data （nav文件第一列为0，不需要用）
 % testnavpath = 'dataset1/pure_ins_PSINS.txt';
 % testnavpath = 'dataset1/pcafile.txt';
@@ -99,51 +99,55 @@ for i = 1:size(error, 1)
 end
 
 
-%% display error RMS, 输出误差
-temp = error(:, 2:4);
-disp("position error: " + num2str(sqrt(mean(temp .^2))) + " m");
-temp = error(:, 5:7);
-disp("velocity error: " + num2str(sqrt(mean(temp .^2))) + " m/s");
-temp = error(:, 8:10);
-disp("attitude error: " + num2str(sqrt(mean(temp .^2))) + " deg");
-%% plot error
+% %% display error RMS, 输出误差
+% temp = error(:, 2:4);
+% disp("position error: " + num2str(sqrt(mean(temp .^2))) + " m");
+% temp = error(:, 5:7);
+% disp("velocity error: " + num2str(sqrt(mean(temp .^2))) + " m/s");
+% temp = error(:, 8:10);
+% disp("attitude error: " + num2str(sqrt(mean(temp .^2))) + " deg");
+% %% plot error
 myfigurestartup(10,10,'prese')
-subplot 221
+subplot 121
 plot(error(:,1),error(:,2:4));
-title('Position Error');
+title('Position Error');  
 xlabel('Time[s]');
 ylabel('Error[m]');
 legend('North', 'East', 'Down');
 grid("on");
 xlim([error(1,1) error(end,1)])
-
-% figure;
-subplot 222
-plot(error(:,1),error(:,5:7));
-title('Velocity Error');
-xlabel('Time[s]');
-ylabel('Error[m/s]');
-legend('North', 'East', 'Down');
-grid("on");
-xlim([error(1,1) error(end,1)])
-
-subplot 223
-plot(error(:,1),error(:,8:10));
-title('Attitude Error');
-xlabel('Time[s]');
-ylabel('Error[deg]');
-legend('Roll', 'Pitch', 'Yaw');
-grid("on");
-xlim([error(1,1) error(end,1)])
+% 
+% % figure;
+% subplot 222
+% plot(error(:,1),error(:,5:7));
+% title('Velocity Error');
+% xlabel('Time[s]');
+% ylabel('Error[m/s]');
+% legend('North', 'East', 'Down');
+% grid("on");
+% xlim([error(1,1) error(end,1)])
+% 
+% subplot 223
+% plot(error(:,1),error(:,8:10));
+% title('Attitude Error');
+% xlabel('Time[s]');
+% ylabel('Error[deg]');
+% legend('Roll', 'Pitch', 'Yaw');
+% grid("on");
+% xlim([error(1,1) error(end,1)])
 
 % 画位置误差
-subplot 224
+% subplot 224
+% subplot 121
 RadiusError=sqrt(sum(error(:,2:3).^2,2));
-plot(error(:,1),RadiusError);
-title('Radial Error');
-xlabel('Time[s]');
-ylabel('Error[deg]');
-grid("on");
+% plot(error(:,1),RadiusError);
+% title('Radial Error');
+% xlabel('Time[s]');
+% ylabel('Error[deg]');
+% grid("on");
+subplot 122
+differror=[0;diff(RadiusError)];
+plot(error(:,1),differror)
 
 
 % %% 找到共同的开始时间点
