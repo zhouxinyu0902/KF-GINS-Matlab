@@ -18,7 +18,7 @@ function cfg = ProcessConfigsimu(filepath)
     cfg.depthfilepath = [filepath,'\depth.nav'];
  
     cfg.outputfolder = [filepath, '\result'];
-    cfg.truthpath = [filepath,'\truth.nav'];
+    cfg.truthpath = [filepath+'\truth.nav'];
 
     cfg.rangefile1path = filepath+"//range-1.nav";
     cfg.rangefile2path = filepath+"//range-2.nav";
@@ -28,14 +28,14 @@ function cfg = ProcessConfigsimu(filepath)
     cfg.userange = false;
     cfg.usepureins = true;
     %% initial information
-    cfg.starttime = 50;
+    cfg.starttime = 30;
     % cfg.endtime = inf;
-    cfg.endtime = 2400;
+    cfg.endtime = 3600;
 
     % 仿真设置
     cfg.trueinitpos = [15;115;-1200]; % [deg, deg, m]
     cfg.trueinitvel = [0; 0; 0]; % [m/s]
-    cfg.trueinitatt = [0; 0; -90]; % [deg]
+    cfg.trueinitatt = [0; 0; 0]; % [deg]
     % 初始偏差设置
     [rm, rn] = getRmRn(cfg.trueinitpos(1)*param.D2R, param);
     DR = diag([rm + cfg.trueinitpos(3), (rn + cfg.trueinitpos(3))*cos(cfg.trueinitpos(1)*param.D2R), -1]);    
