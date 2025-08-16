@@ -99,13 +99,7 @@ for i = 1:size(error, 1)
 end
 
 
-%% display error RMS, 输出误差
-temp = error(:, 2:4);
-disp("position error: " + num2str(sqrt(mean(temp .^2))) + " m");
-temp = error(:, 5:7);
-disp("velocity error: " + num2str(sqrt(mean(temp .^2))) + " m/s");
-temp = error(:, 8:10);
-disp("attitude error: " + num2str(sqrt(mean(temp .^2))) + " deg");
+
 %% plot error
 myfigurestartup(10,10,'prese')
 subplot 221
@@ -144,7 +138,28 @@ title('Radial Error');
 xlabel('Time[s]');
 ylabel('Error[deg]');
 grid("on");
-
+%% display error RMS, 输出误差
+disp('-----均方根误差RMS------')
+temp = error(:, 2:4);
+disp("position error: " + num2str(sqrt(mean(temp .^2))) + " m");
+temp = error(:, 5:7);
+disp("velocity error: " + num2str(sqrt(mean(temp .^2))) + " m/s");
+temp = error(:, 8:10);
+disp("attitude error: " + num2str(sqrt(mean(temp .^2))) + " deg");
+%% 输出定位CEP误差
+disp('-----圆概率径向误差CEP-----')
+sigma_x = std(error(:,3));
+sigma_y = std(error(:,2));
+if (sigma_x == sigma_y) && (abs(corr(error(:,3),error(:,2))) <0.1)
+    CEP = 1.1774 * sigma_x;
+else
+    % CEP = 0.5887 * (sigma_x + sigma_y);
+    CEP = 1.1774*sqrt(sigma_x^2 + sigma_y^2);
+end
+output=sprintf("CEP误差：%.2f m, %.2f 海里",CEP,CEP/1852);
+disp(output)
+output3=sprintf("非正态分布CEP误差（取中位数）：  %.2f m,%.2f 海里",median(RadiusError),median(RadiusError)/1852);
+disp(output3)
 
 % %% 找到共同的开始时间点
 % for m=1:size(ref,1)

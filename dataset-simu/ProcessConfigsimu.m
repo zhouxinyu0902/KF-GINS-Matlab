@@ -1,0 +1,111 @@
+% -------------------------------------------------------------------------
+% KF-GINS-Matlab: An EKF-based GNSS/INS Integrated Navigation System in Matlab
+%
+% Copyright (C) 2024, i2Nav Group, Wuhan University
+%
+%  Author : Liqiang Wang
+% Contact : wlq@whu.edu.cn
+%    Date : 2023.3.3
+% -------------------------------------------------------------------------
+
+function cfg = ProcessConfigsimu(filepath)
+
+    param = Param();
+
+    %% filepath
+    cfg.imufilepath = [filepath,'\imu.nav'];
+    cfg.gnssfilepath = [filepath,'\gnss-2m.txt'];
+    cfg.depthfilepath = [filepath,'\depth.nav'];
+ 
+    cfg.outputfolder = [filepath, '\result'];
+    cfg.truthpath = [filepath,'\truth.nav'];
+
+    cfg.rangefile1path = filepath+"//range-1.nav";
+    cfg.rangefile2path = filepath+"//range-2.nav";
+    cfg.rangefile3path = filepath+"//range-3.nav";
+    %% configure
+    cfg.usegnss = false;
+    cfg.userange = false;
+    cfg.usepureins = true;
+    %% initial information
+    cfg.starttime = 50;
+    % cfg.endtime = inf;
+    cfg.endtime = 2400;
+
+    % 仿真设置
+    cfg.trueinitpos = [15;115;-1200]; % [deg, deg, m]
+    cfg.trueinitvel = [0; 0; 0]; % [m/s]
+    cfg.trueinitatt = [0; 0; -90]; % [deg]
+    % 初始偏差设置
+    [rm, rn] = getRmRn(cfg.trueinitpos(1)*param.D2R, param);
+    DR = diag([rm + cfg.trueinitpos(3), (rn + cfg.trueinitpos(3))*cos(cfg.trueinitpos(1)*param.D2R), -1]);    
+    cfg.initposstd = DR^-1*[0.005; 0.004; 0.008]; %[m] 转为弧度
+    cfg.initvelstd = [0.003; 0.004; 0.004]; %[m/s]
+    cfg.initattstd = [0.003; 0.003; 0.023]; %[deg]
+
+    dll = cfg.initposstd(1:2)*param.R2D;
+    dh = cfg.initposstd(3);
+    % 初始设置
+    cfg.initpos = cfg.trueinitpos+[dll;dh]; % [deg, deg, m]
+    cfg.initvel = cfg.trueinitvel+cfg.initvelstd; % [m/s]
+    cfg.initatt = cfg.trueinitatt+cfg.initattstd; % [deg]
+
+    
+    % imu初始偏差
+    cfg.initgyrbias = [0; 0; 0]; % [deg/h]
+    cfg.initaccbias = [0; 0; 0]; % [mGal]
+    cfg.initgyrscale = [0; 0; 0]; % [ppm]
+    cfg.initaccscale = [0; 0; 0]; % [ppm]
+    
+    % imu噪声参数
+    cfg.initgyrbiasstd = [0.027; 0.027; 0.027]; % [deg/h]
+    cfg.initaccbiasstd = [15; 15; 15]; % [mGal]
+    cfg.initgyrscalestd = [300; 300; 300]; % [ppm]
+    cfg.initaccscalestd = [300; 300; 300]; % [ppm]
+
+    cfg.gyrarw = 0.0003; % [deg/sqrt(h)]
+    cfg.accvrw = 0.01; % [m/s/sqrt(h)]
+    cfg.gyrbiasstd = 0.005; % [deg/h]
+    cfg.accbiasstd = 20; % [mGal]
+    cfg.gyrscalestd = 5; % [ppm]
+    cfg.accscalestd = 5; % [ppm]
+    cfg.corrtime = 1; % [h]
+
+    %% install parameters 安装参数
+    cfg.antlever = [0.136; -0.301; -0.184]; % [m]
+    cfg.odolever = [0; 0; 0]; %[m]
+    cfg.installangle = [0; 0; 0]; %[deg]
+
+    %% ODO/NHC measurement noise 观测噪声
+    cfg.odonhc_measnoise = [0.1; 0.1; 0.1]; % [m/s]
+
+
+    %% convert unit to standard unit (单位转换)
+    cfg.initpos(1) = cfg.initpos(1) * param.D2R;
+    cfg.initpos(2) = cfg.initpos(2) * param.D2R;
+    cfg.initatt = cfg.initatt * param.D2R;
+
+    cfg.initattstd = cfg.initattstd * param.D2R;
+
+    cfg.initgyrbias = cfg.initgyrbias * param.D2R / 3600;
+    cfg.initaccbias = cfg.initaccbias * 1e-5;
+    cfg.initgyrscale = cfg.initgyrscale * 1e-6;
+    cfg.initaccscale = cfg.initaccscale * 1e-6;
+    cfg.initgyrbiasstd = cfg.initgyrbiasstd * param.D2R / 3600;
+    cfg.initaccbiasstd = cfg.initaccbiasstd * 1e-5;
+    cfg.initgyrscalestd = cfg.initgyrscalestd * 1e-6;
+    cfg.initaccscalestd = cfg.initaccscalestd * 1e-6;
+
+    cfg.gyrarw = cfg.gyrarw * param.D2R / 60;
+    cfg.accvrw = cfg.accvrw / 60;
+    cfg.gyrbiasstd = cfg.gyrbiasstd * param.D2R / 3600;
+    cfg.accbiasstd = cfg.accbiasstd * 1e-5;
+    cfg.gyrscalestd = cfg.gyrscalestd * 1e-6;
+    cfg.accscalestd = cfg.accscalestd * 1e-6;
+    cfg.corrtime = cfg.corrtime * 3600;
+
+    cfg.installangle = cfg.installangle * param.D2R;
+    cfg.cbv = euler2dcm(cfg.installangle);
+
+end
+
