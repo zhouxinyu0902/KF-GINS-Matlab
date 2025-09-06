@@ -12,14 +12,13 @@ function cfg = ProcessConfigsimu_10()
     %% 初始信息
     cfg.starttime = 0;
     cfg.endtime = 0+3625;
-    % avp0 = [[0;0;0]; [0;0;0]; [d2r([15;115]);-1200]];
-    pva0=load(cfg.truthpath);
+    pva0=load(cfg.truthpath);% 真实pva0
+    avp0 = pvaNED2ENU(pva0(1,:)); % 真实avp0
 
-    avp0 = pvaNED2ENU(pva0(1,:));
     avperr = avperrset([0.008,0.008,0.06]*60,0.01,1);
-    avp00 = avpadderr(avp0,avperr);
-    pva00 = avpENU2NED(avp00');
-    pva00 = pva00';
+    avp00 = avpadderr(avp0,avperr); % 误差avp00
+    pva00 = avpENU2NED(avp00')';% 误差pva00
+
     cfg.initposstd = avperr(7:9); %[r,r,m]
     cfg.initvelstd = avperr(4:6); %[m/s]
     cfg.initattstd = avperr(1:3); %[rad]
@@ -28,22 +27,19 @@ function cfg = ProcessConfigsimu_10()
     cfg.initvel = pva00(6:8) ; %[m/s]
     cfg.initatt = pva00(9:11)*param.D2R; %[rad]
 
-    % % 初始误差设置
-    cfg.initposstd = [1/param.WGS84_RA; 1/param.WGS84_RA; 1]; %[rad]
-    cfg.initvelstd = [0.01; 0.01; 0.01]; %[m/s]
-    cfg.initattstd = [0.008; 0.008; 0.06]; %[deg]
-    
-    % 误差叠加
-    cfg.initpos = pva0(1,3:5)' +[cfg.initposstd(1:2)*param.R2D;cfg.initposstd(3)]; %[deg]
-    cfg.initvel = pva0(1,6:8)' +cfg.initvelstd; %[m/s]
-    cfg.initatt = pva0(1,9:11)'-[cfg.initattstd(1:2);-cfg.initattstd(3)]; %[deg]
-    cfg.initpos(1) = cfg.initpos(1) * param.D2R;
-    cfg.initpos(2) = cfg.initpos(2) * param.D2R;
-    cfg.initatt = cfg.initatt * param.D2R;
-    cfg.initattstd = cfg.initattstd * param.D2R;
-    
-    
+    % % % 初始误差设置
+    % cfg.initposstd = [1/param.WGS84_RA; 1/param.WGS84_RA; 1]; %[rad]
+    % cfg.initvelstd = [0.01; 0.01; 0.01]; %[m/s]
+    % cfg.initattstd = [0.008; 0.008; 0.06]; %[deg]
+    % % 误差叠加
+    % cfg.initpos = pva0(1,3:5)' +[cfg.initposstd(1:2)*param.R2D;cfg.initposstd(3)]; %[deg]
+    % cfg.initvel = pva0(1,6:8)' +cfg.initvelstd; %[m/s]
+    % cfg.initatt = pva0(1,9:11)'-[cfg.initattstd(1:2);-cfg.initattstd(3)]; %[deg]
 
+    % cfg.initpos(1) = cfg.initpos(1) * param.D2R;
+    % cfg.initpos(2) = cfg.initpos(2) * param.D2R;
+    % cfg.initatt = cfg.initatt * param.D2R;
+    % cfg.initattstd = cfg.initattstd * param.D2R;
     %% 滤波相关的参数
     cfg.initgyrbias = [0; 0; 0]; % [deg/h]
     cfg.initaccbias = [0; 0; 0]; % [mGal]
@@ -55,7 +51,6 @@ function cfg = ProcessConfigsimu_10()
     cfg.initgyrscalestd = [5; 5; 5]; % [ppm]
     cfg.initaccscalestd = [10; 10; 10]; % [ppm]
     
-
     cfg.gyrarw = 0.0003; % [deg/sqrt(h)] 角度随机游走
     cfg.accvrw = 1e-7; % [m/s/sqrt(h)] 加速度计随机游走
     cfg.gyrbiasstd = 0.005; % [deg/h] 陀螺仪零偏标准差

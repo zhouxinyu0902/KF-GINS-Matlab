@@ -1,4 +1,4 @@
-%% 距离更新
+
 function kf = myLBLUpdate(navstate, LBLdata, kf)
 % measurement matrix and noise matrix
 DR = diag([navstate.Rm + navstate.pos(3),...

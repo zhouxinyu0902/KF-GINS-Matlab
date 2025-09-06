@@ -1,6 +1,7 @@
 %% 距离更新
 function kf = myRangeUpdate(navstate, Rangedata, depthdata, kf)
-% Rangedata，4：6是信标的位置，3是水平距离，2是斜距，1是时间
+% Rangedata:4：6是信标的位置，3是水平距离，2是斜距，1是时间
+% depthdata:4：2是深度，1是时间
 param = Param();
 
 % % 根据惯导和信标位置计算水平距离
@@ -15,7 +16,7 @@ SlantR=sqrt(sum(delta_pos(:,1:3).^2,2));
 HorizR=sqrt(SlantR.^2-delta_pos(:,3).^2);
 
 % % 量测矩阵和噪声矩阵
-vk = [5,0.02];
+vk = [5,0.3];
 R = diag(vk.^2);
 H = zeros(2, kf.RANK);
 b = (navstate.pos'-bcn')*(diag([rm + h, (rn + h)*cos(bcn(1)), -1])^2)/HorizR;

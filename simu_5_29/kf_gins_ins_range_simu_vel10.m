@@ -111,42 +111,42 @@ for imuindex = 2:size(imudata, 1)-1
     end
     
     % 区分是否需要距离更新
-    if lastimu(1, 1) == rangedata(rangeindex, 1)
-        % 先对当前状态进行测量更新
-        thisRange = rangedata(rangeindex, :);
-        depthdata = [heightdata(rangeindex,2),heightdata(rangeindex,1)];
-        kf = myRangeUpdate(navstate, thisRange, depthdata, kf);
-        [kf, navstate] = myErrorFeedback_15state(kf, navstate);
-        rangeindex = rangeindex + 1;
-        laststate = navstate;
-        
-        % 惯导解算
-        imudt = thisimu(1, 1) - lastimu(1, 1);
-        navstate = InsMech(laststate, lastimu, thisimu);
-        kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
-    elseif (lastimu(1, 1) < rangedata(rangeindex, 1) && thisimu(1, 1) > rangedata(rangeindex, 1))
-        % 将imu插值到测量值的时间
-        [firstimu, secondimu] = interpolate(lastimu, thisimu, rangedata(rangeindex, 1));
-
-        % 前一个imu到测量值时间的惯导更新
-        imudt = firstimu(1, 1) - lastimu(1, 1);
-        navstate = InsMech(laststate, lastimu, firstimu);
-        kf = myInsPropagate_15state(navstate, firstimu, imudt, kf);
-
-        % 测量更新
-        thisRange = rangedata(rangeindex, :);
-        depthdata = [heightdata(rangeindex,2),heightdata(rangeindex,1)];
-        kf = myRangeUpdate(navstate, thisRange, depthdata, kf);
-        [kf, navstate] = myErrorFeedback_15state(kf, navstate);
-        rangeindex = rangeindex + 1;
-        laststate = navstate;
-        lastimu = firstimu;
-
-        % 测量时间到下一个惯导值的更新
-        imudt = secondimu(1, 1) - lastimu(1, 1);
-        navstate = InsMech(laststate, lastimu, secondimu);
-        kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
-    else
+    % if lastimu(1, 1) == rangedata(rangeindex, 1)
+    %     % 先对当前状态进行测量更新
+    %     thisRange = rangedata(rangeindex, :);
+    %     depthdata = [heightdata(rangeindex,2),heightdata(rangeindex,1)];
+    %     kf = myRangeUpdate(navstate, thisRange, depthdata, kf);
+    %     [kf, navstate] = myErrorFeedback_15state(kf, navstate);
+    %     rangeindex = rangeindex + 1;
+    %     laststate = navstate;
+    % 
+    %     % 惯导解算
+    %     imudt = thisimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, thisimu);
+    %     kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
+    % elseif (lastimu(1, 1) < rangedata(rangeindex, 1) && thisimu(1, 1) > rangedata(rangeindex, 1))
+    %     % 将imu插值到测量值的时间
+    %     [firstimu, secondimu] = interpolate(lastimu, thisimu, rangedata(rangeindex, 1));
+    % 
+    %     % 前一个imu到测量值时间的惯导更新
+    %     imudt = firstimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, firstimu);
+    %     kf = myInsPropagate_15state(navstate, firstimu, imudt, kf);
+    % 
+    %     % 测量更新
+    %     thisRange = rangedata(rangeindex, :);
+    %     depthdata = [heightdata(rangeindex,2),heightdata(rangeindex,1)];
+    %     kf = myRangeUpdate(navstate, thisRange, depthdata, kf);
+    %     [kf, navstate] = myErrorFeedback_15state(kf, navstate);
+    %     rangeindex = rangeindex + 1;
+    %     laststate = navstate;
+    %     lastimu = firstimu;
+    % 
+    %     % 测量时间到下一个惯导值的更新
+    %     imudt = secondimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, secondimu);
+    %     kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
+    % else
         % 仅做惯导结算
         % INS 编排
         navstate = InsMech(laststate, lastimu, thisimu);
@@ -159,43 +159,8 @@ for imuindex = 2:size(imudata, 1)-1
         % end
         % 状态传播
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
-    end
-    
-  
-    % avp_kfgins(imuindex-1,1:3)=[navstate.att(2),navstate.att(1),2*pi-navstate.att(3)];
-    % avp_kfgins(imuindex-1,4:6)=[navstate.vel(2),navstate.vel(1),-navstate.vel(3)];
-    % avp_kfgins(imuindex-1,7:9)=[navstate.pos(1),navstate.pos(2),navstate.pos(3)];
-    % avp_kfgins(imuindex-1,10)=navstate.time;
-
-    % if cfg.useodonhc
-    %     %% update odo index
-    %     while ododata(odoindex, 1) < thisimu(1, 1) && odoindex < size(ododata, 1)
-    %         odoindex = odoindex + 1;
-    %     end
-    % 
-    %     %% odonhc udpate
-    %     if (thisimu(1, 1) >= odoupdatetime)
-    %         startindex = odoindex - round(EPOCH_TO_GETVEL / 2);
-    %         endindex = odoindex + round(EPOCH_TO_GETVEL / 2);
-    %         if (startindex < 1)
-    %             startindex = 1;
-    %         end
-    %         if (endindex > size(ododata, 1))
-    %             endindex = size(ododata, 1);
-    %         end
-    % 
-    %         % get odovel and update
-    %         [odovel, valid] = GetOdoVel(ododata(startindex:endindex, :), thisimu(1, 1));
-    %         if valid
-    %             odonhc_vel = [odovel; 0; 0];
-    %             kf = ODONHCUpdate(navstate, odonhc_vel, kf, cfg, thisimu, imudt);
-    %             [kf, navstate] = ErrorFeedback(kf, navstate);
-    %         end
-    %         odoupdatetime = odoupdatetime + 1 / cfg.odoupdaterate;
-    %     end
     % end
-
-
+         
     % save data
     % xkk(imuindex-1,:)=[navstate.time;kf.x];
     % write navresult to file

@@ -1,7 +1,8 @@
 clear;
+clc;
 %% 定义参数和加载配置
 param = Param();
-cfg = Copy_of_ProcessConfig1();
+cfg = ProcessConfig1_zxy();
 
 %% 导入数据
 % imudata
@@ -10,25 +11,42 @@ imustarttime = imudata(1, 1);
 imuendtime = imudata(end, 1);
 
 % range data
+id=42;
 cfg.userange=1;
-rangedata = importdata(cfg.rangefilepath);
+
+% rangedata1 = importdata(cfg.rangefile1path);
+% rangedata2 = importdata(cfg.rangefile2path);
+% rangedata3 = importdata(cfg.rangefile3path);
+% rangedata4 = importdata(cfg.rangefile4path);
+% rangedata5 = importdata(cfg.rangefile5path);
+% 
+% rangedata1 = rangedata1(id:id:end,:);
+% rangedata2 = rangedata2(id:id:end,:);
+% rangedata3 = rangedata3(id:id:end,:);
+% rangedata = zeros(size(rangedata1));
+% 
+% rangedata(1:3:end,:)=rangedata1(1:3:end,:);
+% rangedata(2:3:end,:)=rangedata2(2:3:end,:);
+% rangedata(3:3:end,:)=rangedata3(3:3:end,:);
+
+
+rangedata = importdata(cfg.rangefile1path);
+rangedata = rangedata(id:id:end,:);
+
 rangestarttime = rangedata(1, 1);
 rangeendtime = rangedata(end, 1);
-
 % height data
+
 heightdata = importdata(cfg.depthfilepath);
+heightdata = heightdata(id:id:end,:);
 heightstarttime = heightdata(1, 1);
 heightendtime = heightdata(end, 1);
+
+heightdata1 = importdata(cfg.depthfile1path);
+height1starttime = heightdata1(1, 1);
+height1endtime = heightdata1(end, 1);
 %% 设置文件保存路径
 navpath = [cfg.outputfolder, '/NavResult'];
-if cfg.usegnssvel
-    navpath = [navpath, '_GNSSVEL'];
-    disp("use GNSS velocity!");
-end
-if cfg.useodonhc
-    navpath = [navpath, '_ODONHC'];
-    disp("use ODO velocity!");
-end
 if cfg.userange
     navpath = [navpath, '_RANGE'];
     disp("use RANGE data!");
@@ -46,8 +64,7 @@ stdfp = fopen(stdpath, 'wt');
 
 xkpath = [cfg.outputfolder, '/xk_range.txt'];
 xkfp = fopen(xkpath, 'wt');
-%% 获取处理时间
-% start time and end time
+%% 获取处理时间，调整时间
 if imustarttime > rangestarttime
     starttime = imustarttime;
 else
@@ -65,7 +82,6 @@ if cfg.endtime > endtime
     cfg.endtime = endtime;
 end
 
-% data in process interval
 imudata = imudata(imudata(:,1) >= cfg.starttime, :);
 imudata = imudata(imudata(:,1) <= cfg.endtime, :);
 
@@ -74,8 +90,6 @@ rangedata = rangedata(rangedata(:, 1) <= cfg.endtime, :);
 heightdata = heightdata(heightdata(:, 1) >= cfg.starttime, :);
 heightdata = heightdata(heightdata(:, 1) <= cfg.endtime, :);
 
-% heightdata = heightdata(1:420:end,:);
-% rangedata = rangedata(1:420:end,:);
 %% for debug
 disp("Start RANGE/INS Processing!");
 lastprecent = 0;
@@ -250,7 +264,8 @@ for imuindex = 2:size(imudata, 1)-1
         navstate = InsMech(laststate, lastimu, thisimu);
         % 尝试做天向速度和位置约束
         % navstate.vel(3)=(-heightdata(imuindex,1)-(-heightdata(imuindex-1,1)))/imudt;
-        % navstate.pos(3)=-heightdata(imuindex,1);
+        % navstate.pos(3)=heightdata1(imuindex,2);
+        % navstate.pos(3)=20.9;
         % error propagation
         % if mod(imuindex,20)==0
         %     navstate.pos(3)=heightdata(floor(imuindex/20),1);

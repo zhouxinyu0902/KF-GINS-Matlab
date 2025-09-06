@@ -136,7 +136,7 @@ RadiusError=sqrt(sum(error(:,2:3).^2,2));
 plot(error(:,1),RadiusError);
 title('Radial Error');
 xlabel('Time[s]');
-ylabel('Error[deg]');
+ylabel('Error[m]');
 grid("on");
 %% display error RMS, 输出误差
 disp('-----均方根误差RMS------')

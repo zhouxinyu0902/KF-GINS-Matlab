@@ -2,7 +2,7 @@ function avp = pvaNED2ENU(pva)
 
 avp(:,2)=d2r(pva(:,9));
 avp(:,1)=d2r(pva(:,10));
-avp(:,3)=d2r(yawcvt(pva(:,11),"c360cc180"));
+avp(:,3)=(yawcvt(d2r(pva(:,11)),"c360cc180"));
 
 avp(:,5)=pva(:,6);
 avp(:,4)=pva(:,7);

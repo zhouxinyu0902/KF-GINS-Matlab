@@ -1,25 +1,9 @@
-% -------------------------------------------------------------------------
-% KF-GINS-Matlab: An EKF-based GNSS/INS Integrated Navigation System in Matlab
-%
-% Copyright (C) 2024, i2Nav Group, Wuhan University
-%
-%  Author : Liqiang Wang
-% Contact : wlq@whu.edu.cn
-%    Date : 2023.3.2
-% -------------------------------------------------------------------------
-
 clear;
 clc;
-% add function to workspace
-addpath("function\");
-
 %% define parameters and importdata process config
 param = Param();
 % cfg = ProcessConfig1();
-cfg = Copy_of_ProcessConfig1();
-% cfg = ProcessConfig3();
-
-
+cfg = ProcessConfig1_zxy();
 %% importdata data
 % imudata
 imudata = importdata(cfg.imufilepath);
@@ -35,30 +19,13 @@ end
 gnssstarttime = gnssdata(1, 1);
 gnssendtime = gnssdata(end, 1);
 
-% odo data
-if (cfg.useodonhc)
-    ododata = importdata(cfg.odofilepath);
-end
-
-% range data
-rangedata = importdata(cfg.rangefilepath);
-rangestarttime = rangedata(1, 1);
-rangeendtime = rangedata(end, 1);
-
-% height data
-heightdata = importdata(cfg.depthfilepath);
-heightstarttime = heightdata(1, 1);
-heightendtime = heightdata(end, 1);
 %% save result
 navpath = [cfg.outputfolder, '/NavResult'];
 if cfg.usegnssvel
     navpath = [navpath, '_GNSSVEL'];
     disp("use GNSS velocity!");
 end
-if cfg.useodonhc
-    navpath = [navpath, '_ODONHC'];
-    disp("use ODO velocity!");
-end
+
 navpath = [navpath, '.nav'];
 navfp = fopen(navpath, 'wt');
 
@@ -89,35 +56,15 @@ if cfg.endtime > endtime
     cfg.endtime = endtime;
 end
 
-if cfg.useodonhc
-    % epoch to get odo vel
-    EPOCH_TO_GETVEL = 20;
-    ododatarate = 1.0 / mean(diff(ododata(:, 1)));
-    if cfg.odoupdaterate > ododatarate / EPOCH_TO_GETVEL
-        cfg.odoupdaterate = ododatarate / EPOCH_TO_GETVEL;
-        disp("warning: set ODO udpaterate to " + num2str(cfg.odoupdaterate) + "Hz!");
-    end
-
-    % odo update time
-    updateinterval = 1.0 / cfg.odoupdaterate;
-    time_to_nextupdate = updateinterval - mod(cfg.starttime, updateinterval);
-    odoupdatetime = cfg.starttime + time_to_nextupdate;
-end
-
 % data in process interval
 imudata = imudata(imudata(:,1) >= cfg.starttime, :);
 imudata = imudata(imudata(:,1) <= cfg.endtime, :);
 gnssdata = gnssdata(gnssdata(:, 1) >= cfg.starttime, :);
 gnssdata = gnssdata(gnssdata(:, 1) <= cfg.endtime, :);
-rangedata = rangedata(rangedata(:, 1) >= cfg.starttime, :);
-rangedata = rangedata(rangedata(:, 1) <= cfg.endtime, :);
-heightdata = heightdata(heightdata(:, 1) >= cfg.starttime, :);
-heightdata = heightdata(heightdata(:, 1) <= cfg.endtime, :);
+
 %% for debug
 disp("Start GNSS/INS Processing!");
 lastprecent = 0;
-
-
 %% initialization 
 [kf, navstate] = myInitialize(cfg);
 laststate = navstate;
@@ -312,10 +259,10 @@ for imuindex = 2:size(imudata, 1)-1
     nav(9:11, 1) = navstate.att * param.R2D;
     fprintf(navfp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav);
     % 保存估计的状态值
-    xk = zeros(16, 1);
-    xk(1) = navstate.time;
-    xk(2:16) = kf.x(1:15);
-    fprintf(xkfp, '%12.6f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f\n', xk);
+    % xk = zeros(16, 1);
+    % xk(1) = navstate.time;
+    % xk(2:16) = kf.x(1:15);
+    % fprintf(xkfp, '%12.6f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f\n', xk);
     % write imu error, convert to common unit
     imuerror = zeros(13, 1);
     imuerror(1, 1) = navstate.time;
@@ -352,7 +299,7 @@ fclose(navfp);
 disp("range/INS Integration Processing Finished!");
 truthpath=cfg.truthpath;
 %%
-plot_xk(xkpath,navpath,truthpath)
+% plot_xk(xkpath,navpath,truthpath)
 %%
 calc_error(navpath,cfg.truthpath)
 % plot_result(navpath)

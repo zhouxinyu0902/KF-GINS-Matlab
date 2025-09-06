@@ -1,6 +1,7 @@
 function pva_ref = avpENU2NED(avp)
 % 将仿真的参考值ENU转到NED下
-
+% pva=[0,t,l,l,h,v,v,v,r,p,y]
+% avp=[p,r,y,v,v,v,l,l,h,t];
 pva_ref(:,3:4)=r2d(avp(:,7:8));
 pva_ref(:,5)=avp(:,9);
 
