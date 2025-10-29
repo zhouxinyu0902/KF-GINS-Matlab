@@ -1,7 +1,7 @@
 function cfg = straightline_Configsimu()
 
     param = Param();
-
+    glvs
     %% 文件读取
     cfg.imufilepath = 'simu_5_29/input/line-imu.nav';
     % cfg.LBLfilepath = 'simu_5_29/input/LBL.nav';
@@ -46,14 +46,14 @@ function cfg = straightline_Configsimu()
     cfg.initgyrscale = [0; 0; 0]; % [ppm]
     cfg.initaccscale = [0; 0; 0]; % [ppm]
 
-    cfg.initgyrbiasstd = [0.003; 0.003; 0.003]; % [deg/h]
+    cfg.initgyrbiasstd = [0.005; 0.005; 0.005]; % [deg/h]
     cfg.initaccbiasstd = [7; 7; 7]; % [mGal]
     cfg.initgyrscalestd = [5; 5; 5]; % [ppm]
     cfg.initaccscalestd = [10; 10; 10]; % [ppm]
     
     cfg.gyrarw = 0.0003; % [deg/sqrt(h)] 角度随机游走
-    cfg.accvrw = 1e-7; % [m/s/sqrt(h)] 加速度计随机游走
-    cfg.gyrbiasstd = 0.003; % [deg/h] 陀螺仪零偏标准差
+    cfg.accvrw = 1e-6; % [m/s/sqrt(h)] 加速度计随机游走
+    cfg.gyrbiasstd = 0.005; % [deg/h] 陀螺仪零偏标准差
     cfg.accbiasstd = 7; % [mGal] 加速度计零偏标准差
     cfg.gyrscalestd = 5; % [ppm] 刻度系数标准差，即0.03%
     cfg.accscalestd = 10; % [ppm] 

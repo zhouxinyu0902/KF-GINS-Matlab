@@ -16,7 +16,7 @@ function cfg = ProcessConfigsimu(filepath)
     cfg.truthpath = [filepath,'\input\truth.nav'];
     cfg.imufilepath = [filepath,'\input\imu.nav'];
     cfg.gnssfilepath = [filepath,'\input\gnss.txt'];
-    cfg.depthfilepath = [filepath,'\input\height-1Hz.txt'];
+    cfg.depthfilepath = [filepath,'\input\height-100Hz.txt'];
     cfg.LBLfilepath = [filepath,'\input\LBL.txt'];
  
     cfg.outputfolder = [filepath, '\output'];
@@ -32,16 +32,16 @@ function cfg = ProcessConfigsimu(filepath)
     %% 初始信息
     cfg.starttime = 0;
     cfg.endtime = 0+3600;
-    pva0=load(cfg.truthpath);% 真实pva0
-    avp0 = pvaNED2ENU(pva0(1,:)); % 真实avp0
+    pva = load(cfg.truthpath);% 真实pva0
+    avp0 = pvaNED2ENU(pva(1,:)); % 真实avp0
     %%%%%%%%%%误差设置%%%%%%%%%%%%%%
-    avperr = avperrset([0.005,0.005,0.03]*60,0.01,0.1);
+    avperr = avperrset([0.005,0.005,0.03]*60,0.003,1);
     avp00 = avpadderr(avp0,avperr); % 误差avp00
     pva00 = avpENU2NED(avp00')';% 误差pva00
 
-    cfg.initposstd = avperr(7:9); %[r,r,m]
-    cfg.initvelstd = avperr(4:6); %[m/s]
-    cfg.initattstd = avperr(1:3); %[rad]
+    cfg.initposstd = avperr(7:9)*1.5; %[r,r,m]
+    cfg.initvelstd = avperr(4:6)*1.5; %[m/s]
+    cfg.initattstd = avperr(1:3)*1.5; %[rad]
 
     cfg.initpos = avp00(7:9); %[r,r,m]
     cfg.initvel = pva00(6:8) ; %[m/s]

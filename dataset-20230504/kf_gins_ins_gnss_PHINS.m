@@ -133,40 +133,40 @@ for imuindex = 2:size(imudata, 1)-1
     end
 
     % determine whether LBL update is required
-    if lastimu(1, 1) == LBLdata(LBLindex, end)
-        % do LBL update for the current state
-        thisLBL = LBLdata(LBLindex, :)';
-        % kf = GNSSUpdate(navstate, thisLBL, kf, cfg.antlever, cfg.useLBLvel, lastimu, imudt);
-        kf = myLBLUpdate(navstate, thisLBL, kf);
-        [kf, navstate] = myErrorFeedback_15state(kf, navstate);
-        LBLindex = LBLindex + 1;
-        laststate = navstate;
-
-        % do propagation for current imu data
-        imudt = thisimu(1, 1) - lastimu(1, 1);
-        navstate = InsMech(laststate, lastimu, thisimu);
-        kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
-    elseif (lastimu(1, 1) < LBLdata(LBLindex, end) && thisimu(1, 1) > LBLdata(LBLindex, end))
-        % ineterpolate imu to LBL time
-        [firstimu, secondimu] = interpolate(lastimu, thisimu, LBLdata(LBLindex, end));
-
-        % do propagation for first imu
-        imudt = firstimu(1, 1) - lastimu(1, 1);
-        navstate = InsMech(laststate, lastimu, firstimu);
-        kf = myInsPropagate_15state(navstate, firstimu, imudt, kf);
-
-        % do LBL update
-        thisLBL = LBLdata(LBLindex, :)';
-        kf = myLBLUpdate(navstate, thisLBL, kf);
-        [kf, navstate] = myErrorFeedback_15state(kf, navstate);
-        LBLindex = LBLindex + 1;
-        laststate = navstate;
-        lastimu = firstimu;
-
-        % do propagation for second imu
-        imudt = secondimu(1, 1) - lastimu(1, 1);
-        navstate = InsMech(laststate, lastimu, secondimu);
-        kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
+    % if lastimu(1, 1) == LBLdata(LBLindex, end)
+    %     % do LBL update for the current state
+    %     thisLBL = LBLdata(LBLindex, :)';
+    %     % kf = GNSSUpdate(navstate, thisLBL, kf, cfg.antlever, cfg.useLBLvel, lastimu, imudt);
+    %     kf = myLBLUpdate(navstate, thisLBL, kf);
+    %     [kf, navstate] = myErrorFeedback_15state(kf, navstate);
+    %     LBLindex = LBLindex + 1;
+    %     laststate = navstate;
+    % 
+    %     % do propagation for current imu data
+    %     imudt = thisimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, thisimu);
+    %     kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
+    % elseif (lastimu(1, 1) < LBLdata(LBLindex, end) && thisimu(1, 1) > LBLdata(LBLindex, end))
+    %     % ineterpolate imu to LBL time
+    %     [firstimu, secondimu] = interpolate(lastimu, thisimu, LBLdata(LBLindex, end));
+    % 
+    %     % do propagation for first imu
+    %     imudt = firstimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, firstimu);
+    %     kf = myInsPropagate_15state(navstate, firstimu, imudt, kf);
+    % 
+    %     % do LBL update
+    %     thisLBL = LBLdata(LBLindex, :)';
+    %     kf = myLBLUpdate(navstate, thisLBL, kf);
+    %     [kf, navstate] = myErrorFeedback_15state(kf, navstate);
+    %     LBLindex = LBLindex + 1;
+    %     laststate = navstate;
+    %     lastimu = firstimu;
+    % 
+    %     % do propagation for second imu
+    %     imudt = secondimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, secondimu);
+    %     kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
     % else
         %% only do propagation
         % INS mechanization
@@ -175,7 +175,7 @@ for imuindex = 2:size(imudata, 1)-1
         navstate.pos(3)=-heightdata(imuindex,1);
         % error propagation
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
-    end
+    % end
     
   
     % avp_kfgins(imuindex-1,1:3)=[navstate.att(2),navstate.att(1),2*pi-navstate.att(3)];

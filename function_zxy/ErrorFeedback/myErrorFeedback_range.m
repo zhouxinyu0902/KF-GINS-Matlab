@@ -1,10 +1,11 @@
 function [kf, navstate] = myErrorFeedback_range(kf, navstate)
     b=1;
+    % b=1/kf.alpha;
     % position and velocity
     navstate.pos(1:2) = navstate.pos(1:2) - b * kf.x(1:2, 1);
     navstate.pos(3) = navstate.pos(3) - kf.x(3, 1);
-    % navstate.vel(1:2) = navstate.vel(1:2) - b * kf.x(4:5, 1);
-    % navstate.vel(3) = navstate.vel(3) - kf.x(6, 1);
+    navstate.vel(1:2) = navstate.vel(1:2) - b * kf.x(4:5, 1);
+    navstate.vel(3) = navstate.vel(3) - kf.x(6, 1);
     % attitude
     % qpn = rotvec2quat(kf.x(7:9, 1));
     % navstate.qbn = quatProd(qpn, navstate.qbn);

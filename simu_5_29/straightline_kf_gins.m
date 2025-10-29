@@ -129,7 +129,7 @@ for imuindex = 2:size(imudata, 1)-1
         % 先对当前状态进行测量更新
         thisRange = rangedata(rangeindex, :);
         % depthdata = heightdata(rangeindex, :);
-        kf = myRangeUpdate(navstate, thisRange, [0,0], kf);
+        kf = myRangeUpdate(navstate, thisRange, [0,0.1*randn], kf);
         [kf, navstate] = myErrorFeedback_15state(kf, navstate);
         rangeindex = rangeindex + 1;
         laststate = navstate;

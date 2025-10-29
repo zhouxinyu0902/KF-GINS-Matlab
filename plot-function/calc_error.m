@@ -61,6 +61,7 @@ end
 dt = mean(diff(result_all(:, 1)));
 time = starttime:dt:endtime;
 time = time';
+%%
 
 
 %% interpolate navresult, 测试结果和参考结果内插到同样的时刻，然后求差
@@ -69,7 +70,7 @@ newref = zeros(size(time, 1), 10);
 error = zeros(size(time, 1), 10);
 newresult(:, 1) = time;
 newref(:, 1) = time;
-error(: ,1) = time;
+error(: ,1) = time-time(1);
 
 newresult(:, 2:10) = interp1(result_all(:, 1), result_all(:, 2:10), time);
 newref(:, 2:10) = interp1(ref(:, 1), ref(:, 2:10), time);
@@ -101,23 +102,24 @@ end
 
 
 %% plot error
-myfigurestartup(10,10,'prese')
+figure('Name','各类误差图')
+myfigurestartup(7,7,'prese')
 subplot 221
-plot(error(:,1),error(:,2:4));
+plot(error(:,1),error(:,[4,2,3]));
 title('Position Error');
 xlabel('Time[s]');
 ylabel('Error[m]');
-legend('North', 'East', 'Down');
+legend( 'Down','North', 'East');
 grid("on");
 xlim([error(1,1) error(end,1)])
 
 % figure;
 subplot 222
-plot(error(:,1),error(:,5:7));
+plot(error(:,1),error(:,[7,5,6]));
 title('Velocity Error');
 xlabel('Time[s]');
 ylabel('Error[m/s]');
-legend('North', 'East', 'Down');
+legend('Down','North', 'East');
 grid("on");
 xlim([error(1,1) error(end,1)])
 
@@ -137,6 +139,7 @@ plot(error(:,1),RadiusError);
 title('Radial Error');
 xlabel('Time[s]');
 ylabel('Error[m]');
+xlim([error(1,1) error(end,1)])
 grid("on");
 %% display error RMS, 输出误差
 disp('-----均方根误差RMS------')

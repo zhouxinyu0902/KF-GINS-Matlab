@@ -1,5 +1,5 @@
 function IMUFRD = imuRFU2FRD(IMURFU)
-% 将仿真的数据右前上转为真实的测量前右下，并保存
+% 将psins数据右前上转为kfgins测量前右下，并保存
 IMUFRD(:,1)=IMURFU(:,7);
 IMUFRD(:,2)=IMURFU(:,2);
 IMUFRD(:,3)=IMURFU(:,1);

@@ -10,19 +10,22 @@
 
 %% importdata imuerror
 % imuerrorfile = 'dataset1/ImuError.txt';
-% imuerrorfile = 'dataset-simu/ImuError.txt';
-imuerrorfile =imuerrpath;
+% imuerrorfile = '惯导实验数据/output/ImuError-gnss.txt';
+imuerrorfile = imuerrpath;
 err = importdata(imuerrorfile);
 
-figure()
+figure('Name','估计IMU误差')
+myfigurestartup(7,7,'prese')
+subplot 221 
+% figure()
 plot(err(:, 1), err(:, 2:4))
 title('GyroBias');
 xlabel('Time[s]');
 ylabel('gb[deg/h]');
 grid("on");
 legend('X', 'Y', 'Z');
-
-figure()
+subplot 222 
+% figure()
 plot(err(:, 1), err(:, 5:7))
 title('AccelBias');
 xlabel('Time[s]');
@@ -30,7 +33,7 @@ ylabel('ab[mGal]');
 grid("on");
 legend('X', 'Y', 'Z');
 
-figure()
+subplot 223 
 plot(err(:, 1), err(:, 8:10))
 title('GyroScale');
 xlabel('Time[s]');
@@ -38,7 +41,7 @@ ylabel('gs[ppm]');
 grid("on");
 legend('X', 'Y', 'Z');
 
-figure()
+subplot 224
 plot(err(:, 1), err(:, 11:13));
 title('AccelScale');
 xlabel('Time[s]');

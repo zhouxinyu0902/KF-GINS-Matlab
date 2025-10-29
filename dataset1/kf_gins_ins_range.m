@@ -1,5 +1,5 @@
-clear;
-clc;
+% clear;
+% clc;
 %% 定义参数和加载配置
 param = Param();
 cfg = ProcessConfig1_zxy();

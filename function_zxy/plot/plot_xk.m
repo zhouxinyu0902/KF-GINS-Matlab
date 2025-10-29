@@ -25,6 +25,7 @@ xk(:,2)=xk(:,2)*(rm+ref(1,5));
 xk(:,3)=xk(:,3)*cos(ref(1,3))*rn;
 xk(:,8:9)=xk(:,8:9)*param.R2D;
 
+figure('Name','估计误差图')
 myfigurestartup(10,10,'prese')
 subplot(3,3,1)
 plot(err(:,1),err(:,2),xk(:,1),xk(:,2))

@@ -7,7 +7,7 @@ DR = diag([navstate.Rm + navstate.pos(3),...
 % measurement innovation
 Z = navstate.pos - gnssdata(2:4);% N系下的NED
 
-vk=[0.2;0.2;0.2];
+vk=[0.03;0.03;0.03];
 R = diag(power(DR^-1*vk, 2));% m m m
 H = zeros(3, kf.RANK);
 H(1:3, 1:3) = eye(3);

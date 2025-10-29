@@ -260,7 +260,7 @@ fclose(xkfp);
 % fclose(imuerrfp);
 % disp("GNSS/INS Integration Processing Finished!");
 %%
-% calc_error(pvapath,truthpath)
+calc_error(pvapath,truthpath)
 %%
 plot_xk(xkpath,stdpath,pvapath,truthpath)
 close all

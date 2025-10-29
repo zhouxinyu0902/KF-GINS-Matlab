@@ -3,7 +3,7 @@
 clear all
 glvs
 avp0 = [[0;0;d2r(90)]; [0;0;0]; [d2r([15;115]);-1200]];
-ts=0.005;
+ts=0.01;
 %% 方形轨迹
 xxx = [];
 seg = trjsegment(xxx, 'init',         0);

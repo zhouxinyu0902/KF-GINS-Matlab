@@ -68,11 +68,13 @@ if type=="full"
     subplot(3,2,[4,6])
     plot(pos(1, 2), pos(1, 1),'*');hold on
     plot(pos(:, 2), pos(:, 1));
+    plot(pos(end, 2), pos(end, 1),'*');
     title('Position');
     xlabel('East[m]');
     ylabel('North[m]');
     grid("on");
-
+    legend('起点','轨迹','终点')
+    axis equal
     %% height
     % subplot 325
     % plot(navdata(:, 2), navdata(:, 5));
@@ -85,7 +87,8 @@ if type=="full"
     plot(navdata(:, 2), pos(:, 1),navdata(:, 2), pos(:, 2),navdata(:, 2), pos(:, 3));
     title('Height');
     xlabel('Time[s]');
-    ylabel('Height[m]');
+    ylabel('dpos[m]');
+    legend('dp_N','dp_E','dp_D')
     grid("on");
 elseif type=="single"
     

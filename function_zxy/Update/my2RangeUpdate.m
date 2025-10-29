@@ -16,7 +16,7 @@ Z = [Rangedata1(3)-range_ins1;
     depthdata(2)-navstate.pos(3)];
 
 % measurement matrix and noise matrix
-vk = [1,1,0.2];
+vk = [15,15,0.2];
 R = diag(vk.^2);
 H = zeros(3, kf.RANK);
 b1 = (bcn1'-navstate.pos')*diag([(navstate.Rm + navstate.pos(3))^2,...

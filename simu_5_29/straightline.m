@@ -3,7 +3,9 @@ clear all
 %% 定信标位置和轨迹初始点
 glvs
 % 定义参考原点/第一个信标的绝对位置，单位为度 [纬度, 经度, 高度]
-beacon0=d2r([36,120,0]);
+% beacon0=d2r([17,117,0]);
+beacon0=d2r([17.574,117.7900,0]);
+% 117.791, 17.576
 % 根据距离设置定义其余两个信标和轨迹原点，dxyz和纬度经度rrm
 dxyz=[0,0,0;
     10,10*sqrt(3),0;
@@ -31,6 +33,15 @@ seg = trjsegment(seg, 'uniform',      20);
 seg = trjsegment(seg, 'accelerate',   10, xxx, 0.20576); 
 seg = trjsegment(seg, 'uniform',      3600*2.7); 
 seg = trjsegment(seg, 'deaccelerate',   10, xxx, 0.20576); 
+
+% seg = trjsegment(xxx, 'init',         0);
+% seg = trjsegment(seg, 'uniform',      20);
+% seg = trjsegment(seg, 'accelerate',   10, xxx, 0.20576); 
+% seg = trjsegment(seg, 'uniform',      3600*1.35); 
+% seg = trjsegment(seg, 'turnleft',  60, 3);
+% seg = trjsegment(seg, 'uniform',      3600*1.35); 
+% seg = trjsegment(seg, 'deaccelerate',   10, xxx, 0.20576); 
+
 trj = trjsimu(avp0, seg.wat, ts, 1); % 只需要位置和姿态信息就可以
 [nn, ts, nts] = nnts(1, trj.ts);
 % 轨迹与参考点绘图
@@ -42,7 +53,7 @@ trajectory_ddm(:,1:2)=r2d(trajectory_ddm(:,1:2));
 plot_trajectory_and_beacons(trajectory_xyz_km, beaconxyz, beaconddm, trajectory_ddm)
 
 %% 计算信标与轨迹中每一个点的距离并绘图
-beacon_xyz_km=beaconxyz/1000;
+beacon_xyz_km = beaconxyz/1000;
 % 获取轨迹点的坐标
 trajectory_x = trajectory_xyz_km(:, 1);
 trajectory_y = trajectory_xyz_km(:, 2);
@@ -58,7 +69,7 @@ for i=1:3
     distances_km(:,i) = sqrt((trajectory_x - beacon1_x).^2 + ...
         (trajectory_y - beacon1_y).^2 + ...
         (trajectory_z - beacon1_z).^2);
-
+    
     % 创建新的图窗来绘制距离曲线
     figure;
     plot(trj.avp(:,10), distances_km(:,i), 'LineWidth', 1.5); % 洋红色实线
@@ -68,6 +79,8 @@ for i=1:3
     grid on;
 end
 distances_N_by_1_max = max(distances_km, [], 2);
+
+
 %% 初始化
 avp_ref = trj.avp;
 avp0_ref = avp_ref(1,1:9);
@@ -76,8 +89,8 @@ avp0_use = avpadderr(avp0_ref,avp0_err);
 
 imu_ref = trj.imu;
 % imu_err = imuerrset(0.002, 0.1, 0.001, 10);
-imu_err = imuerrset(0.005, 0.1, 0.001, 10);
-% imu_err = imuerrset(0.005, 0.0003, 10, 0.01);
+% imu_err = imuerrset(0.005, 0.1, 0.001, 10);
+% imu_err = imuerrset(0.005, 10, 0.0003, 0.01);
 % 设置IMU误差
 eb=0.003;
 db=7;
@@ -86,6 +99,7 @@ wdb=2.7778e-05;%1e-6m/s/sqrt(Hz)
 %1e-6*1e5/3600 = 2.7778e-05
 rng(1);
 imu_err = imuerrset(eb, db, web, wdb, web, 4, wdb ,4, 5 , 10, 5, 10, 10, 10, 10); 
+
 imu_use = imuadderr(imu_ref, imu_err);
 %%
 % %% 惯导解算
@@ -198,15 +212,16 @@ dx0=[avp0_err;imu_err.eb;imu_err.db]; % 非常理想的状态
 
 % 过程噪声+量测噪声
 vk = [imu_err.web;imu_err.wdb;zeros(9,1)];
-rk = 10; % ins/range
-
+% rk = 10; % ins/range
+rk = [10,0.1]; % ins/range
 % KF初始化
 kf = myekf1('init',ts,x0,dx0,vk,rk);
 kf.Pmin = [avperrset(0.01,1e-4,0.1); gabias(1e-3, [1,10])].^2;
 kf.pconstrain=1;
 
 ki=1;
-l_used=7200/0.01;
+% l_used=7200/0.01;
+l_used=length(avp_ref);
 [avp_pureins,avp_ins_full,avp_pureins_full,xkpk]=prealloc(l_used,10,10,10,31);
 
 for i=1:l_used
@@ -220,11 +235,11 @@ for i=1:l_used
         nn=mod(t/420-1,3)+1;
         ins.bcn=beaconrrm(nn,:);
         ins.Slantr_ins = RCompu(ins.pos',ins.bcn);
-        ins.range_m=distances_km(i,nn)*1000+randn*rk;
+        ins.range_m=distances_km(i,nn)*1000+randn*rk(1);
         range_save(ki,:)=[t,ins.range_m,ins.range_m,ins.bcn];
         height(ki,:)=[t,0];
-        kf.yk=ins.range_m-ins.Slantr_ins;
-        kf = myekf1('hk',kf, ins,'Slantrange');
+        kf.yk=[ins.range_m-ins.Slantr_ins;rk(2)*randn];
+        kf = myekf1('hk',kf, ins,'HorizR_h');
         kf = myekf1('algo',kf, 'M');
         xkpk(ki,:)=[kf.xk',diag(kf.Pxk)',t];
         [kf, ins] = kffeedback(kf, ins, 1, 'avp');
@@ -250,7 +265,15 @@ close all
 hold on
 plot(avp_ref(1:l_used,end),distances_N_by_1_max(1:l_used)*1000*0.02,'DisplayName','2%D误差界限')
 %%
+close all
+[f_trajectory, f_errors] = plotTrajectoriesComparison_Three(avp_ref, avp_ins_full, avp_pureins_full);
+hold on
+plot(avp_ref(1:l_used,end),400*ones(1,l_used),'DisplayName','400m误差界限')
+%%
 twoDdata_error_limit=[avp_ref(1:l_used,end),distances_N_by_1_max(1:l_used)*1000*0.02];
+[eval_results, f_errors_plot] = evaluateNavigationPerformance(avp_ref, avp_ins_full, avp_pureins_full, twoDdata_error_limit);
+%%
+twoDdata_error_limit=[avp_ref(1:l_used,end),400*ones(l_used,1)];
 [eval_results, f_errors_plot] = evaluateNavigationPerformance(avp_ref, avp_ins_full, avp_pureins_full, twoDdata_error_limit);
 %% 保存数据
 IMUFRD=imuRFU2FRD(imu_use);
