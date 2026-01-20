@@ -1,0 +1,27 @@
+path=cell(1,4);
+truth=cell(1,4);
+% beacon=cell(1,4);
+myfigurestartup(10,10,'paper')
+for i=1:4
+    path{i}=['旋转收缩方案/output_simu',num2str(i),'/RANGE1.nav'];
+    truth{i}=['旋转收缩方案/input_simu',num2str(i),'/truth.txt'];
+    % calc_error(path{i},truth{i})
+    % ylim([0 600])
+    range1=importdata(['旋转收缩方案/input_simu',num2str(i),'/range1.txt']);
+    beacon(:,1)=rad2deg(range1(1,4:6));
+    range2=importdata(['旋转收缩方案/input_simu',num2str(i),'/range2.txt']);
+    beacon(:,2)=rad2deg(range2(1,4:6));
+    range3=importdata(['旋转收缩方案/input_simu',num2str(i),'/range3.txt']);
+    beacon(:,3)=rad2deg(range3(1,4:6));
+
+    trj1=importdata(truth{i});
+    trj=trj1(:,3:5);
+    subplot(2,2,i)
+    plot(trj(:,2),trj(:,1))
+    hold on
+    plot(beacon(2,1),beacon(1,1),'*')
+    plot(beacon(2,2),beacon(1,2),'*')
+    plot(beacon(2,3),beacon(1,3),'*')
+    legend('轨迹','潜标基站1','潜标基站1','潜标基站1')
+    xygo('lat','lon')
+end
