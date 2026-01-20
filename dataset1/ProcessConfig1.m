@@ -13,13 +13,13 @@ function cfg = ProcessConfig1()
     param = Param();
 
     %% filepath
-    cfg.imufilepath = 'dataset1/Leador-A15.txt';
-    cfg.gnssfilepath = 'dataset1/GNSS-RTK.txt';
-    cfg.depthfilepath = 'dataset1/height.txt';
+    cfg.imufilepath = 'dataset1/input/Leador-A15.txt';
+    cfg.gnssfilepath = 'dataset1/input/GNSS-RTK.txt';
+    cfg.depthfilepath = 'dataset1/input/height.txt';
     cfg.odofilepath = '';
-    cfg.rangefilepath = 'dataset1/range_moving.txt';
+    cfg.rangefilepath = 'dataset1/input/range_moving.txt';
     cfg.outputfolder = 'dataset1/output';
-    cfg.truthpath='dataset1/truth.nav';
+    cfg.truthpath='dataset1/input/truth.nav';
     %% configure
     cfg.usegnssvel = false;
     cfg.useodonhc = false;

@@ -3,7 +3,10 @@
 %% 定义参数和加载配置
 param = Param();
 cfg = ProcessConfig1_zxy();
-
+global rangstd
+rangstd = 10;
+global depstd
+depstd = 0.5;
 %% 导入数据
 % imudata
 imudata = importdata(cfg.imufilepath);
@@ -11,7 +14,7 @@ imustarttime = imudata(1, 1);
 imuendtime = imudata(end, 1);
 
 % range data
-id=42;
+id=1;
 cfg.userange=1;
 
 % rangedata1 = importdata(cfg.rangefile1path);

@@ -102,8 +102,7 @@ end
 
 
 %% plot error
-figure('Name','各类误差图')
-myfigurestartup(7,7,'prese')
+myfigurestartup(12,7,'prese')
 subplot 221
 plot(error(:,1),error(:,[4,2,3]));
 title('Position Error');

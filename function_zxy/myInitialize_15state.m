@@ -11,7 +11,7 @@ function [kf, navstate] = myInitialize_15state(cfg)
     % Qc,变成6*6的矩阵
     kf.Qc(1:3, 1:3) = power(cfg.accvrw, 2) * eye(3, 3);
     kf.Qc(4:6, 4:6) = power(cfg.gyrarw, 2) * eye(3, 3);
-    kf.Qc = kf.Qc * 2;
+    % kf.Qc = kf.Qc * 2;
     % kf.Qc(7:9, 7:9) = 2 * power(cfg.gyrbiasstd, 2) / cfg.corrtime * eye(3, 3);
     % kf.Qc(10:12, 10:12) = 2 * power(cfg.accbiasstd, 2) / cfg.corrtime * eye(3, 3);
     % kf.Qc(13:15, 13:15) = 2 * power(cfg.gyrscalestd, 2) / cfg.corrtime * eye(3, 3);
@@ -25,7 +25,7 @@ function [kf, navstate] = myInitialize_15state(cfg)
     kf.P(13:15, 13:15) = diag(power(cfg.initaccbiasstd, 2));
     % kf.P(16:18, 16:18) = diag(power(cfg.initgyrscalestd, 2));
     % kf.P(19:21, 19:21) = diag(power(cfg.initaccscalestd, 2));
-    kf.P0 = kf.P*20;
+    kf.P0 = kf.P;
 
     % navigation state initialization
     navstate.time = cfg.starttime;

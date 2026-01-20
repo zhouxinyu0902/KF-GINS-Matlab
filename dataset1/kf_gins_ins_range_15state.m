@@ -5,7 +5,10 @@ param = Param();
 cfg = ProcessConfig1_zxy();
 % filepath='dataset-simu\line';
 % cfg = ProcessConfigsimu(filepath);
-
+global rangstd
+rangstd = 5;
+global depstd
+depstd = 0.5;
 %% 导入数据
 % imudata
 imudata = importdata(cfg.imufilepath);
@@ -22,15 +25,16 @@ rangedata3 = importdata(cfg.rangefile3path);
 rangedata4 = importdata(cfg.rangefile4path);
 rangedata5 = importdata(cfg.rangefile5path);
 
-id=42;
+id=1;
 rangedata1 = rangedata1(id:id:end,:);
-rangedata2 = rangedata2(id:id:end,:);
-rangedata3 = rangedata3(id:id:end,:);
-rangedata = zeros(size(rangedata1));
-
-rangedata(1:3:end,:)=rangedata1(1:3:end,:);
-rangedata(2:3:end,:)=rangedata2(2:3:end,:);
-rangedata(3:3:end,:)=rangedata3(3:3:end,:);
+% rangedata2 = rangedata2(id:id:end,:);
+% rangedata3 = rangedata3(id:id:end,:);
+% rangedata = zeros(size(rangedata1));
+% 
+rangedata = rangedata1;
+% rangedata(1:3:end,:)=rangedata1(1:3:end,:);
+% rangedata(2:3:end,:)=rangedata2(2:3:end,:);
+% rangedata(3:3:end,:)=rangedata3(3:3:end,:);
 rangestarttime = rangedata(1, 1);
 rangeendtime = rangedata(end, 1);
 % height data
@@ -59,11 +63,7 @@ stdfp = fopen(stdpath, 'wt');
 xkpath = [cfg.outputfolder, '/xk_range.txt'];
 xkfp = fopen(xkpath, 'wt');
 %% 获取处理时间，调整时间
-if imustarttime > rangestarttime
-    starttime = imustarttime;
-else
-    starttime = rangestarttime;
-end
+starttime = imustarttime;
 if imuendtime > rangeendtime
     endtime = rangeendtime;
 else
@@ -91,6 +91,9 @@ lastprecent = 0;
 
 %% 初始化 
 [kf, navstate] = myInitialize_15state(cfg);
+% for i=1:15
+% disp(diag(kf.P(i,i)))
+% end
 laststate = navstate;
 
 % data index preprocess
@@ -176,6 +179,10 @@ for imuindex = 2:size(imudata, 1)-1
         % end
         % 状态传播
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
+        % disp('predict\')
+        % for i=1:15
+        %     disp(diag(kf.P(i,i)))
+        % end
     end
 
     %% save data
@@ -227,6 +234,7 @@ fclose(navfp);
 fclose(xkfp);
 disp("range/INS Integration Processing Finished!");
 %%
+navc="D:\Github\KF-GINS-main\dataset\KF_GINS_Navresult.nav";
 truthpath=cfg.truthpath;
 %%
 % plot_xk(xkpath,navpath,truthpath)
@@ -235,3 +243,5 @@ truthpath=cfg.truthpath;
 % plot_imuerror
 %%
 calc_error(navpath,cfg.truthpath)
+%%
+calc_error(navc,cfg.truthpath)

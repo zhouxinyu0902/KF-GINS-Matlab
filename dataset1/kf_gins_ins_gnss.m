@@ -127,48 +127,48 @@ for imuindex = 2:size(imudata, 1)-1
     %     break;
     % end
     %% determine whether gnss update is required
-    if lastimu(1, 1) == gnssdata(gnssindex, 1)
-        % do gnss update for the current state
-        thisgnss = gnssdata(gnssindex, :)';
-        % kf = GNSSUpdate(navstate, thisgnss, kf, cfg.antlever, cfg.usegnssvel, lastimu, imudt);
-        kf = myGNSSUpdate(navstate, thisgnss, kf, cfg.antlever);
-        [kf, navstate] = myErrorFeedback(kf, navstate);
-        gnssindex = gnssindex + 1;
-        laststate = navstate;
-
-        % do propagation for current imu data
-        imudt = thisimu(1, 1) - lastimu(1, 1);
-        navstate = InsMech(laststate, lastimu, thisimu);
-        kf = myInsPropagate(navstate, thisimu, imudt, kf, cfg.corrtime);
-    elseif (lastimu(1, 1) < gnssdata(gnssindex, 1) && thisimu(1, 1) > gnssdata(gnssindex, 1))
-        % ineterpolate imu to gnss time
-        [firstimu, secondimu] = interpolate(lastimu, thisimu, gnssdata(gnssindex, 1));
-
-        % do propagation for first imu
-        imudt = firstimu(1, 1) - lastimu(1, 1);
-        navstate = InsMech(laststate, lastimu, firstimu);
-        kf = myInsPropagate(navstate, firstimu, imudt, kf, cfg.corrtime);
-
-        % do gnss update
-        thisgnss = gnssdata(gnssindex, :)';
-        % kf = GNSSUpdate(navstate, thisgnss, kf, cfg.antlever, cfg.usegnssvel, firstimu, imudt);
-        kf = myGNSSUpdate(navstate, thisgnss, kf, cfg.antlever);
-        [kf, navstate] = myErrorFeedback(kf, navstate);
-        gnssindex = gnssindex + 1;
-        laststate = navstate;
-        lastimu = firstimu;
-
-        % do propagation for second imu
-        imudt = secondimu(1, 1) - lastimu(1, 1);
-        navstate = InsMech(laststate, lastimu, secondimu);
-        kf = myInsPropagate(navstate, secondimu, imudt, kf, cfg.corrtime);
-    else
+    % if lastimu(1, 1) == gnssdata(gnssindex, 1)
+    %     % do gnss update for the current state
+    %     thisgnss = gnssdata(gnssindex, :)';
+    %     % kf = GNSSUpdate(navstate, thisgnss, kf, cfg.antlever, cfg.usegnssvel, lastimu, imudt);
+    %     kf = myGNSSUpdate(navstate, thisgnss, kf, cfg.antlever);
+    %     [kf, navstate] = myErrorFeedback(kf, navstate);
+    %     gnssindex = gnssindex + 1;
+    %     laststate = navstate;
+    % 
+    %     % do propagation for current imu data
+    %     imudt = thisimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, thisimu);
+    %     kf = myInsPropagate(navstate, thisimu, imudt, kf, cfg.corrtime);
+    % elseif (lastimu(1, 1) < gnssdata(gnssindex, 1) && thisimu(1, 1) > gnssdata(gnssindex, 1))
+    %     % ineterpolate imu to gnss time
+    %     [firstimu, secondimu] = interpolate(lastimu, thisimu, gnssdata(gnssindex, 1));
+    % 
+    %     % do propagation for first imu
+    %     imudt = firstimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, firstimu);
+    %     kf = myInsPropagate(navstate, firstimu, imudt, kf, cfg.corrtime);
+    % 
+    %     % do gnss update
+    %     thisgnss = gnssdata(gnssindex, :)';
+    %     % kf = GNSSUpdate(navstate, thisgnss, kf, cfg.antlever, cfg.usegnssvel, firstimu, imudt);
+    %     kf = myGNSSUpdate(navstate, thisgnss, kf, cfg.antlever);
+    %     [kf, navstate] = myErrorFeedback(kf, navstate);
+    %     gnssindex = gnssindex + 1;
+    %     laststate = navstate;
+    %     lastimu = firstimu;
+    % 
+    %     % do propagation for second imu
+    %     imudt = secondimu(1, 1) - lastimu(1, 1);
+    %     navstate = InsMech(laststate, lastimu, secondimu);
+    %     kf = myInsPropagate(navstate, secondimu, imudt, kf, cfg.corrtime);
+    % else
         %% only do propagation
         % INS mechanization
         navstate = InsMech(laststate, lastimu, thisimu);
         % error propagation
         kf = myInsPropagate(navstate, thisimu, imudt, kf, cfg.corrtime);
-    end
+    % end
     
 
      %% determine whether range update is required
@@ -302,7 +302,8 @@ truthpath=cfg.truthpath;
 % plot_xk(xkpath,navpath,truthpath)
 %%
 calc_error(navpath,cfg.truthpath)
-% plot_result(navpath)
+%%
+plot_result(navpath,'full')
 % plot_result("dataset1/truth.nav")
 %%
 % myfigurestartup(12,3,'prese')

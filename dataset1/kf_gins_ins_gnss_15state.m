@@ -20,9 +20,9 @@ gnssstarttime = gnssdata(1, 1);
 gnssendtime = gnssdata(end, 1);
 
 % range data
-rangedata = importdata(cfg.rangefilepath);
-rangestarttime = rangedata(1, 1);
-rangeendtime = rangedata(end, 1);
+% rangedata = importdata(cfg.rangefilepath);
+% rangestarttime = rangedata(1, 1);
+% rangeendtime = rangedata(end, 1);
 
 % height data
 heightdata = importdata(cfg.depthfilepath);
@@ -70,8 +70,8 @@ imudata = imudata(imudata(:,1) >= cfg.starttime, :);
 imudata = imudata(imudata(:,1) <= cfg.endtime, :);
 gnssdata = gnssdata(gnssdata(:, 1) >= cfg.starttime, :);
 gnssdata = gnssdata(gnssdata(:, 1) <= cfg.endtime, :);
-rangedata = rangedata(rangedata(:, 1) >= cfg.starttime, :);
-rangedata = rangedata(rangedata(:, 1) <= cfg.endtime, :);
+% rangedata = rangedata(rangedata(:, 1) >= cfg.starttime, :);
+% rangedata = rangedata(rangedata(:, 1) <= cfg.endtime, :);
 heightdata = heightdata(heightdata(:, 1) >= cfg.starttime, :);
 heightdata = heightdata(heightdata(:, 1) <= cfg.endtime, :);
 %% for debug

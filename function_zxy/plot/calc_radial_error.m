@@ -18,14 +18,20 @@ function calc_radial_error(truthpath, varargin)
     
     % 颜色和线型定义
     colors = lines(num_tests);
+%  colors = [
+%     [0, 0.4470, 0.7410];  % 1. 蓝色 (标准)
+%     [0.8500, 0.3250, 0.0980]; % 2. 橙色 (高对比度)
+%     [0.9290, 0.6940, 0.1250]; % 3. 黄色 (标准)
+%     [1.0, 0.0, 0.0]           % 4. 纯红色 (突出显示/焦点)
+% ];
     line_styles = {'-', '--', ':', '-.'};
     markers = {'o', 's', 'd', '^', 'v'};
-    
+    width=[0.2,0.5,1.5,2];
     %% 读取真值数据
     try
         temp = importdata(truthpath);
         truth_data = temp(:, 2:end);
-        fprintf('成功读取真值文件: %s\n', truthpath);
+        % fprintf('成功读取真值文件: %s\n', truthpath);
     catch
         error('无法读取真值文件: %s', truthpath);
     end
@@ -44,7 +50,7 @@ function calc_radial_error(truthpath, varargin)
             % 读取测试数据
             temp = importdata(test_files{i});
             test_data = temp(:, 2:end);
-            fprintf('成功读取测试文件: %s\n', test_files{i});
+            % fprintf('成功读取测试文件: %s\n', test_files{i});
             
             % 航向角平滑
             test_data = smooth_heading(test_data);
@@ -85,8 +91,7 @@ function calc_radial_error(truthpath, varargin)
         all_times{i} = all_times{i} -all_times{i} (1);
     end
     %% 绘制径向误差对比图
-    figure('Name','径向误差对比图')
-    myfigurestartup(12,5,'prese')
+    % myfigurestartup(12,5,'prese')
     
     % 主图：径向误差时间序列
     % subplot(2, 1, 1);
@@ -98,6 +103,15 @@ function calc_radial_error(truthpath, varargin)
             style_idx = mod(i-1, length(line_styles)) + 1;
             marker_idx = mod(i-1, length(markers)) + 1;
             
+            plot(all_times{i}, radial_errors{i}, ...
+                 'Color', colors(i,:), ...
+                 'LineStyle', line_styles{style_idx}, ...
+                 'LineWidth', width(style_idx), ...
+                 'Marker', markers{marker_idx}, ...
+                 'MarkerIndices', 1:100:length(all_times{i}), ...
+                 'MarkerSize', 2, ...
+                 'DisplayName', file_labels{i});
+
             % plot(all_times{i}, radial_errors{i}, ...
             %      'Color', colors(i,:), ...
             %      'LineStyle', line_styles{style_idx}, ...
@@ -106,20 +120,11 @@ function calc_radial_error(truthpath, varargin)
             %      'MarkerIndices', 1:100:length(all_times{i}), ...
             %      'MarkerSize', 2, ...
             %      'DisplayName', file_labels{i});
-
-            plot(all_times{i}, radial_errors{i}, ...
-                 'Color', colors(i,:), ...
-                 'LineStyle', line_styles{style_idx}, ...
-                 'LineWidth', 1.5, ...
-                 'Marker', markers{marker_idx}, ...
-                 'MarkerIndices', 1:100:length(all_times{i}), ...
-                 'MarkerSize', 2, ...
-                 'DisplayName', file_labels{i});
             
         end
     end
     
-    title('径向误差时间序列对比');
+    % title('径向误差时间序列对比');
     xlabel('时间 (s)');
     ylabel('径向误差 (m)');
     legend('show');

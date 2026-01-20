@@ -155,6 +155,7 @@ function navstate = InsMech(laststate, lastimu, thisimu)
     navstate.qbn = thisqbn;
     navstate.cbn = thiscbn;
     navstate.att = thiseuler;
+    navstate.wnin = wie_n + wen_n;
     
     % recompute geometric paramters
     [navstate.Rm, navstate.Rn] = getRmRn(thispos(1), param);

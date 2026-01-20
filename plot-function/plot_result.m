@@ -14,18 +14,21 @@ function plot_result(navpath,type)
 % navpath = 'dataset1/pure_ins_PSINS.txt';
 % navpath = 'dataset1/pure_ins.txt';
 navdata = importdata(navpath);
+navdata(:,2)=navdata(:,2)-navdata(1,2);
 if nargin<2 
     type="full";
 end
 if type=="full"
     % velocity
     myfigurestartup(10,10,'prese')
+    
     subplot 323
     plot(navdata(:, 2), navdata(:, 6:8));
     title('Velocity');
     legend('North', 'East', 'Down');
     xlabel('Time[s]');
     ylabel('Vel[m/s]');
+    axis tight
     grid("on");
 
     % attitude
@@ -36,6 +39,7 @@ if type=="full"
     xlabel('Time[s]');
     ylabel('Att[deg]');
     grid("on");
+    axis tight
 
     subplot 322
     plot(navdata(:, 2), navdata(:, 11));
@@ -44,6 +48,7 @@ if type=="full"
     xlabel('Time[s]');
     ylabel('Att[deg]');
     grid("on");
+    axis tight
 
     % position
     param = Param();
@@ -65,6 +70,7 @@ if type=="full"
     end
 
     %% plane position
+    
     subplot(3,2,[4,6])
     plot(pos(1, 2), pos(1, 1),'*');hold on
     plot(pos(:, 2), pos(:, 1));
@@ -90,8 +96,8 @@ if type=="full"
     ylabel('dpos[m]');
     legend('dp_N','dp_E','dp_D')
     grid("on");
+    axis tight
 elseif type=="single"
-    
     myfigurestartup(5,5,'prese')
     plot(navdata(:, 2), navdata(:, 6:8));
     title('Velocity');

@@ -15,7 +15,7 @@ h = bcn(3);
 DR = diag([rm + h, (rn + h)*cos(bcn(1)), -1]);
 delta_pos =( DR * (navstate.pos-bcn))';
 SlantR=sqrt(sum(delta_pos(:,1:3).^2,2));
-HorizR=sqrt(SlantR.^2-delta_pos(:,3).^2);
+HorizR=sqrt(sum(delta_pos(:,1:2).^2,2));
 Z = [HorizR-Rangedata(3);
     navstate.pos(3)-depthdata(2)];
 kf.Z=Z;
@@ -56,12 +56,19 @@ kf.alpha = alpha;
 kf.d_squared = d_squared;
 kf.chi2_threshold = chi2_threshold;
 kf.is_anomaly = is_anomaly;
+
+
 % kf.P = alpha * kf.P;
 %% 更新协方差和状态量
-
+alpha=1;
 K = alpha * kf.P * H' / (H * alpha * kf.P * H' + R);
+% K = kf.P * H' / (H *kf.P * H' + R);
 kf.x = kf.x + K*(Z - kf.Zkk_1 );
 kf.P =(eye(kf.RANK) - K*H) * kf.P * (eye(kf.RANK) - K*H)' + K * R * K';
+% disp('update')
+% for i=1:15
+%     disp(diag(kf.P(i,i)))
+% end
 
 % UKF更新x和P
 % alpha = 1e-3; beta = 2; kappa = 0;

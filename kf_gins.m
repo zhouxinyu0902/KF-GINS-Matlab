@@ -278,6 +278,7 @@ fclose(stdfp);
 disp("GNSS/INS Integration Processing Finished!");
 fclose(xkfp);
 %%
+plot_imuerror
 plot_xk(xkpath,navpath,cfg.truthpath)
 %%
 plot_result(navpath)

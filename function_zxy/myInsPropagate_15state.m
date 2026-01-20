@@ -97,7 +97,7 @@ function kf = myInsPropagate_15state(navstate, thisimu, dt, kf)
     % F(7:9, 16:18) = -cbn * diag(omega);
 
     % IMU bias error and scale error, first-order Gauss-Markov process
-    F(10:15, 10:15)=zeros(6,6);
+    F(10:15, 10:15) = zeros(6,6);
     % F(16:18, 16:18) = -1 / corrtime * eye(3); 
     % F(19:21, 19:21) = -1 / corrtime * eye(3);
 

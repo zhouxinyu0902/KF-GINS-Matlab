@@ -1,4 +1,4 @@
-function adap_factor_visualize_gui_transposed(z, z_back)
+function adap_factor_visualize_gui(z, z_back)
 
     % 1. 创建主 Figure 窗口
     f = uifigure('Name', '自适应因子可视化 (转置显示)', ...
@@ -18,7 +18,7 @@ function adap_factor_visualize_gui_transposed(z, z_back)
     % ****** 核心修改：使用 z' 进行转置 ******
     z_transposed = z'; 
     num_cols = size(z_transposed, 2); % 原始数据的行数 (时间步长)
-    col_names_t1 = arrayfun(@(i) sprintf('Time Step %d', i), 1:num_cols, 'UniformOutput', false);
+    col_names_t1 = arrayfun(@(i) sprintf('Step %d', i), 1:num_cols, 'UniformOutput', false);
 
     title1 = uilabel(f, 'Text', '前向滤波 (转置)', 'Position', [50 740 300 30], 'FontSize', 14, 'FontWeight', 'bold');
     
@@ -37,7 +37,7 @@ function adap_factor_visualize_gui_transposed(z, z_back)
     z_back_transposed = z_back';
     col_names_t2 = col_names_t1; % 时间步长列名相同
 
-    title2 = uilabel(f, 'Text', '后向滤波 (转置)', 'Position', [50 460 300 30], 'FontSize', 14, 'FontWeight', 'bold');
+    title2 = uilabel(f, 'Text', '后向滤波', 'Position', [50 460 300 30], 'FontSize', 14, 'FontWeight', 'bold');
     
     table2_pos = [20 220 1360 220]; 
     
@@ -65,10 +65,10 @@ function adap_factor_visualize_gui_transposed(z, z_back)
     
     % 重新计算比较表的时间步长列名 (现在是 length(z) + 1 步)
     num_comp_cols = size(comparison_transposed, 2); 
-    col_names_comp = arrayfun(@(i) sprintf('Comp Step %d', i), 1:num_comp_cols, 'UniformOutput', false);
+    col_names_comp = arrayfun(@(i) sprintf('Step %d', i), 1:num_comp_cols, 'UniformOutput', false);
 
 
-    title3 = uilabel(f, 'Text', '前向/后向滤波关键残差对比 (转置)', 'Position', [50 180 400 30], 'FontSize', 14, 'FontWeight', 'bold');
+    title3 = uilabel(f, 'Text', '前向/后向滤波关键残差对比', 'Position', [50 180 400 30], 'FontSize', 14, 'FontWeight', 'bold');
     
     table3_pos = [20 20 1360 150]; % 调整位置和宽度
     

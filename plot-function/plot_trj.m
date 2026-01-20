@@ -57,8 +57,7 @@ function plot_trj(main_file, varargin)
     end
 
     % 创建图形
-    figure('Name','轨迹对比')
-    myfigurestartup(12,5,'prese')
+    % myfigurestartup(5,5,'prese')
 
     % % 子图1: 经纬度轨迹
     % subplot 211;
@@ -66,6 +65,7 @@ function plot_trj(main_file, varargin)
     % 
     % % 定义颜色和线型
     colors = lines(num_files);
+    line_styles = {'-.', ':', '-', '--'};
     line_styles = {'-', '-', '-', '-'};
     % 
     % % 绘制每条轨迹
@@ -91,7 +91,6 @@ function plot_trj(main_file, varargin)
             plot(xyz_cell{i}(:,1), xyz_cell{i}(:,2), ...
                  'Color', colors(i,:), ...
                  'LineStyle', line_styles{style_idx}, ...
-                 'LineWidth', 1.5 ,...
                  'DisplayName', get_file_label(all_files{i}) );
                 
     end

@@ -17,12 +17,13 @@ function cfg =ProcessConfig1_zxy()
     %% initial information
     cfg.starttime = 456300;
     % cfg.endtime = inf;
-    cfg.endtime = 456300+2400;
+    cfg.endtime = 456300+700;
     
     cfg.initpos = [30.4447873701; 114.4718632047; 20.899]; % [deg, deg, m]
     cfg.initvel = [0; 0; 0]; % [m/s]
     cfg.initatt = [0.854; -2.034; 185.702]; % [deg]
-    
+    cfg.initatt = [ 0.85421502; -2.03480295;185.70235133 ];
+
     [rm, rn] = getRmRn(cfg.initpos(1)*param.D2R, param);
     DR = diag([rm + cfg.initpos(3), (rn + cfg.initpos(3))*cos(cfg.initpos(1)*param.D2R), -1]);    
     cfg.initposstd = DR^-1*[0.005; 0.004; 0.008]; %[m] 转为弧度

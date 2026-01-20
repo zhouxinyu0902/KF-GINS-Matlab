@@ -25,7 +25,8 @@ web=0.0003;
 wdb=1e-5*1e5/3600;%1e-6 m/s/sqrt(Hz)
 %1e-6*1e5/3600 = 2.7778e-05
 rng(1);
-imuerr = imuerrset(eb, db, web, wdb, web, 4, wdb ,4, 5 , 10, 5, 10, 10, 10, 10); 
+% imuerr = imuerrset(eb, db, web, wdb, web, 4, wdb ,4, 5 , 10, 5, 10, 10, 10, 10); 
+imuerr = imuerrset(eb, db, web, wdb, web); 
 trjimu_line= imuadderr(trj2.imu, imuerr);
 
 imu_line = imuRFU2FRD(trjimu_line);

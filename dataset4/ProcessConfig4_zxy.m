@@ -23,7 +23,10 @@ function cfg = ProcessConfig4_zxy()
     cfg.gnssfilepath = 'dataset4\GNSS_RTK.pos';
     cfg.odofilepath = '';
     cfg.outputfolder = 'dataset4';
-
+    cfg.truthpath = 'dataset4/truth.nav';
+    cfg.rangefile1path = [cfg.outputfolder,'/range1.txt'];
+    cfg.rangefile2path = [cfg.outputfolder,'/range2.txt'];
+    cfg.rangefile3path = [cfg.outputfolder,'/range3.txt'];
     %% configure
     cfg.usegnssvel = false;
     cfg.useodonhc = false;
@@ -32,7 +35,7 @@ function cfg = ProcessConfig4_zxy()
     %% initial information
     cfg.starttime = 357473;
     % cfg.endtime = inf;
-    cfg.endtime = 357473+300;
+    cfg.endtime = 357473+600;
     cfg.initpos = [30.4604283861;114.4725033030;22.77916]; % [deg, deg, m]
     cfg.initvel = [ 0 ; 0; 0]; % [m/s]
     cfg.initatt = [ 1.50689;-0.07204;278.53459]; % [deg]
@@ -83,6 +86,10 @@ function cfg = ProcessConfig4_zxy()
     cfg.initatt = cfg.initatt * param.D2R;
     % 
     cfg.initattstd = cfg.initattstd * param.D2R;
+
+    [rm, rn] = getRmRn(cfg.initpos(1) , param);
+    DR = diag([rm + cfg.initpos(3), (rn + cfg.initpos(3))*cos(cfg.initpos(1)), -1]);
+    cfg.initposstd = DR^-1*cfg.initposstd ;
 
     cfg.initgyrbias = cfg.initgyrbias * param.D2R / 3600;
     cfg.initaccbias = cfg.initaccbias * 1e-5;

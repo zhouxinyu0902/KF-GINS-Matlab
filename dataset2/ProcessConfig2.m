@@ -17,7 +17,11 @@ function cfg = ProcessConfig2()
     cfg.gnssfilepath = 'dataset2/GNSS-POSVEL.txt';
     cfg.odofilepath = '';
     cfg.outputfolder = 'dataset2';
-
+    cfg.rangefilemovingpath = 'dataset2/range_moving.txt';
+    cfg.truthpath = 'dataset2/truth.nav';
+    cfg.rangefile1path = [cfg.outputfolder,'/range1.txt'];
+    cfg.rangefile2path = [cfg.outputfolder,'/range2.txt'];
+    cfg.rangefile3path = [cfg.outputfolder,'/range3.txt'];
     %% configure
     cfg.usegnssvel = true;
     cfg.useodonhc = false;
@@ -68,6 +72,11 @@ function cfg = ProcessConfig2()
     cfg.initatt = cfg.initatt * param.D2R;
 
     cfg.initattstd = cfg.initattstd * param.D2R;
+
+    [rm, rn] = getRmRn(cfg.initpos(1) , param);
+    DR = diag([rm + cfg.initpos(3), (rn + cfg.initpos(3))*cos(cfg.initpos(1)), -1]);
+    cfg.initposstd = DR^-1*cfg.initposstd ;
+
 
     cfg.initgyrbias = cfg.initgyrbias * param.D2R / 3600;
     cfg.initaccbias = cfg.initaccbias * 1e-5;

@@ -29,13 +29,15 @@ rangedata = zeros(size(range{1}));
 for i=1:3
     rangedata(i:3:end,:)=range{seq(nnn,i)}(i:3:end,:);
 end
-rangedata(1,:)=[];
+rangedata(:,3) = rangedata(:,3)+normrnd(0,rangstd,size(rangedata(:,3))) ;
+
 rangestarttime = rangedata(1, 1);
 rangeendtime = rangedata(end, 1);
 
 % height data
 truth = importdata(cfg.truthpath);
 height = truth(:,[2,5]);
+height(:,2) = height(:,2)+normrnd(0,depstd,size(height(:,2))) ;
 heightdata = height(id*100:id*100:end,:);
 heightstarttime = heightdata(1, 1);
 heightendtime = heightdata(end, 1);
@@ -129,10 +131,8 @@ for imuindex = 2:size(imudata, 1)-1
     % 4、determine whether gnss update is required
     if lastimu(1, 1) == rangedata(rangeindex, 1)
         % 测量更新
-        heightused = height(imuindex,2) + randn*depstd;
         Rangedata = rangedata(rangeindex,:);
-        Rangedata(3) = Rangedata(3)+randn*rangstd ;
-        depthdata = [height(imuindex,1),heightused];
+        depthdata = height(imuindex,:);
         kf = myRangeUpdate(navstate, Rangedata, depthdata, kf);
         if feedback==1
             [kf, navstate] = myErrorFeedback_range(kf, navstate);
@@ -144,23 +144,17 @@ for imuindex = 2:size(imudata, 1)-1
         % 惯导推算
         imudt = thisimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, thisimu);
-        % navstate.pos(3) = heightused; % 天向位置约束
-        % navstate.vel(3) = -(height(imuindex,2)+ randn*depstd-height(imuindex-1,2)- randn*depstd)/imudt; % 天向速度约束
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
-        disp('1')
     elseif (lastimu(1, 1) < rangedata(rangeindex, 1) && thisimu(1, 1) > rangedata(rangeindex, 1))
         % 插值imu
         [firstimu, secondimu] = interpolate(lastimu, thisimu, rangedata(rangeindex, 1));
         % 惯导推算
         imudt = firstimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, firstimu);
-        heightused = height(imuindex,2) + randn*depstd;
-        % navstate.pos(3) = heightused;
         kf = myInsPropagate_15state(navstate, firstimu, imudt, kf);
         % 测量更新
         Rangedata = rangedata(rangeindex,:);
-        Rangedata(3) = Rangedata(3) + randn*rangstd ;
-        depthdata = [height(imuindex,1),heightused];
+        depthdata = height(imuindex,:);
         % if abs(navstate.time-122235-28*60)<20||abs(navstate.time-122235-28*2*60)<20||abs(navstate.time-122235-28*3*60)<20
         %     tt = Rangedata(1);
         %     id1 = find(rangedata1(:,1)==tt);
@@ -182,17 +176,15 @@ for imuindex = 2:size(imudata, 1)-1
         imudt = secondimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, secondimu);
         % navstate.pos(3) = height(imuindex,2) + randn*depstd; % 天向位置约束
-        % navstate.vel(3) = -(height(imuindex,2)+ randn*depstd-height(imuindex-1,2)- randn*depstd)/imudt; % 天向速度约束
         kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
-        disp('2')
+        % disp('2')
 
         
     else
         % 5、only do propagation
         % INS mechanization
         navstate = InsMech(laststate, lastimu, thisimu);
-        navstate.pos(3) = height(imuindex,2) + randn*depstd; % 天向位置约束
-        % navstate.vel(3) = -(height(imuindex,2)+ randn*depstd-height(imuindex-1,2)- randn*depstd)/imudt; % 天向速度约束
+        navstate.pos(3) = height(imuindex,2);% 天向位置约束
         % error propagation
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
     end
