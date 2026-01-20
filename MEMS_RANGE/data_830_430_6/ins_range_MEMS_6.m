@@ -13,9 +13,9 @@ glvs
 %% 定义参数+加载过程配置
 param = Param();
 path='D:\Github\KF-GINS-Matlab\MEMS_RANGE\data_830_430_2';
-cfg = ProcessConfig_MEMS_5(path);
+cfg = ProcessConfig_MEMS_exper(path);
 type = {"single","moving","3","2"};
-beacontype=type{1};
+beacontype=type{2};
 
 %% 三信标
 % get3beacons(path)
@@ -28,9 +28,10 @@ beacontype=type{1};
 %     -2000,4000,0;
 %     -2000,7000,0;
 %     -2000,9000,0;];
-get1beacon(path,[-500,-500,0])
+
+get1beacon(path,[-6000,-3000,0])
 %% 移动信标
-getmovingbeacon(path,'circle')
+getmovingbeacon(path,'line')
 % close all
 %% 加载数据
 % imudata
@@ -857,7 +858,7 @@ end
 %% 辅助函数
 function get3beacons(path)
 glvs
-truth = importdata([path,'/truth.nav']);
+truth = importdata([path,'/input','/truth.nav']);
 num=floor(1/(truth(2,2)-truth(1,2)));
 GNSS_1s = truth(num:num:end,2:5);% 时间间隔
 orgin0 = d2r(GNSS_1s(1,2:4));
@@ -915,7 +916,7 @@ range1=[GNSS_1s(:,1),distances(:,1),distances(:,1),beacon1];
 range2=[GNSS_1s(:,1),distances(:,2),distances(:,2),beacon2];
 range3=[GNSS_1s(:,1),distances(:,3),distances(:,3),beacon3];
 
-output_file=[path,'/range1.txt'];
+output_file=[path,'/input','/range1.txt'];
 try
     writematrix(range1, output_file, 'Delimiter', ' ');
     fprintf('信息已成功写入到 %s\n', output_file);
@@ -941,7 +942,7 @@ end
 
 function get1beacon(path,dxyz)
 glvs
-truth = importdata([path,'/truth.nav']);
+truth = importdata([path,'/input','/truth.nav']);
 num=floor(1/(truth(2,2)-truth(1,2)));
 GNSS_1s = truth(num:num:end,2:5);% 时间间隔
 orgin0 = d2r(GNSS_1s(1,2:4));
@@ -978,7 +979,7 @@ distances(:) = sqrt((trajectory_x - beacon1_x).^2 + ...
 beacon1=ones(length(distances),3)*diag(beaconrrm);
 range1=[GNSS_1s(:,1),distances',distances',beacon1];
 
-output_file=[path,'/single_range.txt'];
+output_file=[path,'/input','/single_range.txt'];
 try
     writematrix(range1, output_file, 'Delimiter', ' ');
     fprintf('信息已成功写入到 %s\n', output_file);
@@ -1063,13 +1064,13 @@ end
 
 function getmovingbeacon(path,type)
 glvs
-truth = importdata([path,'/truth.nav']);
+truth = importdata([path,'/input','/truth.nav']);
 num=floor(1/(truth(2,2)-truth(1,2)));
 GNSS_1s = truth(num:num:end,2:5);% 时间间隔
 
 
 orgin0 =[d2r(GNSS_1s(1,2:3)),GNSS_1s(1,4) ] ;
-dxyz_orgin0= [-500, -500, 0];
+dxyz_orgin0= [1000, -1000, 0];
 orgin0_bea = dxyz2pos(dxyz_orgin0, orgin0');
 ts = 1;
 
@@ -1083,7 +1084,7 @@ elseif type=="follow"
     N = length(GNSS_1s);
     mid = floor(N/2);
     base_offset = [-500, -500, 0];
-    k = 0.8; % 轨迹缩放比例：0.8 表示 trjbea 的运动范围只有 GNSS_1s 的 80%
+    k = 0.3; % 轨迹缩放比例：0.8 表示 trjbea 的运动范围只有 GNSS_1s 的 80%
     start_pos_rad = [d2r(GNSS_1s(1,2:3)), GNSS_1s(1,4)]';
     for ii = 1:N
         % 1. 计算当前 GNSS 点相对于起点的位移 (Delta NEU)
@@ -1169,11 +1170,13 @@ else
         seg = trjsegment(seg, 'uniform',      length(truth)/num/4);
     elseif type=="line"
         % 直线轨迹
-        avp0 = [[0;0;d2r(180)]; [0;0;0]; orgin0_bea'];
+        avp0 = [[0;0;d2r(70)]; [0;0;0]; orgin0_bea'];
         xxx = [];
         seg = trjsegment(xxx, 'init',         0);
         seg = trjsegment(seg, 'accelerate',   10, xxx, 0.3);
-        seg = trjsegment(seg, 'uniform',    length(truth)/num);
+        seg = trjsegment(seg, 'uniform',    length(truth)/num/2);
+        seg = trjsegment(seg, 'deaccelerate',   10, xxx, 0.6);
+        seg = trjsegment(seg, 'uniform',    length(truth)/num/2);
     end
     trjbea= trjsimu(avp0, seg.wat, ts, 1);
 end
@@ -1209,7 +1212,7 @@ distances(:) = sqrt((trajectory_x - beacon_x).^2 + ...
 
 range1=[GNSS_1s(:,1),distances',distances',beaconrrm(1:length(trajectory_xyz),:)];
 
-output_file=sprintf('%s/range_moving.txt',path);
+output_file=[path,'\input','\range_moving.txt',];
 try
     writematrix(range1, output_file, 'Delimiter', ' ');
     fprintf('信息已成功写入到 %s\n', output_file);

@@ -11,7 +11,7 @@ feedback=1; % 是否反馈，不反馈则可以观察参数
 glvs
 %% 定义参数+加载过程配置
 param = Param();
-path='旋转收缩方案1\input2';
+path='旋转收缩方案1\input\input2';
 % dataget_truth
 cfg = ProcessConfigforSemiPhy_all(path);
 %% 加载数据
