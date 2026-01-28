@@ -20,3 +20,7 @@ dataset-simu/zz/output/
 /旋转收缩方案1/output
 /基于优化惯性数据/output
 /dataset-20230504/data_2
+/dataset1/output
+
+/旋转收缩方案1/input/input_pm
+/旋转收缩方案1/input/input_nt
