@@ -11,7 +11,7 @@
 function cfg = ProcessConfig_MEMS_exper(path)
     param = Param();
     %% filepath
-    type=830;
+    type = 830;
     if type==430
         cfg.imufilepath = [path,'/input','/imu_430.txt'];
     else
@@ -65,7 +65,7 @@ function cfg = ProcessConfig_MEMS_exper(path)
     cfg.initpos = pva_830(id,3:5)'; % [deg, deg, m]
     cfg.initvel = [0; 0; 0]; % [m/s]
     cfg.initatt = pva_120(id,9:11)'; % [deg]
-    % cfg.initatt = pva_830(id,9:11)'; % [deg]
+    % cfg.initatt = pva_830(id,9:11)'+[0.097;0.194;0.721]; % [deg]
     cfg.initgyrbias = [0; 0; 0]; % [deg/h]
     cfg.initaccbias = [0; 0; 0]; % [mGal]
     cfg.initgyrscale = [0; 0; 0]; % [ppm]

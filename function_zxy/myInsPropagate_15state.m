@@ -49,7 +49,7 @@ function kf = myInsPropagate_15state(navstate, thisimu, dt, kf)
     % velocity error
     Fvr = zeros(3, 3);
     Fvr(1, 1) = -2 * vel(2) * param.WGS84_WIE * cos(pos(1)) / rmh - vel(2)^2 / rmh / rnh / cos(pos(1))^2;
-    Fvr(1, 3) = vel(1) * vel(3) / rmh / rmh - (vel(2)) * tan(pos(1))^2 / rnh / rnh;
+    Fvr(1, 3) = vel(1) * vel(3) / rmh / rmh - (vel(2))^2 * tan(pos(1)) / rnh / rnh;
     Fvr(2, 1) = 2 * param.WGS84_WIE * (vel(1) * cos(pos(1)) - vel(3) * sin(pos(1))) / rmh + vel(1) * vel(2) / rmh / rnh / cos(pos(1))^2;
     Fvr(2, 3) = (vel(2) * vel(3) + vel(1) * vel(2) * tan(pos(1))) / rnh / rnh;
     Fvr(3, 1) = 2 * param.WGS84_WIE * vel(2) * sin(pos(1)) / rmh;
@@ -67,7 +67,10 @@ function kf = myInsPropagate_15state(navstate, thisimu, dt, kf)
     Fvv(2, 3) = 2 * param.WGS84_WIE * cos(pos(1)) + vel(2) / rnh;
     Fvv(3, 1) = -2 * vel(1) / rmh;
     Fvv(3, 2) = -2 * (param.WGS84_WIE * cos(pos(1)) + vel(2) / rnh);
+
+    Fvv(3, 3) = -1/1000;
     F(4:6, 4:6) = Fvv;
+    
     % 速度与eb，db的关系
     F(4:6, 7:9) = skew(cbn * accel);
     F(4:6, 13:15) = cbn;
@@ -121,5 +124,7 @@ function kf = myInsPropagate_15state(navstate, thisimu, dt, kf)
 
     %% covariance and state propagation
     kf.P = PHI * kf.P * PHI' + Qd;
+    kf.Pk_k1 = kf.P;
     kf.x = PHI * kf.x;
+    kf.phi = PHI;
 end

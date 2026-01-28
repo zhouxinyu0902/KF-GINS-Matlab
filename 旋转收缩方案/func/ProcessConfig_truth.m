@@ -27,8 +27,10 @@ function cfg = ProcessConfig_truth(path)
         cfg.outputfolder ='旋转收缩方案/output7';
     elseif path(end)=='8'
         cfg.outputfolder ='旋转收缩方案/output8';
-    else
-        cfg.outputfolder ='旋转收缩方案/output';
+    elseif path(end)=='t'
+        cfg.outputfolder ='旋转收缩方案/output/outputnt';
+    elseif path(end)=='m'
+        cfg.outputfolder ='旋转收缩方案/output/outputpm';
     end
 
     cfg.imufilepath =[path,'/IMU_120.txt'];
@@ -45,6 +47,7 @@ function cfg = ProcessConfig_truth(path)
     % 选择计算时间段
     cfg.starttime = pva_830(1,2);
     cfg.endtime = pva_830(end,2);
+    % cfg.endtime = cfg.starttime + 5000;
     % 初始状态
 
     cfg.initpos =pva_830(1,3:5)'; % [deg, deg, m]

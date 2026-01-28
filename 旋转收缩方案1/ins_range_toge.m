@@ -11,7 +11,8 @@ feedback=1; % 是否反馈，不反馈则可以观察参数
 glvs
 %% 定义参数+加载过程配置
 param = Param();
-path='旋转收缩方案1/input6';
+path='旋转收缩方案1/input/input_nt';
+% path='旋转收缩方案1/input/input6';
 % dataget_truth
 cfg = ProcessConfigforSemiPhy_all(path);
 %% 加载数据
@@ -50,20 +51,20 @@ heightdata = height(id*100:id*100:end,:);
 heightstarttime = heightdata(1, 1);
 heightendtime = heightdata(end, 1);
 %%
-output_file  = ['D:\Github\KF-GINS-main\dataset_exper','\rangedata', '.txt'];
-try
-    writematrix(rangedata, output_file, 'Delimiter', ' ');
-    fprintf('信息已成功写入到 %s\n', output_file);
-catch ME
-    error('错误：写入文件失败。错误信息：%s', ME.message);
-end
-output_file  = ['D:\Github\KF-GINS-main\dataset_exper','\heightdata', '.txt'];
-try
-    writematrix(heightdata, output_file, 'Delimiter', ' ');
-    fprintf('信息已成功写入到 %s\n', output_file);
-catch ME
-    error('错误：写入文件失败。错误信息：%s', ME.message);
-end
+% output_file  = ['D:\Github\KF-GINS-main\dataset_exper','\rangedata', '.txt'];
+% try
+%     writematrix(rangedata, output_file, 'Delimiter', ' ');
+%     fprintf('信息已成功写入到 %s\n', output_file);
+% catch ME
+%     error('错误：写入文件失败。错误信息：%s', ME.message);
+% end
+% output_file  = ['D:\Github\KF-GINS-main\dataset_exper','\heightdata', '.txt'];
+% try
+%     writematrix(heightdata, output_file, 'Delimiter', ' ');
+%     fprintf('信息已成功写入到 %s\n', output_file);
+% catch ME
+%     error('错误：写入文件失败。错误信息：%s', ME.message);
+% end
 %% 获取处理时间，调整时间
 if imustarttime > heistarttime
     starttime = imustarttime;
@@ -104,7 +105,8 @@ xygo('经度/°','纬度/°')
 
 title('仿真信标及实测轨迹')
 %%
-for type = ["PureIns","EKF","AEKF"]
+% for type = ["PureIns","EKF","AEKF"]
+for type = "AEKF"
     if strcmp(type,'PureIns')
         cfg.userange=0;
         cfg.adap=0;
@@ -125,6 +127,10 @@ for type = ["PureIns","EKF","AEKF"]
         disp("PURE INS!");
         disp("Start INS Processing!");
     end
+    navdt1spath = [cfg.outputfolder,'/MEMS-EKFdt1s.nav']; %% 后向滤波
+    navdt1sfp = fopen(navdt1spath,'wt');
+    navdt1srotatepath = [cfg.outputfolder,'/MEMS-EKFdtrotate1s.nav']; %% 后向滤波
+    navdt1srotatefp = fopen(navdt1srotatepath,'wt');
     % max_interv = 42;
 
     navfp = fopen(navpath, 'wt');
@@ -222,80 +228,80 @@ for type = ["PureIns","EKF","AEKF"]
             imudt = thisimu(1, 1) - lastimu(1, 1);
             navstate = InsMech(laststate, lastimu, thisimu);
             kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
-
-            %% 反向推算
-            thisimu1 = imudata(imuindex-1, :)';
-            lastimu1 = imudata(imuindex, :)';
-            navstate_1 = navstate;
-            laststate_1 = navstate;
-
-            kf1 = kf;
-            ki = ki+1;
-
-            nav11(:,imuindex) = laststate_1.pos;
-            P_B_store(:,:,imuindex)=kf1.P(1:2,1:2);
-            indexrecord(ki) = imuindex;
-
-            for ii=indexrecord(ki)-1:-1:indexrecord(ki-1)
-                laststate_1 = InsMechBackward(navstate_1,lastimu1,thisimu1);
-                laststate_1.pos(3) = height(ii,2);
-                kf1 = myInsPropagate_15state(laststate_1, thisimu1, 0.01, kf1);
-                nav11(:,ii) = laststate_1.pos;
-                P_B_store(:,:,ii)=kf1.P(1:2,1:2);
-                lastimu1 = thisimu1;
-                thisimu1 = imudata(ii, :)';
-                navstate_1 = laststate_1;
-            end
-            %% 反向推算+滤波
-            thisimu2 = imudata(imuindex-1, :)';
-            lastimu2 = imudata(imuindex, :)';
-            navstate_2 = navstate;
-            laststate_2 = navstate;
-
-            kf2 = kf;
-            ki2 = ki2+1;
-
-            nav112(:,imuindex) = laststate_2.pos;
-            P_B_store2(:,:,imuindex)=kf2.P(1:2,1:2);
-            indexrecord2(ki2) = imuindex;
-            for ii = indexrecord2(ki2)-1:-1:indexrecord2(ki2-1)
-                if ii==indexrecord2(ki2-1)
-                    laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
-                    laststate_2.pos(3) = height(ii,2);
-                    % 反向滤波
-                    if rangeindex == 2
-                        Rangedata = zeros(1,6);
-                        Rangedata(4:6) = rangedata3(1,4:6);
-                        Rangedata(3) = caldot2dot(Rangedata(4:6),pos0');
-                    else
-                        Rangedata = rangedata(rangeindex-2,:);
-                    end
-                    depthdata = height(ii,1:2);
-                    kf2 = myRangeUpdate_adap(laststate_2, Rangedata, depthdata, kf2);
-                    [kf2, laststate_2] = myErrorFeedback_range(kf2, laststate_2);
-
-                    % if rangeindex>2 & abs(kf2.Z(1))-abs(z(rangeindex-2,1))>40
-                    %     break;
-                    % else
-                    %     nav11(:,ii-1) = laststate_1.pos;
-                    % end
-                    z_back(ki2-1,1) = kf2.Z(1);% 残差记录
-                    z_back(ki2-1,2) = kf2.Znew;
-                    z_back(ki2-1,3) = kf2.alpha;
-                    z_back(ki2-1,4) = kf2.d_squared ;
-                    z_back(ki2-1,5) = kf2.chi2_threshold ;
-                    z_back(ki2-1,6) = kf2.is_anomaly ;
-                else
-                    laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
-                    laststate_2.pos(3) = height(ii,2);
-                    kf2 = myInsPropagate_15state(laststate_2, thisimu2, 0.01, kf2);
-                end
-                lastimu2 = thisimu2;
-                thisimu2 = imudata(ii, :)';
-                navstate_2 = laststate_2;
-                nav112(:,ii) = laststate_2.pos;
-                P_B_store2(:,:,ii) = kf2.P(1:2,1:2);
-            end
+            backward_1s;
+            % %% 反向推算
+            % thisimu1 = imudata(imuindex-1, :)';
+            % lastimu1 = imudata(imuindex, :)';
+            % navstate_1 = navstate;
+            % laststate_1 = navstate;
+            % 
+            % kf1 = kf;
+            % ki = ki+1;
+            % 
+            % nav11(:,imuindex) = laststate_1.pos;
+            % P_B_store(:,:,imuindex)=kf1.P(1:2,1:2);
+            % indexrecord(ki) = imuindex;
+            % 
+            % for ii=indexrecord(ki)-1:-1:indexrecord(ki-1)
+            %     laststate_1 = InsMechBackward(navstate_1,lastimu1,thisimu1);
+            %     laststate_1.pos(3) = height(ii,2);
+            %     kf1 = myInsPropagate_15state(laststate_1, thisimu1, 0.01, kf1);
+            %     nav11(:,ii) = laststate_1.pos;
+            %     P_B_store(:,:,ii)=kf1.P(1:2,1:2);
+            %     lastimu1 = thisimu1;
+            %     thisimu1 = imudata(ii, :)';
+            %     navstate_1 = laststate_1;
+            % end
+            % %% 反向推算+滤波
+            % thisimu2 = imudata(imuindex-1, :)';
+            % lastimu2 = imudata(imuindex, :)';
+            % navstate_2 = navstate;
+            % laststate_2 = navstate;
+            % 
+            % kf2 = kf;
+            % ki2 = ki2+1;
+            % 
+            % nav112(:,imuindex) = laststate_2.pos;
+            % P_B_store2(:,:,imuindex)=kf2.P(1:2,1:2);
+            % indexrecord2(ki2) = imuindex;
+            % for ii = indexrecord2(ki2)-1:-1:indexrecord2(ki2-1)
+            %     if ii==indexrecord2(ki2-1)
+            %         laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
+            %         laststate_2.pos(3) = height(ii,2);
+            %         % 反向滤波
+            %         if rangeindex == 2
+            %             Rangedata = zeros(1,6);
+            %             Rangedata(4:6) = rangedata3(1,4:6);
+            %             Rangedata(3) = caldot2dot(Rangedata(4:6),pos0');
+            %         else
+            %             Rangedata = rangedata(rangeindex-2,:);
+            %         end
+            %         depthdata = height(ii,1:2);
+            %         kf2 = myRangeUpdate_adap(laststate_2, Rangedata, depthdata, kf2);
+            %         [kf2, laststate_2] = myErrorFeedback_range(kf2, laststate_2);
+            % 
+            %         % if rangeindex>2 & abs(kf2.Z(1))-abs(z(rangeindex-2,1))>40
+            %         %     break;
+            %         % else
+            %         %     nav11(:,ii-1) = laststate_1.pos;
+            %         % end
+            %         z_back(ki2-1,1) = kf2.Z(1);% 残差记录
+            %         z_back(ki2-1,2) = kf2.Znew;
+            %         z_back(ki2-1,3) = kf2.alpha;
+            %         z_back(ki2-1,4) = kf2.d_squared ;
+            %         z_back(ki2-1,5) = kf2.chi2_threshold ;
+            %         z_back(ki2-1,6) = kf2.is_anomaly ;
+            %     else
+            %         laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
+            %         laststate_2.pos(3) = height(ii,2);
+            %         kf2 = myInsPropagate_15state(laststate_2, thisimu2, 0.01, kf2);
+            %     end
+            %     lastimu2 = thisimu2;
+            %     thisimu2 = imudata(ii, :)';
+            %     navstate_2 = laststate_2;
+            %     nav112(:,ii) = laststate_2.pos;
+            %     P_B_store2(:,:,ii) = kf2.P(1:2,1:2);
+            % end
 
         elseif (lastimu(1, 1) < rangedata(rangeindex, 1) && thisimu(1, 1) > rangedata(rangeindex, 1))&& cfg.userange==1
             % 插值imu
@@ -343,79 +349,80 @@ for type = ["PureIns","EKF","AEKF"]
             navstate = InsMech(laststate, lastimu, secondimu);
             kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
 
+            backward_1s;
             %% 反向推算
-            thisimu1 = imudata(imuindex-1, :)';
-            lastimu1 = imudata(imuindex, :)';
-            navstate_1 = navstate;
-            laststate_1 = navstate;
-
-            kf1 = kf;
-            ki = ki+1;
-
-            nav11(:,imuindex) = laststate_1.pos;
-            P_B_store(:,:,imuindex)=kf1.P(1:2,1:2);
-            indexrecord(ki) = imuindex;
-
-            for ii=indexrecord(ki)-1:-1:indexrecord(ki-1)
-                laststate_1 = InsMechBackward(navstate_1,lastimu1,thisimu1);
-                laststate_1.pos(3) = height(ii,2);
-                kf1 = myInsPropagate_15state(laststate_1, thisimu1, 0.01, kf1);
-                nav11(:,ii) = laststate_1.pos;
-                P_B_store(:,:,ii)=kf1.P(1:2,1:2);
-                lastimu1 = thisimu1;
-                thisimu1 = imudata(ii, :)';
-                navstate_1 = laststate_1;
-            end
-            %% 反向推算+滤波
-            thisimu2 = imudata(imuindex-1, :)';
-            lastimu2 = imudata(imuindex, :)';
-            navstate_2 = navstate;
-            laststate_2 = navstate;
-
-            kf2 = kf;
-            ki2 = ki2+1;
-
-            nav112(:,imuindex) = laststate_2.pos;
-            P_B_store2(:,:,imuindex)=kf2.P(1:2,1:2);
-            indexrecord2(ki2) = imuindex;
-            for ii = indexrecord2(ki2)-1:-1:indexrecord2(ki2-1)
-                if ii==indexrecord2(ki2-1)
-                    laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
-                    laststate_2.pos(3) = height(ii,2);
-                    % 反向滤波
-                    if rangeindex == 2
-                        Rangedata = zeros(1,6);
-                        Rangedata(4:6) = rangedata3(1,4:6);
-                        Rangedata(3) = caldot2dot(Rangedata(4:6),pos0');
-                    else
-                        Rangedata = rangedata(rangeindex-2,:);
-                    end
-                    depthdata = height(ii,1:2);
-                    kf2 = myRangeUpdate_adap(laststate_2, Rangedata, depthdata, kf2);
-                    [kf2, laststate_2] = myErrorFeedback_range(kf2, laststate_2);
-
-                    % if rangeindex>2 & abs(kf2.Z(1))-abs(z(rangeindex-2,1))>40
-                    %     break;
-                    % else
-                    %     nav11(:,ii-1) = laststate_1.pos;
-                    % end
-                    z_back(ki2-1,1) = kf2.Z(1);% 残差记录
-                    z_back(ki2-1,2) = kf2.Znew;
-                    z_back(ki2-1,3) = kf2.alpha;
-                    z_back(ki2-1,4) = kf2.d_squared ;
-                    z_back(ki2-1,5) = kf2.chi2_threshold ;
-                    z_back(ki2-1,6) = kf2.is_anomaly ;
-                else
-                    laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
-                    laststate_2.pos(3) = height(ii,2);
-                    kf2 = myInsPropagate_15state(laststate_2, thisimu2, 0.01, kf2);
-                end
-                lastimu2 = thisimu2;
-                thisimu2 = imudata(ii, :)';
-                navstate_2 = laststate_2;
-                nav112(:,ii) = laststate_2.pos;
-                P_B_store2(:,:,ii) = kf2.P(1:2,1:2);
-            end
+            % thisimu1 = imudata(imuindex-1, :)';
+            % lastimu1 = imudata(imuindex, :)';
+            % navstate_1 = navstate;
+            % laststate_1 = navstate;
+            % 
+            % kf1 = kf;
+            % ki = ki+1;
+            % 
+            % nav11(:,imuindex) = laststate_1.pos;
+            % P_B_store(:,:,imuindex)=kf1.P(1:2,1:2);
+            % indexrecord(ki) = imuindex;
+            % 
+            % for ii=indexrecord(ki)-1:-1:indexrecord(ki-1)
+            %     laststate_1 = InsMechBackward(navstate_1,lastimu1,thisimu1);
+            %     laststate_1.pos(3) = height(ii,2);
+            %     kf1 = myInsPropagate_15state(laststate_1, thisimu1, 0.01, kf1);
+            %     nav11(:,ii) = laststate_1.pos;
+            %     P_B_store(:,:,ii)=kf1.P(1:2,1:2);
+            %     lastimu1 = thisimu1;
+            %     thisimu1 = imudata(ii, :)';
+            %     navstate_1 = laststate_1;
+            % end
+            % %% 反向推算+滤波
+            % thisimu2 = imudata(imuindex-1, :)';
+            % lastimu2 = imudata(imuindex, :)';
+            % navstate_2 = navstate;
+            % laststate_2 = navstate;
+            % 
+            % kf2 = kf;
+            % ki2 = ki2+1;
+            % 
+            % nav112(:,imuindex) = laststate_2.pos;
+            % P_B_store2(:,:,imuindex)=kf2.P(1:2,1:2);
+            % indexrecord2(ki2) = imuindex;
+            % for ii = indexrecord2(ki2)-1:-1:indexrecord2(ki2-1)
+            %     if ii==indexrecord2(ki2-1)
+            %         laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
+            %         laststate_2.pos(3) = height(ii,2);
+            %         % 反向滤波
+            %         if rangeindex == 2
+            %             Rangedata = zeros(1,6);
+            %             Rangedata(4:6) = rangedata3(1,4:6);
+            %             Rangedata(3) = caldot2dot(Rangedata(4:6),pos0');
+            %         else
+            %             Rangedata = rangedata(rangeindex-2,:);
+            %         end
+            %         depthdata = height(ii,1:2);
+            %         kf2 = myRangeUpdate_adap(laststate_2, Rangedata, depthdata, kf2);
+            %         [kf2, laststate_2] = myErrorFeedback_range(kf2, laststate_2);
+            % 
+            %         % if rangeindex>2 & abs(kf2.Z(1))-abs(z(rangeindex-2,1))>40
+            %         %     break;
+            %         % else
+            %         %     nav11(:,ii-1) = laststate_1.pos;
+            %         % end
+            %         z_back(ki2-1,1) = kf2.Z(1);% 残差记录
+            %         z_back(ki2-1,2) = kf2.Znew;
+            %         z_back(ki2-1,3) = kf2.alpha;
+            %         z_back(ki2-1,4) = kf2.d_squared ;
+            %         z_back(ki2-1,5) = kf2.chi2_threshold ;
+            %         z_back(ki2-1,6) = kf2.is_anomaly ;
+            %     else
+            %         laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
+            %         laststate_2.pos(3) = height(ii,2);
+            %         kf2 = myInsPropagate_15state(laststate_2, thisimu2, 0.01, kf2);
+            %     end
+            %     lastimu2 = thisimu2;
+            %     thisimu2 = imudata(ii, :)';
+            %     navstate_2 = laststate_2;
+            %     nav112(:,ii) = laststate_2.pos;
+            %     P_B_store2(:,:,ii) = kf2.P(1:2,1:2);
+            % end
         else
             % 5、only do propagation
             % INS mechanization
@@ -466,10 +473,10 @@ for type = ["PureIns","EKF","AEKF"]
         %
 
         % print processing information
-        % if (imuindex / size(imudata, 1) - lastprecent > 0.20)
-        %     disp("processing " + num2str(floor(imuindex * 100 / size(imudata, 1))) + " %!");
-        %     lastprecent = imuindex / size(imudata, 1);
-        % end
+        if (imuindex / size(imudata, 1) - lastprecent > 0.20)
+            disp("processing " + num2str(floor(imuindex * 100 / size(imudata, 1))) + " %!");
+            lastprecent = imuindex / size(imudata, 1);
+        end
         % check whether gnss data is valid
 
     end
@@ -485,128 +492,129 @@ for type = ["PureIns","EKF","AEKF"]
     %% 误差绘图
     calc_error(navpath,cfg.truthpath)
     %%
-    if cfg.adap==1
-        nav11(:,imuindex:end)=[];
-        nav112(:,imuindex:end)=[];
-        forward = importdata(navpath);%% 参考的位置
-        nav000 = [d2r(truth(1:imuindex-1,3:4)),truth(1:imuindex-1,5)]';
-        nav00 = [nav000(:,1),[d2r(forward(:,3:4)),forward(:,5)]'];
-        nav11(:,1) = nav000(:,1);
-        nav112(:,1) = nav000(:,1);
-        nav_rotatesum1(:,1) = nav000(:,1);
-        myfigurestartup(14,7,'paper')
-        for ki=2: size(rangedata,1)+1
-            % nav_rotate = rotateTrajectory(nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1),...
-            %     nav00(:,indexrecord(ki)));
-            trajectory = nav112(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
-            if ki==5
-                newstartPoint = nav00(:,indexrecord(ki-1));
-            else
-                newstartPoint = nav112(:,indexrecord(ki-1));
-            end
-            if ki==4
-                newEndPoint = nav00(:,indexrecord(ki));
-            else
-                newEndPoint = nav112(:,indexrecord(ki));
-            end
-            % if ki==2||ki==3
-            %     nav_rotate = nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
-            % else
-            trajectory = flip(trajectory,2);
-            [nav_rotate, ~, ~] = rotateAndScaleTrajectory(trajectory, newstartPoint);
-            trajectory = flip(trajectory,2);
-            nav_rotate = flip(nav_rotate,2);
-            [nav_rotate, ~, ~] = rotateAndScaleTrajectory(nav_rotate, newEndPoint);
-            % end
-            nav_rotatesum1(:,indexrecord(ki-1):indexrecord(ki)) = [newstartPoint,nav_rotate,newEndPoint];
-            subplot(4,4,ki-1)
-            plot(trajectory(2,:), ...
-                trajectory(1,:))
-            hold on
-            plot(newEndPoint(2),newEndPoint(1),'*')
-            plot(nav_rotate(2,1:end),nav_rotate(1,1:end))
-            plot(nav000(2,indexrecord(ki-1)+1:indexrecord(ki)-1), ...
-                nav000(1,indexrecord(ki-1)+1:indexrecord(ki)-1))
-            if ki==2
-                legend('backforward','dot','rotate','truth')
-            end
-        end
-        subplot(4,4,ki)
-        plot(nav_rotatesum1(2,:),nav_rotatesum1(1,:))
-        % 不加滤波
-
-        myfigurestartup(14,7,'paper')
-        for ki=2:size(rangedata,1)+1
-            % nav_rotate = rotateTrajectory(nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1),...
-            %     nav00(:,indexrecord(ki)));
-            trajectory = nav11(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
-            if ki==5
-                newstartPoint = nav00(:,indexrecord(ki-1));
-            else
-                newstartPoint = nav11(:,indexrecord(ki-1));
-            end
-            if ki==4
-                newEndPoint = nav00(:,indexrecord(ki));
-            else
-                newEndPoint = nav11(:,indexrecord(ki));
-            end
-            % if ki==2||ki==3
-            %     nav_rotate = nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
-            % else
-            trajectory = flip(trajectory,2);
-            [nav_rotate, ~, ~] = rotateAndScaleTrajectory(trajectory, newstartPoint);
-            trajectory = flip(trajectory,2);
-            nav_rotate = flip(nav_rotate,2);
-            [nav_rotate, ~, ~] = rotateAndScaleTrajectory(nav_rotate, newEndPoint);
-            % end
-            nav_rotatesum2(:,indexrecord(ki-1):indexrecord(ki)) = [newstartPoint,nav_rotate,newEndPoint];
-            subplot(4,4,ki-1)
-            plot(trajectory(2,:), ...
-                trajectory(1,:))
-            hold on
-            plot(newEndPoint(2),newEndPoint(1),'*')
-            plot(nav_rotate(2,1:end),nav_rotate(1,1:end))
-            plot(nav000(2,indexrecord(ki-1)+1:indexrecord(ki)-1), ...
-                nav000(1,indexrecord(ki-1)+1:indexrecord(ki)-1))
-            if ki==2
-                legend('backforward','dot','rotate','truth')
-            end
-        end
-        subplot(4,4,ki)
-        plot(nav_rotatesum1(2,:),nav_rotatesum1(1,:))
-
-        % 旋转缩放后向结果
-        nav_rotscale1=importdata(navpath);
-        nav_rotscale1(:,3:4)=r2d(nav_rotatesum1(1:2,2:end)');
-        output_file_rotateback  = [cfg.outputfolder,'/GTS-BRC-AEKF', '.txt'];
-        try
-            writematrix(nav_rotscale1, output_file_rotateback, 'Delimiter', ' ');
-            fprintf('nav_rotscale信息已成功写入到 %s\n', output_file_rotateback);
-        catch ME
-            error('错误：写入文件失败。错误信息：%s', ME.message);
-        end
-        %
-        % 旋转缩放后向结果（不加后向滤波-效果不好）
-        nav_rotscale1=importdata(navpath);
-        nav_rotscale1(:,3:4)=r2d(nav_rotatesum2(1:2,2:end)');
-        output_file_rotateback  = [cfg.outputfolder,'/GTS-BRC-1-AEKF', '.txt'];
-        try
-            writematrix(nav_rotscale1, output_file_rotateback, 'Delimiter', ' ');
-            fprintf('nav_rotscale信息已成功写入到 %s\n', output_file_rotateback);
-        catch ME
-            error('错误：写入文件失败。错误信息：%s', ME.message);
-        end
-        % 旋转缩放后向结果
-        nav_back=importdata(navpath);
-        nav_back(:,3:4)=r2d(nav112(1:2,2:end)');
-        output_file_back  = [cfg.outputfolder,'/BRC-AEKF', '.txt'];
-        try
-            writematrix(nav_back, output_file_back, 'Delimiter', ' ');
-            fprintf('nav_rotscale信息已成功写入到 %s\n', output_file_back);
-        catch ME
-            error('错误：写入文件失败。错误信息：%s', ME.message);
-        end
-    end
+    % if cfg.adap==1
+    %     nav11(:,imuindex:end)=[];
+    %     nav112(:,imuindex:end)=[];
+    %     forward = importdata(navpath);%% 参考的位置
+    %     nav000 = [d2r(truth(1:imuindex-1,3:4)),truth(1:imuindex-1,5)]';
+    %     nav00 = [nav000(:,1),[d2r(forward(:,3:4)),forward(:,5)]'];
+    %     nav11(:,1) = nav000(:,1);
+    %     nav112(:,1) = nav000(:,1);
+    %     nav_rotatesum1(:,1) = nav000(:,1);
+    %     % myfigurestartup(14,7,'paper')
+    %     for ki=2: size(rangedata,1)+1
+    %         % nav_rotate = rotateTrajectory(nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1),...
+    %         %     nav00(:,indexrecord(ki)));
+    %         trajectory = nav112(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
+    %         if ki==5
+    %             newstartPoint = nav00(:,indexrecord(ki-1));
+    %         else
+    %             newstartPoint = nav112(:,indexrecord(ki-1));
+    %         end
+    %         if ki==4
+    %             newEndPoint = nav00(:,indexrecord(ki));
+    %         else
+    %             newEndPoint = nav112(:,indexrecord(ki));
+    %         end
+    %         % if ki==2||ki==3
+    %         %     nav_rotate = nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
+    %         % else
+    %         trajectory = flip(trajectory,2);
+    %         [nav_rotate, ~, ~] = rotateAndScaleTrajectory(trajectory, newstartPoint);
+    %         trajectory = flip(trajectory,2);
+    %         nav_rotate = flip(nav_rotate,2);
+    %         [nav_rotate, ~, ~] = rotateAndScaleTrajectory(nav_rotate, newEndPoint);
+    %         % end
+    %         nav_rotatesum1(:,indexrecord(ki-1):indexrecord(ki)) = [newstartPoint,nav_rotate,newEndPoint];
+    %         % subplot(4,4,ki-1)
+    %         % plot(trajectory(2,:), ...
+    %         %     trajectory(1,:))
+    %         % hold on
+    %         % plot(newEndPoint(2),newEndPoint(1),'*')
+    %         % plot(nav_rotate(2,1:end),nav_rotate(1,1:end))
+    %         % plot(nav000(2,indexrecord(ki-1)+1:indexrecord(ki)-1), ...
+    %         %     nav000(1,indexrecord(ki-1)+1:indexrecord(ki)-1))
+    %         % if ki==2
+    %         %     legend('backforward','dot','rotate','truth')
+    %         % end
+    %     end
+    %     % subplot(4,4,ki)
+    %     % plot(nav_rotatesum1(2,:),nav_rotatesum1(1,:))
+    %     % 不加滤波
+    % 
+    %     % myfigurestartup(14,7,'paper')
+    %     for ki=2:size(rangedata,1)+1
+    %         % nav_rotate = rotateTrajectory(nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1),...
+    %         %     nav00(:,indexrecord(ki)));
+    %         trajectory = nav11(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
+    %         if ki==5
+    %             newstartPoint = nav00(:,indexrecord(ki-1));
+    %         else
+    %             newstartPoint = nav11(:,indexrecord(ki-1));
+    %         end
+    %         if ki==4
+    %             newEndPoint = nav00(:,indexrecord(ki));
+    %         else
+    %             newEndPoint = nav11(:,indexrecord(ki));
+    %         end
+    %         % if ki==2||ki==3
+    %         %     nav_rotate = nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
+    %         % else
+    %         trajectory = flip(trajectory,2);
+    %         [nav_rotate, ~, ~] = rotateAndScaleTrajectory(trajectory, newstartPoint);
+    %         trajectory = flip(trajectory,2);
+    %         nav_rotate = flip(nav_rotate,2);
+    %         [nav_rotate, ~, ~] = rotateAndScaleTrajectory(nav_rotate, newEndPoint);
+    %         % end
+    %         nav_rotatesum2(:,indexrecord(ki-1):indexrecord(ki)) = [newstartPoint,nav_rotate,newEndPoint];
+    % 
+    %         % subplot(4,4,ki-1)
+    %         % plot(trajectory(2,:), ...
+    %         %     trajectory(1,:))
+    %         % hold on
+    %         % plot(newEndPoint(2),newEndPoint(1),'*')
+    %         % plot(nav_rotate(2,1:end),nav_rotate(1,1:end))
+    %         % plot(nav000(2,indexrecord(ki-1)+1:indexrecord(ki)-1), ...
+    %         %     nav000(1,indexrecord(ki-1)+1:indexrecord(ki)-1))
+    %         % if ki==2
+    %         %     legend('backforward','dot','rotate','truth')
+    %         % end
+    %     end
+    %     % subplot(4,4,ki)
+    %     % plot(nav_rotatesum1(2,:),nav_rotatesum1(1,:))
+    % 
+    %     % 旋转缩放后向结果
+    %     nav_rotscale1=importdata(navpath);
+    %     nav_rotscale1(:,3:4)=r2d(nav_rotatesum1(1:2,2:end)');
+    %     output_file_rotateback  = [cfg.outputfolder,'/GTS-BRC-AEKF', '.txt'];
+    %     try
+    %         writematrix(nav_rotscale1, output_file_rotateback, 'Delimiter', ' ');
+    %         fprintf('nav_rotscale信息已成功写入到 %s\n', output_file_rotateback);
+    %     catch ME
+    %         error('错误：写入文件失败。错误信息：%s', ME.message);
+    %     end
+    %     %
+    %     % 旋转缩放后向结果（不加后向滤波-效果不好）
+    %     nav_rotscale1=importdata(navpath);
+    %     nav_rotscale1(:,3:4)=r2d(nav_rotatesum2(1:2,2:end)');
+    %     output_file_rotateback  = [cfg.outputfolder,'/GTS-BRC-1-AEKF', '.txt'];
+    %     try
+    %         writematrix(nav_rotscale1, output_file_rotateback, 'Delimiter', ' ');
+    %         fprintf('nav_rotscale信息已成功写入到 %s\n', output_file_rotateback);
+    %     catch ME
+    %         error('错误：写入文件失败。错误信息：%s', ME.message);
+    %     end
+    %     % 旋转缩放后向结果
+    %     nav_back=importdata(navpath);
+    %     nav_back(:,3:4)=r2d(nav112(1:2,2:end)');
+    %     output_file_back  = [cfg.outputfolder,'/BRC-AEKF', '.txt'];
+    %     try
+    %         writematrix(nav_back, output_file_back, 'Delimiter', ' ');
+    %         fprintf('nav_rotscale信息已成功写入到 %s\n', output_file_back);
+    %     catch ME
+    %         error('错误：写入文件失败。错误信息：%s', ME.message);
+    %     end
+    % end
     % close all
 end
 %%
@@ -615,8 +623,13 @@ path_AEKF=[cfg.outputfolder,'/AEKF.nav'];
 path_BRC_AEKF=[cfg.outputfolder,'/BRC-AEKF.txt'];
 path_GTS_BRC_AEKF=[cfg.outputfolder,'/GTS-BRC-AEKF.txt'];
 path_GTS_BRC_AEKF_1=[cfg.outputfolder,'/GTS-BRC-1-AEKF.txt'];
+%%
+calc_radial_error(cfg.truthpath,path_AEKF,navdt1spath,navdt1srotatepath)
+%%
+
 myfigurestartup(7,3,'paper')
-calc_radial_error(cfg.truthpath,path_EKF,path_AEKF,path_BRC_AEKF,path_GTS_BRC_AEKF,path_GTS_BRC_AEKF_1)
+% calc_radial_error(cfg.truthpath,path_EKF,path_AEKF,path_BRC_AEKF,path_GTS_BRC_AEKF,path_GTS_BRC_AEKF_1)
+calc_radial_error(cfg.truthpath,path_AEKF,path_BRC_AEKF,path_GTS_BRC_AEKF,path_GTS_BRC_AEKF_1)
 hold on
 plot(xlim,[400,400],'DisplayName','400m界限')
 ylim([0 600])

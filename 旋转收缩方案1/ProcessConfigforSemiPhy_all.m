@@ -17,23 +17,25 @@ function cfg = ProcessConfigforSemiPhy_all(path)
     cfg.rangefile2path = [path,'/range2.txt'];
     cfg.rangefile3path = [path,'/range3.txt'];
     if path(end)=='1'
-        cfg.outputfolder ='旋转收缩方案1/output1';
+        cfg.outputfolder ='旋转收缩方案1/output/output1';
     elseif path(end)=='2'
-        cfg.outputfolder ='旋转收缩方案1/output2';
+        cfg.outputfolder ='旋转收缩方案1/output/output2';
     elseif path(end)=='3'
-        cfg.outputfolder ='旋转收缩方案1/output3';
+        cfg.outputfolder ='旋转收缩方案1/output/output3';
     elseif path(end)=='4'
-        cfg.outputfolder ='旋转收缩方案1/output4';
+        cfg.outputfolder ='旋转收缩方案1/output/output4';
     elseif path(end)=='5'
-        cfg.outputfolder ='旋转收缩方案1/output5';
+        cfg.outputfolder ='旋转收缩方案1/output/output5';
     elseif path(end)=='6'
-        cfg.outputfolder ='旋转收缩方案1/output6';
+        cfg.outputfolder ='旋转收缩方案1/output/output6';
     elseif path(end)=='7'
-        cfg.outputfolder ='旋转收缩方案1/output7';
+        cfg.outputfolder ='旋转收缩方案1/output/output7';
     elseif path(end)=='8'
-        cfg.outputfolder ='旋转收缩方案1/output8';
-    else
-        cfg.outputfolder ='旋转收缩方案1/output';
+        cfg.outputfolder ='旋转收缩方案1/output/output8';
+    elseif path(end)=='m'
+        cfg.outputfolder ='旋转收缩方案1/output/outputpm';
+    elseif path(end)=='t'
+        cfg.outputfolder ='旋转收缩方案1/output/outputnt';
     end
     % cfg.truthpath='旋转收缩方案/input/truth_inte.txt';
     cfg.truthpath=[path,'/truth.nav'];
@@ -48,7 +50,7 @@ function cfg = ProcessConfigforSemiPhy_all(path)
     % 选择计算时间段
     cfg.starttime = pva_830(1,2);
     % cfg.endtime = pva_830(end,2);
-    cfg.endtime = pva_830(1,2)+5000;
+    cfg.endtime = pva_830(1,2)+1300;
     % 初始状态
 
     cfg.initpos =pva_830(1,3:5)'; % [deg, deg, m]

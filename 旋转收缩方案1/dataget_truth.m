@@ -1,13 +1,15 @@
 %% 用于生成标准参考
-% clear;
+clear;
 %% 定义全局参数
 rng(1)
 feedback = 1; % 是否反馈，不反馈则可以观察参数
 glvs
 %% 定义参数+加载过程配置
 param = Param();
-path='旋转收缩方案1/input/input1';
-cfg = ProcessConfigforSemiPhy_all(path);
+% path='旋转收缩方案1/input/input_nt';
+path='旋转收缩方案1/input/input2';
+% cfg = ProcessConfigforSemiPhy_all(path);
+cfg = ProcessConfig_truth(path);
 %% 加载数据
 % imudata
 imudata = importdata(cfg.imufilepath);
@@ -16,7 +18,8 @@ imuendtime = imudata(end, 1);
 
 % gnss data
 gnssdata = importdata(cfg.gnssfilepath);
-gnssdata=gnssdata(:,2:5);
+
+gnssdata = gnssdata(:,2:5);
 gnssdata(:, 2:3) = gnssdata(:, 2:3) * param.D2R;
 if (size(gnssdata, 2) < 13)
     cfg.usegnssvel = false;
@@ -27,7 +30,7 @@ gnssendtime = gnssdata(end, 1);
 % height data
 truth = importdata(cfg.gnssfilepath);
 height = truth(:,[2,5]);
-
+heightv = truth(:,[2,8]);
 heistarttime = height(1, 1);
 heitendtime = height(end, 1);
 
@@ -127,6 +130,7 @@ for imuindex = 2:size(imudata, 1)
         imudt = thisimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, thisimu);
         navstate.pos(3) = height(imuindex,2);
+        navstate.vel(3) = heightv(imuindex,2);
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
     elseif (lastimu(1, 1) < gnssdata(gnssindex, 1) && thisimu(1, 1) > gnssdata(gnssindex, 1))
         % ineterpolate imu to gnss time
@@ -151,12 +155,15 @@ for imuindex = 2:size(imudata, 1)
         % do propagation for second imu
         imudt = secondimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, secondimu);
+        navstate.pos(3) = height(imuindex,2);
+        navstate.vel(3) = heightv(imuindex,2);
         kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
     else
         %% only do propagation
         % INS mechanization
         navstate = InsMech(laststate, lastimu, thisimu);
         navstate.pos(3) = height(imuindex,2);
+        navstate.vel(3) = heightv(imuindex,2);
         % error propagation
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
     end

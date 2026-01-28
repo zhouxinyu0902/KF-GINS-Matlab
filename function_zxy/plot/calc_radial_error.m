@@ -85,13 +85,13 @@ function calc_radial_error(truthpath, varargin)
     for i=1:num_tests
         index0=find(abs(all_times{i}-selectstart)<0.01);
         indexend=find(abs(all_times{i}-selectend)<0.01);
-        all_errors{i} = all_errors{i} (index0:indexend);
-        radial_errors{i} = radial_errors{i} (index0:indexend);
-        all_times{i} = all_times{i} (index0:indexend);
+        all_errors{i} = all_errors{i} (index0(1):indexend(1));
+        radial_errors{i} = radial_errors{i} (index0(1):indexend(1));
+        all_times{i} = all_times{i} (index0(1):indexend(1));
         all_times{i} = all_times{i} -all_times{i} (1);
     end
     %% 绘制径向误差对比图
-    % myfigurestartup(12,5,'prese')
+    myfigurestartup(12,5,'prese')
     
     % 主图：径向误差时间序列
     % subplot(2, 1, 1);
