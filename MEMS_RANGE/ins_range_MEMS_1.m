@@ -13,43 +13,29 @@ param = Param();
 path='D:\Github\KF-GINS-Matlab\MEMS_RANGE\data_830_430_2';
 cfg = ProcessConfig_MEMS_exper(path);
 type = {"single","moving","3","2"};
-beacontype = type{1};
+beacontype = type{2};
 
 isoptim = 1; % 是否
-expand = 100;
-
-backwardIsOpen = 0; % 是否反向推算
-dt = 10;
+expand = 1;
 
 backwardIsOpen_1s = 0;
 
 feedback = 1; % 是否反馈，不反馈则可以观察参数
 
-smoothIsOpen = 0; % 是否平滑
-dot = 6000;
-
 RTSIsOpen = 0; % 是否RTS平滑
-%% 
 
-% IMU_120 = importdata([path,'\input\IMU_120.txt']);
-% IMU_830 = importdata([path,'\input\imu_830.txt']);
-% plot_imu_frd(IMU_120)
-% plot_imu_frd(IMU_830)
-%% 三信标
-% get3beacons(path)
-%% 单信标
-% poss=[5000,1000,0;
-%     5000,4000,0;
-%     5000,7000,0;
-%     5000,9000,0;
-%     -2000,1000,0;
-%     -2000,4000,0;
-%     -2000,7000,0;
-%     -2000,9000,0;];
-
-% get1beacon(path,[-2000,4000,0])
+IsHardConstrain = 0; MaxLimit = 50;
+%%
+% get1beacon(path,[-4000,6000,0])
+%%
+if backwardIsOpen_1s == 1
+    ki2=1;
+    indexrecord2(1) = 1;
+    navdt1s = [];
+    NAV = [];
+end
 %% 移动信标
-% getmovingbeacon(path,'plan')
+getmovingbeacon(path,'follow')
 % close all
 %% 加载数据
 % imudata
@@ -82,7 +68,7 @@ elseif beacontype=="moving"
     rangedata = range{5};
 end
 
-% rangedata(1,:)=[];
+
 rangedata(:,3) = rangedata(:,3) + normrnd(0,rangstd,size(rangedata(:,3)));
 rangestarttime = rangedata(1, 1);
 rangeendtime = rangedata(end, 1);
@@ -94,25 +80,6 @@ height = truth(:,[2,5]);
 height(:,2) = height(:,2) + normrnd(0,depstd,size(height(:,2)));
 heistarttime = height(1, 1);
 heitendtime = height(end, 1);
-heightdata = height(id*100:id*100:end,:);
-
-heightstarttime = heightdata(1, 1);
-heightendtime = heightdata(end, 1);
-%%
-% output_file  = ['D:\Github\KF-GINS-main\dataset_exper','\rangedata', '.txt'];
-% try
-%     writematrix(rangedata, output_file, 'Delimiter', ' ');
-%     fprintf('信息已成功写入到 %s\n', output_file);
-% catch ME
-%     error('错误：写入文件失败。错误信息：%s', ME.message);
-% end
-% output_file  = ['D:\Github\KF-GINS-main\dataset_exper','\heightdata', '.txt'];
-% try
-%     writematrix(heightdata, output_file, 'Delimiter', ' ');
-%     fprintf('信息已成功写入到 %s\n', output_file);
-% catch ME
-%     error('错误：写入文件失败。错误信息：%s', ME.message);
-% end
 %% 获取处理时间，调整时间
 if imustarttime > heistarttime
     starttime = imustarttime;
@@ -132,43 +99,15 @@ if cfg.endtime > endtime
 end
 % data in process interval
 
-% imudata = imudata(1:2:end,:);
-% heightdata = heightdata(1:2:end,:);
-
 imudata = imudata(imudata(:,1) >= cfg.starttime, :);
 imudata = imudata(imudata(:,1) <= cfg.endtime, :);
+
 rangedata = rangedata(rangedata(:, 1) >= cfg.starttime, :);
 rangedata = rangedata(rangedata(:, 1) <= cfg.endtime, :);
-% rangedata(length(rangedata)+1,:)=zeros(1,6);
+
 height = height(height(:, 1) >= cfg.starttime, :);
 height = height(height(:, 1) <= cfg.endtime, :);
 
-heightdata = heightdata(heightdata(:, 1) >= cfg.starttime, :);
-heightdata = heightdata(heightdata(:, 1) <= cfg.endtime, :);
-%% 绘制真实pva
-% plot_result(cfg.truthpath)
-% output_file  = [path,'\truth_600s', '.txt'];
-% writematrix(truth(1:length(imudata),:), output_file, 'Delimiter', ' ');
-% fprintf('信息已成功写入到 %s\n', output_file);
-% plot_result(output_file)
-%% 画信标图
-% myfigurestartup(5,5,'prese')
-% plot(truth(:,4),truth(:,3),'DisplayName','轨迹')
-% hold on
-% plot(truth(1,4),truth(1,3),'*','DisplayName','起点')
-% marker=[">","hexagram","pentagram"];
-% if beacontype=="3"
-%     for i=1:3
-%         plot(rangedata(i,5)/pi*180,rangedata(i,4)/pi*180,marker(i),'DisplayName',sprintf('信标%d',i))
-%     end
-% elseif beacontype=="single" % 静止信标
-%     plot(rangedata(1,5)/pi*180,rangedata(1,4)/pi*180,marker(1),'DisplayName','信标')
-% elseif beacontype=="moving"
-%     plot(r2d(rangedata(:,5)),r2d(rangedata(:,4)),'DisplayName','信标')
-% end
-% xygo('经度/°','纬度/°')
-% title('信标及轨迹')
-% legend
 %%
 % for type = ["PureIns","EKF","AEKF"]
 for type ="EKF"
@@ -195,15 +134,6 @@ for type ="EKF"
     % max_interv = 42;
     navfp = fopen(navpath, 'wt');
 
-    if backwardIsOpen == 1
-        navdtpath = [cfg.outputfolder,'/MEMS-EKFdt.nav']; %% 后向推算
-        navbfpath = [cfg.outputfolder,'/MEMS-EKFdt-bf.nav']; %% 前后向滤波按权重分配
-        navbbpath = [cfg.outputfolder,'/MEMS-EKFdt-bb.nav']; %% 后向滤波
-
-        navdtfp = fopen(navdtpath,'wt');
-        navbffp = fopen(navbfpath,'wt');
-        navbbfp = fopen(navbbpath,'wt');
-    end
     if backwardIsOpen_1s == 1
         navdt1spath = [cfg.outputfolder,'/MEMS-EKFdt1s.nav']; %% 后向滤波
         navdt1sfp = fopen(navdt1spath,'wt');
@@ -227,39 +157,13 @@ for type ="EKF"
 
     %% 调试
     lastprecent = 0;
-    %% 用于对比几类改进方法的参数
-    ki=1;
-    ki2=1;
-    indexrecord=zeros(1,12);
-    indexrecord2=zeros(1,12);
-    z=zeros(11,6);
-    indexrecord(1) = 1;
-    indexrecord2(1) = 1;
-
-    % === 前向滤波结果 (FFR) ===
-    % 存储协方差矩阵 (3D 矩阵)
-
-    P_F_store = zeros(2, 2, 463555);
-
-    % === 后向滤波结果 (BFR) ===
-    % 存储状态估计
-    nav11 = zeros(3, 463555);
-    nav112 = zeros(3, 463555);
-    navforward = zeros(463555,11);
-    navforwardsmooth = zeros(463555,11);
-    % 存储协方差矩阵 (3D 矩阵)
-    P_B_store = zeros(2, 2, 463555);
-    P_B_store2 = zeros(2, 2, 463555);
-    P_B_store60 = zeros(2, 2, 463555);
-
-    k_old = 1;
     %% initialization
     [kf, navstate] = myInitialize_15state(cfg);
     % kf.Qc = kf.Qc * 5;
     % kf.P0 = 10 * kf.P;
 
     kf.Qc = kf.Qc * 100;
-    kf.P0 = kf.P * 100;
+    % kf.P0 = kf.P * 100;
     laststate = navstate;
     pos0 = navstate.pos;
     vel0 = navstate.vel;
@@ -267,8 +171,10 @@ for type ="EKF"
     lastimu = imudata(1, :)';
     thisimu = imudata(1, :)';
     imudt = thisimu(1, 1) - lastimu(1, 1);
-    dtheta=zeros(3,1);
-    dv=zeros(3,1);
+
+    dtheta = zeros(3,1);
+    dv = zeros(3,1);
+
     rangeindex = 1;
     while rangedata(rangeindex, 1) < thisimu(1, 1)
         rangeindex = rangeindex + 1;
@@ -281,24 +187,15 @@ for type ="EKF"
         %% 1、set value of last state
         lastimu = thisimu;
         laststate = navstate;
+        old_state = navstate;
         thisimu = imudata(imuindex, :)';
-        imudt = thisimu(1, 1) - lastimu(1, 1);
-
-        % thisimu(2:4) = thisimu(2:4) + 0.00001;
-        % thisimu(5:7) = thisimu(5:7) + 0.0001;
+        imudt = thisimu(1, 1) - lastimu(1, 1); 
 
         %% 2、compensate IMU error
-        % thisimu(2:4, 1) = (thisimu(2:4, 1) - imudt * navstate.gyrbias)./(ones(3, 1) + navstate.gyrscale);
-        % thisimu(5:7, 1) = (thisimu(5:7, 1) - imudt * navstate.accbias)./(ones(3, 1) + navstate.accscale);
-        % eb=0.2;
-        % db=100;
-        % cfg.initgyrbiasstd = [eb; eb; eb]; % [deg/h]
-        % cfg.initaccbiasstd = [db; db; db]; % [mGal]
-        % navstate.gyrbias = cfg.initgyrbiasstd * param.D2R / 3600;
-        % navstate.accbias = cfg.initaccbiasstd * 1e-5;
+        thisimu(2:4, 1) = (thisimu(2:4, 1) - imudt * cfg.initgyrbiasstd);
+        thisimu(5:7, 1) = (thisimu(5:7, 1) - imudt * cfg.initaccbiasstd);
         % thisimu(2:4, 1) = (thisimu(2:4, 1) - imudt * navstate.gyrbias);
         % thisimu(5:7, 1) = (thisimu(5:7, 1) - imudt * navstate.accbias);
-
         %% 3、adjust range index
         while (rangeindex <= size(rangedata, 1) && rangedata(rangeindex, 1) < lastimu(1, 1))
             rangeindex = rangeindex + 1;
@@ -314,9 +211,6 @@ for type ="EKF"
             Rangedata = rangedata(rangeindex,:);
             depthdata = height(imuindex,1:2);
 
-            thisimu(2:4, 1) = (thisimu(2:4, 1) - imudt * cfg.initgyrbiasstd);
-            thisimu(5:7, 1) = (thisimu(5:7, 1) - imudt * cfg.initaccbiasstd);
-
             if isoptim == 1
                 optimize_imu;
             end
@@ -328,174 +222,102 @@ for type ="EKF"
             end
             rangeindex = rangeindex + 1;
 
-            P_seq(:, :, imuindex-1) = kf.P;
-            P_pred_seq(:, :, imuindex-1) = kf.Pk_k1;
+            if IsHardConstrain == 1
+                % hard_constrain;
+                kf = hard_constrain(navstate,imudt,kf,MaxLimit);
+            end
 
             if feedback==1
                 [kf, navstate] = myErrorFeedback_range(kf, navstate);
-                % [kf, navstate] = myErrorFeedback_range_posonly(kf, navstate);
             end
             laststate = navstate;
-
 
             % 惯导推算
             imudt = thisimu(1, 1) - lastimu(1, 1);
             navstate = InsMech(laststate, lastimu, thisimu);
-            kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
-
-            pos0 = navstate.pos;
-            vel0 = navstate.vel;
-
-            IsRangeUpdate = 1;
+            kf = myInsPropagate_15state_NED(navstate, thisimu, imudt, kf);
 
             if backwardIsOpen_1s == 1
-                backward_1s;
+                [NAV,navdt1s,indexrecord2,ki2] = backward_1s(imudata,imuindex,ki2,kf,navstate,indexrecord2,rangedata,navdt1s,NAV,height,rangeindex,pos0);
             end
-
-
+            pos0 = navstate.pos;
+            vel0 = navstate.vel;
+            IsRangeUpdate = 1;
         elseif (lastimu(1, 1) < rangedata(rangeindex, 1) && thisimu(1, 1) > rangedata(rangeindex, 1))&& cfg.userange==1
-
             Rangedata = rangedata(rangeindex,:);
             depthdata = [height(imuindex,1),height(imuindex,2)];
-
-            thisimu(2:4, 1) = (thisimu(2:4, 1) - imudt * cfg.initgyrbiasstd);
-            thisimu(5:7, 1) = (thisimu(5:7, 1) - imudt * cfg.initaccbiasstd);
 
             if isoptim == 1
                 optimize_imu;
             end
-
 
             % 插值imu
             [firstimu, secondimu] = interpolate(lastimu, thisimu, rangedata(rangeindex, 1));
             % 惯导推算
             imudt = firstimu(1, 1) - lastimu(1, 1);
             navstate = InsMech(laststate, lastimu, firstimu);
-            kf = myInsPropagate_15state(navstate, firstimu, imudt, kf);
+            kf = myInsPropagate_15state_NED(navstate, firstimu, imudt, kf);
+
             % 测量更新
             if cfg.adap==1
                 kf = myRangeUpdate_adap(navstate, Rangedata, depthdata, kf);
             else
                 kf = myRangeUpdate(navstate, Rangedata, depthdata, kf);
             end
-            P_seq(:, :, imuindex-1) = kf.P;
-            P_pred_seq(:, :, imuindex-1) = kf.Pk_k1;
+
+
+            if IsHardConstrain == 1
+                % hard_constrain;
+                kf = hard_constrain(navstate,imudt,kf,MaxLimit);
+            end
+
             if feedback==1
                 [kf, navstate] = myErrorFeedback_range(kf, navstate);
-                % [kf, navstate] = myErrorFeedback_range_posonly(kf, navstate);
             end
 
             rangeindex = rangeindex + 1;
             laststate = navstate;
             lastimu = firstimu;
+
             % do propagation for second imu
             imudt = secondimu(1, 1) - lastimu(1, 1);
             navstate = InsMech(laststate, lastimu, secondimu);
-            kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
+            kf = myInsPropagate_15state_NED(navstate, secondimu, imudt, kf);
+
+            if backwardIsOpen_1s == 1
+                [NAV,navdt1s,indexrecord2,ki2]=backward_1s(imudata,imuindex,ki2,kf,navstate,indexrecord2,rangedata,navdt1s,NAV,height,rangeindex,pos0);
+            end
 
             pos0 = navstate.pos;
             vel0 = navstate.vel;
-
             IsRangeUpdate=1;
-
-            if backwardIsOpen_1s == 1
-                backward_1s;
-            end
-
-
-            % % 残差记录
-            % z(rangeindex,1) =kf.Z(1);
-            % z(rangeindex,2) =kf.Znew;
-            % z(rangeindex,3) =kf.alpha;
-            % z(rangeindex,4) =kf.d_squared ;
-            % z(rangeindex,5) =kf.chi2_threshold ;
-            % z(rangeindex,6) =kf.is_anomaly ;
         else
             % 5、only do propagation
-            % INS mechanization
-            thisimu(2:4, 1) = (thisimu(2:4, 1) - imudt * cfg.initgyrbiasstd);
-            thisimu(5:7, 1) = (thisimu(5:7, 1) - imudt * cfg.initaccbiasstd);
             thisimu(2:4, 1) = (thisimu(2:4, 1) + dtheta );
             thisimu(5:7, 1) = (thisimu(5:7, 1) + dv );
 
             navstate = InsMech(laststate, lastimu, thisimu);
-
-            % if  imuindex==2
-            %     vel_1s = 0;
-            % elseif mod(imuindex-2,100) == 0
-            %     vel_1s = -(height(imuindex,2)-height(imuindex-100,2));
-            %     navstate.vel(3) = vel_1s;
-            % end
-            % navstate.vel(3) = vel_1s;
-
             navstate.pos(3) = height(imuindex,2) ; % 天向位置约束
             % error propagation
-            kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
-
-            P_seq(:, :, imuindex-1) = kf.P;
-            P_pred_seq(:, :, imuindex-1) = kf.Pk_k1;
-            IsRangeUpdate=0;
+            kf = myInsPropagate_15state_NED(navstate, thisimu, imudt, kf);
         end
 
+        dxx(imuindex) = (old_state.pos(1)-navstate.pos(1))*glv.Re;
+        dyy(imuindex) = (old_state.pos(2)-navstate.pos(2))*glv.Re;
+
+
         % 6、save data
-        % xkk(imuindex-1,:)=[navstate.time;kf.x];
-        % write navresult to file
-        P_F_store(:,:,imuindex-1)=kf.P(1:2,1:2);
         nav = zeros(11, 1);
         nav(2, 1) = navstate.time;
         nav(3:5, 1) = [navstate.pos(1) * param.R2D; navstate.pos(2) * param.R2D; navstate.pos(3)];
         nav(6:8, 1) = navstate.vel;
         nav(9:11, 1) = navstate.att * param.R2D;
-
-        navforward(imuindex-1,:) = nav;
-        navforwardsmooth(imuindex-1,:) = nav;
-
-        if smoothIsOpen==1
-            if mod(imuindex-1, dot) == 0
-                idx = (imuindex-dot+1) : (imuindex-1);
-                navforwardsmooth(idx,3) = smooth(navforward(idx,3), 0.4, 'loess');
-                navforwardsmooth(idx,4) = smooth(navforward(idx,4), 0.4, 'loess');
-            end
-        end
-
+        nav_record(imuindex-1,:) = nav;
         fprintf(navfp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav);
-        % 数据保存 保存下协方差矩阵和PHI
-        k = imuindex - 1;
-        Xnav_seq(k, :) = [navstate.time;navstate.pos; navstate.vel; navstate.att];
-        % P_seq(:, :, k) = kf.P;
-        % P_pred_seq(:, :, k) = kf.Pk_k1;
-        Phi_seq(:, :, k) = kf.phi;
 
-        % 反向推算MEMS
-        if backwardIsOpen==1
-            if rangeindex~=1 && mod(imuindex, dt*100)==1
-                backward_60s;
-            end
-        end
 
-        if RTSIsOpen==1
-            % --- 触发 RTS 平滑 (仅在有更新或特定时间点) ---
-            if IsRangeUpdate == 1
-                k_end = imuindex - 1;
-                index = k_old:k_end;
-                current_P      = P_seq(:, :, index);
-                current_P_pred = P_pred_seq(:, :, index);
-                current_Phi    = Phi_seq(:, :, index);
-                dx_smooth = RunRtsBackward(current_P, current_P_pred, current_Phi);
-
-                Xnav_seq(index, 2:4) = Xnav_seq(index, 2:4) + dx_smooth(1:3, :)';
-                Xnav_seq(index, 5:7) = Xnav_seq(index, 5:7) + dx_smooth(5:7, :)';
-
-                nav_RTS=[zeros(size(Time_seq(index))),Xnav_seq(index,1),Xnav_seq(index,2:3)* param.R2D,...
-                    Xnav_seq(index,4),Xnav_seq(index,5:7),Xnav_seq(index,8:10) * param.R2D];
-
-                fprintf(navRTSfp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav_RTS');
-
-                k_old = k_end + 1;
-            end
-        end
         % 保存估计的状态值
-        if feedback==0
+        if feedback == 0
             xk = zeros(16, 1);
             xk(1) = navstate.time;
             xk(2:16) = kf.x(1:15);
@@ -530,183 +352,44 @@ for type ="EKF"
             lastprecent = imuindex / size(imudata, 1);
         end
         % check whether gnss data is valid
-
     end
-    if smoothIsOpen==1
-        lastIdxStart = floor((imuindex-1)/dot)*dot + 1;
-        if lastIdxStart < imuindex-2
-            idx = lastIdxStart : (imuindex-2);
-            navforwardsmooth(idx,3) = smooth(navforward(idx,3), 0.4, 'loess');
-            navforwardsmooth(idx,4) = smooth(navforward(idx,4), 0.4, 'loess');
-        end
-    end
-    % close file
-    fclose(navfp);
-    if feedback==0
-        fclose(xkfp);
-    end
-    % fclose(imuerrfp);
-    % fclose(stdfp);
-    disp("range/INS Integration Processing Finished!");
-
-    nav11(:,imuindex:end)=[];
-    nav112(:,imuindex:end)=[];
-    navforwardsmooth(imuindex-1:end,:)=[];
-    navforward(imuindex:end,:)=[];
-    %% 误差绘图
-    % calc_error(navpath,cfg.truthpath)
-    % %%
-
-    % if cfg.adap==1
-    %
-    %     forward = importdata(navpath);%% 参考的位置
-    %     nav000 = [d2r(truth(1:imuindex-1,3:4)),truth(1:imuindex-1,5)]';
-    %     nav00 = [nav000(:,1),[d2r(forward(:,3:4)),forward(:,5)]'];
-    %     nav11(:,1) = nav000(:,1);
-    %     nav112(:,1) = nav000(:,1);
-    %     nav_rotatesum1(:,1) = nav000(:,1);
-    %     myfigurestartup(14,7,'paper')
-    %     for ki=2: size(rangedata,1)+1
-    %         % nav_rotate = rotateTrajectory(nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1),...
-    %         %     nav00(:,indexrecord(ki)));
-    %         trajectory = nav112(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
-    %         if ki==5
-    %             newstartPoint = nav00(:,indexrecord(ki-1));
-    %         else
-    %             newstartPoint = nav112(:,indexrecord(ki-1));
-    %         end
-    %         if ki==4
-    %             newEndPoint = nav00(:,indexrecord(ki));
-    %         else
-    %             newEndPoint = nav112(:,indexrecord(ki));
-    %         end
-    %         % if ki==2||ki==3
-    %         %     nav_rotate = nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
-    %         % else
-    %         trajectory = flip(trajectory,2);
-    %         [nav_rotate, ~, ~] = rotateAndScaleTrajectory(trajectory, newstartPoint);
-    %         trajectory = flip(trajectory,2);
-    %         nav_rotate = flip(nav_rotate,2);
-    %         [nav_rotate, ~, ~] = rotateAndScaleTrajectory(nav_rotate, newEndPoint);
-    %         % end
-    %         nav_rotatesum1(:,indexrecord(ki-1):indexrecord(ki)) = [newstartPoint,nav_rotate,newEndPoint];
-    %         subplot(4,4,ki-1)
-    %         plot(trajectory(2,:), ...
-    %             trajectory(1,:))
-    %         hold on
-    %         plot(newEndPoint(2),newEndPoint(1),'*')
-    %         plot(nav_rotate(2,1:end),nav_rotate(1,1:end))
-    %         plot(nav000(2,indexrecord(ki-1)+1:indexrecord(ki)-1), ...
-    %             nav000(1,indexrecord(ki-1)+1:indexrecord(ki)-1))
-    %         if ki==2
-    %             legend('backforward','dot','rotate','truth')
-    %         end
-    %     end
-    %     subplot(4,4,ki)
-    %     plot(nav_rotatesum1(2,:),nav_rotatesum1(1,:))
-    %     % 不加滤波
-    %
-    %     myfigurestartup(14,7,'paper')
-    %     for ki=2:size(rangedata,1)+1
-    %         % nav_rotate = rotateTrajectory(nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1),...
-    %         %     nav00(:,indexrecord(ki)));
-    %         trajectory = nav11(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
-    %         if ki==5
-    %             newstartPoint = nav00(:,indexrecord(ki-1));
-    %         else
-    %             newstartPoint = nav11(:,indexrecord(ki-1));
-    %         end
-    %         if ki==4
-    %             newEndPoint = nav00(:,indexrecord(ki));
-    %         else
-    %             newEndPoint = nav11(:,indexrecord(ki));
-    %         end
-    %         % if ki==2||ki==3
-    %         %     nav_rotate = nav00(:,indexrecord(ki-1)+1:indexrecord(ki)-1);
-    %         % else
-    %         trajectory = flip(trajectory,2);
-    %         [nav_rotate, ~, ~] = rotateAndScaleTrajectory(trajectory, newstartPoint);
-    %         trajectory = flip(trajectory,2);
-    %         nav_rotate = flip(nav_rotate,2);
-    %         [nav_rotate, ~, ~] = rotateAndScaleTrajectory(nav_rotate, newEndPoint);
-    %         % end
-    %         nav_rotatesum2(:,indexrecord(ki-1):indexrecord(ki)) = [newstartPoint,nav_rotate,newEndPoint];
-    %         subplot(4,4,ki-1)
-    %         plot(trajectory(2,:), ...
-    %             trajectory(1,:))
-    %         hold on
-    %         plot(newEndPoint(2),newEndPoint(1),'*')
-    %         plot(nav_rotate(2,1:end),nav_rotate(1,1:end))
-    %         plot(nav000(2,indexrecord(ki-1)+1:indexrecord(ki)-1), ...
-    %             nav000(1,indexrecord(ki-1)+1:indexrecord(ki)-1))
-    %         if ki==2
-    %             legend('backforward','dot','rotate','truth')
-    %         end
-    %     end
-    %     subplot(4,4,ki)
-    %     plot(nav_rotatesum1(2,:),nav_rotatesum1(1,:))
-    %
-    %     % 旋转缩放后向结果
-    %     nav_rotscale1=importdata(navpath);
-    %     nav_rotscale1(:,3:4)=r2d(nav_rotatesum1(1:2,2:end)');
-    %     output_file_rotateback  = [cfg.outputfolder,'/GTS-BRC-AEKF', '.txt'];
-    %     try
-    %         writematrix(nav_rotscale1, output_file_rotateback, 'Delimiter', ' ');
-    %         fprintf('nav_rotscale信息已成功写入到 %s\n', output_file_rotateback);
-    %     catch ME
-    %         error('错误：写入文件失败。错误信息：%s', ME.message);
-    %     end
-    %     %
-    %     % 旋转缩放后向结果（不加后向滤波-效果不好）
-    %     nav_rotscale1=importdata(navpath);
-    %     nav_rotscale1(:,3:4)=r2d(nav_rotatesum2(1:2,2:end)');
-    %     output_file_rotateback  = [cfg.outputfolder,'/GTS-BRC-1-AEKF', '.txt'];
-    %     try
-    %         writematrix(nav_rotscale1, output_file_rotateback, 'Delimiter', ' ');
-    %         fprintf('nav_rotscale信息已成功写入到 %s\n', output_file_rotateback);
-    %     catch ME
-    %         error('错误：写入文件失败。错误信息：%s', ME.message);
-    %     end
-    %     % 旋转缩放后向结果
-    %     nav_back=importdata(navpath);
-    %     nav_back(:,3:4)=r2d(nav112(1:2,2:end)');
-    %     output_file_back  = [cfg.outputfolder,'/BRC-AEKF', '.txt'];
-    %     try
-    %         writematrix(nav_back, output_file_back, 'Delimiter', ' ');
-    %         fprintf('nav_rotscale信息已成功写入到 %s\n', output_file_back);
-    %     catch ME
-    %         error('错误：写入文件失败。错误信息：%s', ME.message);
-    %     end
-    % end
-    % close all
 end
-%% -----smooth 平滑------
-if smoothIsOpen==1
-    smoothpath=[cfg.outputfolder,'/smooth.txt'];
-    writematrix(navforwardsmooth,smoothpath, 'Delimiter', ' ');
-    % calc_error(smoothpath,cfg.truthpath)
-    calc_radial_error(cfg.truthpath,smoothpath,navpath)
+%%
+% close file
+fclose(navfp);
+if feedback==0
+    fclose(xkfp);
 end
-% myfigurestartup(12,5,'prese')
-% plot_trj(cfg.truthpath,navpath,smoothpath)
+% fclose(imuerrfp);
+% fclose(stdfp);
+disp("range/INS Integration Processing Finished!");
+
 %% -----RTS 平滑--------
 if RTSIsOpen==1
     calc_error(navRTSpath,cfg.truthpath)
 end
 %% ------每个测距周期反向推算----
-if backwardIsOpen_1s==1
-    calc_error(navdt1spath,cfg.truthpath)
-    calc_radial_error(cfg.truthpath,navdt1spath,navdt1srotatepath,navpath)
-    plot_trj(cfg.truthpath,navdt1spath,navdt1srotatepath,navpath)
-end
-%% -----反向推算--------
-if backwardIsOpen == 1
-    calc_radial_error(cfg.truthpath,navdtpath,navbfpath,navpath)
-    plot_trj(cfg.truthpath,navdtpath,navbfpath,navpath)
+if backwardIsOpen_1s == 1
+    fprintf(navdt1sfp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', navdt1s');
+    fprintf(navdt1srotatefp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', NAV');
+    % calc_error(navdt1spath,cfg.truthpath)
+    % calc_radial_error(cfg.truthpath,navpath,navdt1spath,navdt1srotatepath)
+    % plot_trj(cfg.truthpath,navpath,navdt1spath,navdt1srotatepath)
+    nav11 = NAV(indexrecord2(1:end-1),:);
+    ee = nav11(:,3);
+    NN = nav11(:,4);
+    nav11(:,3) = smooth(ee,0.005,'rloess');
+    nav11(:,4) = smooth(NN,0.005,'rloess');
+    fpath = [path,'/output/smooth.txt'];
+    fp = fopen(fpath,'wt');
+    fprintf(fp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav11');
+    calc_radial_error(cfg.truthpath,navpath,fpath)
+    calc_error(fpath,cfg.truthpath)
 end
 %%
+calc_radial_error(cfg.truthpath,fpath)
 
-%%
+plot_trj(cfg.truthpath,navpath,fpath)
 calc_error(navpath,cfg.truthpath)
 marker=[">","hexagram","pentagram"];
 plot_trj(cfg.truthpath,navpath)
@@ -727,35 +410,19 @@ elseif beacontype=="moving"
     plot(dxyz(end,1),dxyz(end,2),'<','DisplayName','信标终点')
 end
 %%
-P_F_store(:,:,imuindex-1:end)=[];
-myfigurestartup(12,5,'prese')
-subplot 121
-plot(squeeze(P_F_store(1,1,:)))
-subplot 122
-plot(squeeze(P_F_store(2,2,:)))
+figure;
+plot(dxx,'.');
+hold on
+plot(dyy,'--')
 %% 数据准备与预处理
 % nn = importdata(nav60path);
 nn = importdata(navpath);
-% 假设各原始数据的时间列：
-% rangedata: 第一列为时间
-% truth: 第二列为时间
-% nn: 第二列为时间
-
-% 1. 确定共同的时间范围（交集）
 t_start = max([rangedata(1,1), truth(1,2), nn(1,2)]);
 t_end = min([rangedata(end,1), truth(end,2), nn(end,2)]);
-
-% 2. 创建统一的时间轴 (以1s为步长)
 time_common = (t_start:1:t_end)';
-
-% 3. 将所有轨迹插值/同步到统一时间轴上
-% 注意：truth 和 nn 的位置在 3:5 列
 truth_sync = interp1(truth(:,2), truth(:,3:5), time_common);
 dr_sync = interp1(nn(:,2), nn(:,3:5), time_common);
-% beacon 的位置在 rangedata 的 4:6 列
 beacon_sync_deg = interp1(rangedata(:,1), [r2d(rangedata(:,4:5)), rangedata(:,6)], time_common);
-
-% 4. 调用绘图函数
 period = 60;
 plot_trajectory_analysis(time_common, truth_sync, dr_sync, beacon_sync_deg, period);
 %% 残差及自适应因子

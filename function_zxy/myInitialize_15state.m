@@ -2,7 +2,7 @@ function [kf, navstate] = myInitialize_15state(cfg)
     
     % kalman parameters initialization
     kf.RANK = 15;
-    kf.NOISE_RANK = 6;
+    kf.NOISE_RANK = 12;
     kf.P = zeros(kf.RANK, kf.RANK);
     kf.Qc = zeros(kf.NOISE_RANK, kf.NOISE_RANK);
     kf.x = zeros(kf.RANK, 1);
@@ -12,8 +12,8 @@ function [kf, navstate] = myInitialize_15state(cfg)
     kf.Qc(1:3, 1:3) = power(cfg.accvrw, 2) * eye(3, 3);
     kf.Qc(4:6, 4:6) = power(cfg.gyrarw, 2) * eye(3, 3);
     % kf.Qc = kf.Qc * 2;
-    % kf.Qc(7:9, 7:9) = 2 * power(cfg.gyrbiasstd, 2) / cfg.corrtime * eye(3, 3);
-    % kf.Qc(10:12, 10:12) = 2 * power(cfg.accbiasstd, 2) / cfg.corrtime * eye(3, 3);
+    kf.Qc(7:9, 7:9) = 2 * power(cfg.gyrbiasstd, 2) / cfg.corrtime * eye(3, 3);
+    kf.Qc(10:12, 10:12) = 2 * power(cfg.accbiasstd, 2) / cfg.corrtime * eye(3, 3);
     % kf.Qc(13:15, 13:15) = 2 * power(cfg.gyrscalestd, 2) / cfg.corrtime * eye(3, 3);
     % kf.Qc(16:18, 16:18) = 2 * power(cfg.accscalestd, 2) / cfg.corrtime * eye(3, 3);
 

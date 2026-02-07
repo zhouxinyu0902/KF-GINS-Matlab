@@ -7,9 +7,11 @@ glvs
 %% 定义参数+加载过程配置
 param = Param();
 % path='旋转收缩方案1/input/input_nt';
-path='旋转收缩方案1/input/input2';
+% path='旋转收缩方案1/input/input_pm';
+path='D:\GitHub\KF-GINS-Matlab\旋转收缩方案1/input/input6';
 % cfg = ProcessConfigforSemiPhy_all(path);
 cfg = ProcessConfig_truth(path);
+cfg.outputfolder ='D:\GitHub\KF-GINS-Matlab\旋转收缩方案1/output/output6';
 %% 加载数据
 % imudata
 imudata = importdata(cfg.imufilepath);
@@ -18,8 +20,12 @@ imuendtime = imudata(end, 1);
 
 % gnss data
 gnssdata = importdata(cfg.gnssfilepath);
+std = importdata(cfg.stdfilepath);
 
-gnssdata = gnssdata(:,2:5);
+% gnssdata = [gnssdata(:,2:5),std(:,2:4),gnssdata(:,6:8),std(:,5:7)];
+% gnssdata = gnssdata(100:100:end,:);
+
+gnssdata = [gnssdata(:,2:5),std(:,2:4)];
 gnssdata(:, 2:3) = gnssdata(:, 2:3) * param.D2R;
 if (size(gnssdata, 2) < 13)
     cfg.usegnssvel = false;
@@ -121,7 +127,7 @@ for imuindex = 2:size(imudata, 1)
         kf = myGNSSUpdate_15state(navstate, thisgnss, kf);
         % kf = myGNSSUpdate(navstate, thisgnss, kf, cfg.antlever);
         if feedback==1
-            [kf, navstate] = myErrorFeedback_15state(kf, navstate);
+            [kf, navstate] = myErrorFeedback_noatt(kf, navstate);
         end
         gnssindex = gnssindex + 1;
         laststate = navstate;
@@ -146,7 +152,7 @@ for imuindex = 2:size(imudata, 1)
         kf = myGNSSUpdate_15state(navstate, thisgnss, kf);
         % kf = myGNSSUpdate(navstate, thisgnss, kf, cfg.antlever);
         if feedback==1
-            [kf, navstate] = myErrorFeedback_15state(kf, navstate);
+            [kf, navstate] = myErrorFeedback_noatt(kf, navstate);
         end
         gnssindex = gnssindex + 1;
         laststate = navstate;
@@ -217,6 +223,18 @@ fclose(navfp);
 % fclose(stdfp);
 disp("gnss/INS Integration Processing Finished!");
 %%
-plot_result(navpath,'full')
+calc_error(navpath,cfg.gnssfilepath)
+% calc_error(navpath,[path,'/pva_RS.txt'])
+% calc_error(navpath,[path,'/pva_430.txt'])
+calc_error([path,'/pva_830.txt'],[path,'/pva_430.txt'])
+%%
+figure
+plot(std(:,2))
+hold on
+plot(std(:,3))
 %%
 rangedataget(path)
+%%
+% plot_result(cfg.gnssfilepath)
+plot_result(navpath)
+

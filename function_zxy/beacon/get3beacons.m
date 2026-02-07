@@ -1,8 +1,18 @@
 function get3beacons(path)
 glvs
-truth = importdata([path,'/input','/truth.nav']);
-% num = floor(1/(truth(2,2)-truth(1,2)));
+% MEMS
+% output_filepath =  [path,'/input'];
+% truth = importdata([path,'/input','/truth.nav']);
+% % num = floor(1/(truth(2,2)-truth(1,2)));
+% num = 100;
+
+% 光纤
+output_filepath = path;
+truth = importdata([path,'/truth.nav']);
 num = 100;
+truth11 = importdata([path,'/truth.nav']);
+
+
 GNSS_1s = truth(num:num:end,2:5);% 时间间隔
 orgin0 = d2r(GNSS_1s(1,2:4));
 % 原始等边三角形坐标（单位：米）
@@ -58,22 +68,34 @@ beacon3=ones(length(distances),3)*diag(beaconrrm(3,:));
 range1=[GNSS_1s(:,1),distances(:,1),distances(:,1),beacon1];
 range2=[GNSS_1s(:,1),distances(:,2),distances(:,2),beacon2];
 range3=[GNSS_1s(:,1),distances(:,3),distances(:,3),beacon3];
+%% 方位角
+att = truth11(num:num:end,9:11);
+for i=1:length(range1)
+    range1(i,7) = pos2azimuth(trajectory_xyz(i,1:2),beaconxyz(1,1:2),att(i,end));
+end
+for i=1:length(range2)
+    range2(i,7) = pos2azimuth(trajectory_xyz(i,1:2),beaconxyz(2,1:2),att(i,end));
+end
+for i=1:length(range2)
+    range3(i,7) = pos2azimuth(trajectory_xyz(i,1:2),beaconxyz(3,1:2),att(i,end));
+end
 
-output_file=[path,'/input','/range1.txt'];
+
+output_file=[output_filepath,'/range1.txt'];
 try
     writematrix(range1, output_file, 'Delimiter', ' ');
     fprintf('信息已成功写入到 %s\n', output_file);
 catch ME
     error('错误：写入文件失败。错误信息：%s', ME.message);
 end
-output_file=[path,'/input','/range2.txt'];
+output_file=[output_filepath,'/range2.txt'];
 try
     writematrix(range2, output_file, 'Delimiter', ' ');
     fprintf('信息已成功写入到 %s\n', output_file);
 catch ME
     error('错误：写入文件失败。错误信息：%s', ME.message);
 end
-output_file=[path,'/input','/range3.txt'];
+output_file=[output_filepath,'/range3.txt'];
 try
     writematrix(range3, output_file, 'Delimiter', ' ');
     fprintf('信息已成功写入到 %s\n', output_file);

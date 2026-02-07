@@ -31,7 +31,8 @@ Z = [res_range;
 kf.Z = Z;
 
 %% 量测矩阵和噪声矩阵
-azistd = 0.5-abs(abs(azi_cal)-90)/90*0.4;
+% azistd = 0.5-abs(abs(azi_cal)-90)/90*0.4;
+azistd = 0.15;
 vk = [rangstd,depstd,azistd];
 % vk = [rangstd,depstd,azimustd];
 

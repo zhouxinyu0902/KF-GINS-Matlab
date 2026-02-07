@@ -44,7 +44,7 @@ function kf = myInsPropagate_15state(navstate, thisimu, dt, kf)
     Frv = diag([1/rmh,1/(cos(pos(1))*rnh),-1]);
     F(1:3, 4:6) = Frv;
 
-    % Frphi=ZEROS
+    % Frphi = ZEROS
     
     % velocity error
     Fvr = zeros(3, 3);
@@ -54,7 +54,7 @@ function kf = myInsPropagate_15state(navstate, thisimu, dt, kf)
     Fvr(2, 3) = (vel(2) * vel(3) + vel(1) * vel(2) * tan(pos(1))) / rnh / rnh;
     Fvr(3, 1) = 2 * param.WGS84_WIE * vel(2) * sin(pos(1)) / rmh;
     Fvr(3, 3) = -vel(2)^2 / rnh / rnh - vel(1)^2 / rmh / rmh + 2 * gravity / (sqrt(rm * rn) + pos(3));
-    Fvr(:,1) = Fvr(:,1)*rmh;% 修改
+    Fvr(:,1) = Fvr(:,1) * rmh;% 修改
     Fvr(:,3) = -Fvr(:,3);
     F(4:6, 1:3) = Fvr;
 
@@ -68,7 +68,7 @@ function kf = myInsPropagate_15state(navstate, thisimu, dt, kf)
     Fvv(3, 1) = -2 * vel(1) / rmh;
     Fvv(3, 2) = -2 * (param.WGS84_WIE * cos(pos(1)) + vel(2) / rnh);
 
-    Fvv(3, 3) = -1/1000;
+    % Fvv(3, 3) = -1/1000;
     F(4:6, 4:6) = Fvv;
     
     % 速度与eb，db的关系

@@ -12,7 +12,7 @@ bcn = Rangedata(4:6)';
 % 直接计算
 [rm, rn] = getRmRn(bcn(1) , param);
 h = bcn(3);
-DR = diag([rm + h, (rn + h)*cos(navstate.pos(1)), -1]);
+DR = diag([rm + h, (rn + h)*cos(bcn(1)), -1]);
 delta_pos = ( DR * (navstate.pos-bcn))';
 
 HorizR = sqrt(sum(delta_pos(:,1:2).^2,2));
@@ -24,14 +24,14 @@ kf.Z = Z;
 vk = [rangstd,depstd];
 R = diag(vk.^2);
 H = zeros(2, kf.RANK);
-b = (navstate.pos'-bcn')*(diag([rm + h, (rn + h)*cos(navstate.pos(1)), -1])^2)/HorizR;
+b = (navstate.pos'-bcn')*(diag([rm + h, (rn + h)*cos(bcn(1)), -1])^2)/HorizR;
 H(1, 1:2) = b(1:2);
 H(2, 3) = 1;
 
 kf.Zkk_1 = H * kf.x;
 
 %% 更新协方差和状态量
-K = kf.P * H' / (H *kf.P * H' + R);
+K = kf.P * H' / (H * kf.P * H' + R);
 kf.x = kf.x + K*(Z - kf.Zkk_1 );
 kf.P =(eye(kf.RANK) - K*H) * kf.P * (eye(kf.RANK) - K*H)' + K * R * K';
 

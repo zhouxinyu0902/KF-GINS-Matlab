@@ -1,9 +1,21 @@
 function get1beacon(path,dxyz)
 glvs
-truth = importdata([path,'/input','/truth.nav']);
-% num = floor(1/(truth(2,2)-truth(1,2)));
+% MEMS
+% truth = importdata([path,'/input','/pva_830.txt']);
+% % truth = importdata([path,'/input','/truth.nav']);
+% % num = floor(1/(truth(2,2)-truth(1,2)));
+% num = 100;
+% truth11 = importdata([path,'/input','/truth.nav']);
+% output_file=[path,'/input','/single_range.txt'];
+
+% 光纤
+truth = importdata([path,'/pva_830.txt']);
 num = 100;
-att = truth(num:num:end,9:11);
+truth11 = importdata([path,'/truth.nav']);
+output_file=[path,'/single_range.txt'];
+
+
+att = truth11(num:num:end,9:11);
 GNSS_1s = truth(num:num:end,2:5);% 时间间隔
 orgin0 = d2r(GNSS_1s(1,2:4));
 
@@ -16,7 +28,7 @@ beaconddm = ddm;
 trj = GNSS_1s(:, 2:4);
 trj(:,1:2) = d2r(trj(:,1:2));
 trajectory_xyz = pos2dxyz(trj, orgin0');
-trajectory_ddm=GNSS_1s(:, 2:4);
+trajectory_ddm = GNSS_1s(:, 2:4);
 % 绘图
 % plot_trajectory_and_beacons(trajectory_xyz/1000, beaconxyz, beaconddm, trajectory_ddm)
 trajectory_x = trajectory_xyz(:, 1);
@@ -59,7 +71,7 @@ end
 
 pos_result = dxyz2pos([my_pos(:,1:2),zeros(length(my_pos),1)],orgin0');
 range1(:,8:10) = pos_result;
-output_file=[path,'/input','/single_range.txt'];
+
 try
     writematrix(range1, output_file, 'Delimiter', ' ');
     fprintf('信息已成功写入到 %s\n', output_file);

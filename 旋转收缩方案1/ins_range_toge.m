@@ -7,17 +7,19 @@ rangstd = 10;
 global depstd
 depstd = 0.5;
 rng(1)
-feedback=1; % 是否反馈，不反馈则可以观察参数
+feedback = 1; % 是否反馈，不反馈则可以观察参数
 glvs
 %% 定义参数+加载过程配置
 param = Param();
-path='旋转收缩方案1/input/input_nt';
-% path='旋转收缩方案1/input/input6';
+% path='旋转收缩方案1/input/input_nt';
+path='旋转收缩方案1/input/input6';
 % dataget_truth
 cfg = ProcessConfigforSemiPhy_all(path);
+rangedataget(path)
 %% 加载数据
 % imudata
 imudata = importdata(cfg.imufilepath);
+% plot_imu_frd(imudata);
 imustarttime = imudata(1, 1);
 imuendtime = imudata(end, 1);
 
@@ -142,10 +144,10 @@ for type = "AEKF"
     % stdpath = [cfg.outputfolder, '/NavSTD.txt'];
     % stdfp = fopen(stdpath, 'wt');
     %
-    % if feedback==0
-    %     xkpath = [cfg.outputfolder, '/xk_range.txt'];
-    %     xkfp = fopen(xkpath, 'wt');
-    % end
+    if feedback==0
+        xkpath = [cfg.outputfolder, '/xk_range.txt'];
+        xkfp = fopen(xkpath, 'wt');
+    end
     %% 调试
     
     lastprecent = 0;
@@ -229,79 +231,7 @@ for type = "AEKF"
             navstate = InsMech(laststate, lastimu, thisimu);
             kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
             backward_1s;
-            % %% 反向推算
-            % thisimu1 = imudata(imuindex-1, :)';
-            % lastimu1 = imudata(imuindex, :)';
-            % navstate_1 = navstate;
-            % laststate_1 = navstate;
-            % 
-            % kf1 = kf;
-            % ki = ki+1;
-            % 
-            % nav11(:,imuindex) = laststate_1.pos;
-            % P_B_store(:,:,imuindex)=kf1.P(1:2,1:2);
-            % indexrecord(ki) = imuindex;
-            % 
-            % for ii=indexrecord(ki)-1:-1:indexrecord(ki-1)
-            %     laststate_1 = InsMechBackward(navstate_1,lastimu1,thisimu1);
-            %     laststate_1.pos(3) = height(ii,2);
-            %     kf1 = myInsPropagate_15state(laststate_1, thisimu1, 0.01, kf1);
-            %     nav11(:,ii) = laststate_1.pos;
-            %     P_B_store(:,:,ii)=kf1.P(1:2,1:2);
-            %     lastimu1 = thisimu1;
-            %     thisimu1 = imudata(ii, :)';
-            %     navstate_1 = laststate_1;
-            % end
-            % %% 反向推算+滤波
-            % thisimu2 = imudata(imuindex-1, :)';
-            % lastimu2 = imudata(imuindex, :)';
-            % navstate_2 = navstate;
-            % laststate_2 = navstate;
-            % 
-            % kf2 = kf;
-            % ki2 = ki2+1;
-            % 
-            % nav112(:,imuindex) = laststate_2.pos;
-            % P_B_store2(:,:,imuindex)=kf2.P(1:2,1:2);
-            % indexrecord2(ki2) = imuindex;
-            % for ii = indexrecord2(ki2)-1:-1:indexrecord2(ki2-1)
-            %     if ii==indexrecord2(ki2-1)
-            %         laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
-            %         laststate_2.pos(3) = height(ii,2);
-            %         % 反向滤波
-            %         if rangeindex == 2
-            %             Rangedata = zeros(1,6);
-            %             Rangedata(4:6) = rangedata3(1,4:6);
-            %             Rangedata(3) = caldot2dot(Rangedata(4:6),pos0');
-            %         else
-            %             Rangedata = rangedata(rangeindex-2,:);
-            %         end
-            %         depthdata = height(ii,1:2);
-            %         kf2 = myRangeUpdate_adap(laststate_2, Rangedata, depthdata, kf2);
-            %         [kf2, laststate_2] = myErrorFeedback_range(kf2, laststate_2);
-            % 
-            %         % if rangeindex>2 & abs(kf2.Z(1))-abs(z(rangeindex-2,1))>40
-            %         %     break;
-            %         % else
-            %         %     nav11(:,ii-1) = laststate_1.pos;
-            %         % end
-            %         z_back(ki2-1,1) = kf2.Z(1);% 残差记录
-            %         z_back(ki2-1,2) = kf2.Znew;
-            %         z_back(ki2-1,3) = kf2.alpha;
-            %         z_back(ki2-1,4) = kf2.d_squared ;
-            %         z_back(ki2-1,5) = kf2.chi2_threshold ;
-            %         z_back(ki2-1,6) = kf2.is_anomaly ;
-            %     else
-            %         laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
-            %         laststate_2.pos(3) = height(ii,2);
-            %         kf2 = myInsPropagate_15state(laststate_2, thisimu2, 0.01, kf2);
-            %     end
-            %     lastimu2 = thisimu2;
-            %     thisimu2 = imudata(ii, :)';
-            %     navstate_2 = laststate_2;
-            %     nav112(:,ii) = laststate_2.pos;
-            %     P_B_store2(:,:,ii) = kf2.P(1:2,1:2);
-            % end
+          
 
         elseif (lastimu(1, 1) < rangedata(rangeindex, 1) && thisimu(1, 1) > rangedata(rangeindex, 1))&& cfg.userange==1
             % 插值imu
@@ -350,79 +280,7 @@ for type = "AEKF"
             kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
 
             backward_1s;
-            %% 反向推算
-            % thisimu1 = imudata(imuindex-1, :)';
-            % lastimu1 = imudata(imuindex, :)';
-            % navstate_1 = navstate;
-            % laststate_1 = navstate;
-            % 
-            % kf1 = kf;
-            % ki = ki+1;
-            % 
-            % nav11(:,imuindex) = laststate_1.pos;
-            % P_B_store(:,:,imuindex)=kf1.P(1:2,1:2);
-            % indexrecord(ki) = imuindex;
-            % 
-            % for ii=indexrecord(ki)-1:-1:indexrecord(ki-1)
-            %     laststate_1 = InsMechBackward(navstate_1,lastimu1,thisimu1);
-            %     laststate_1.pos(3) = height(ii,2);
-            %     kf1 = myInsPropagate_15state(laststate_1, thisimu1, 0.01, kf1);
-            %     nav11(:,ii) = laststate_1.pos;
-            %     P_B_store(:,:,ii)=kf1.P(1:2,1:2);
-            %     lastimu1 = thisimu1;
-            %     thisimu1 = imudata(ii, :)';
-            %     navstate_1 = laststate_1;
-            % end
-            % %% 反向推算+滤波
-            % thisimu2 = imudata(imuindex-1, :)';
-            % lastimu2 = imudata(imuindex, :)';
-            % navstate_2 = navstate;
-            % laststate_2 = navstate;
-            % 
-            % kf2 = kf;
-            % ki2 = ki2+1;
-            % 
-            % nav112(:,imuindex) = laststate_2.pos;
-            % P_B_store2(:,:,imuindex)=kf2.P(1:2,1:2);
-            % indexrecord2(ki2) = imuindex;
-            % for ii = indexrecord2(ki2)-1:-1:indexrecord2(ki2-1)
-            %     if ii==indexrecord2(ki2-1)
-            %         laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
-            %         laststate_2.pos(3) = height(ii,2);
-            %         % 反向滤波
-            %         if rangeindex == 2
-            %             Rangedata = zeros(1,6);
-            %             Rangedata(4:6) = rangedata3(1,4:6);
-            %             Rangedata(3) = caldot2dot(Rangedata(4:6),pos0');
-            %         else
-            %             Rangedata = rangedata(rangeindex-2,:);
-            %         end
-            %         depthdata = height(ii,1:2);
-            %         kf2 = myRangeUpdate_adap(laststate_2, Rangedata, depthdata, kf2);
-            %         [kf2, laststate_2] = myErrorFeedback_range(kf2, laststate_2);
-            % 
-            %         % if rangeindex>2 & abs(kf2.Z(1))-abs(z(rangeindex-2,1))>40
-            %         %     break;
-            %         % else
-            %         %     nav11(:,ii-1) = laststate_1.pos;
-            %         % end
-            %         z_back(ki2-1,1) = kf2.Z(1);% 残差记录
-            %         z_back(ki2-1,2) = kf2.Znew;
-            %         z_back(ki2-1,3) = kf2.alpha;
-            %         z_back(ki2-1,4) = kf2.d_squared ;
-            %         z_back(ki2-1,5) = kf2.chi2_threshold ;
-            %         z_back(ki2-1,6) = kf2.is_anomaly ;
-            %     else
-            %         laststate_2 = InsMechBackward(navstate_2,lastimu2,thisimu2);
-            %         laststate_2.pos(3) = height(ii,2);
-            %         kf2 = myInsPropagate_15state(laststate_2, thisimu2, 0.01, kf2);
-            %     end
-            %     lastimu2 = thisimu2;
-            %     thisimu2 = imudata(ii, :)';
-            %     navstate_2 = laststate_2;
-            %     nav112(:,ii) = laststate_2.pos;
-            %     P_B_store2(:,:,ii) = kf2.P(1:2,1:2);
-            % end
+
         else
             % 5、only do propagation
             % INS mechanization
@@ -490,7 +348,8 @@ for type = "AEKF"
     disp("range/INS Integration Processing Finished!");
 
     %% 误差绘图
-    calc_error(navpath,cfg.truthpath)
+    rs232=[path,'/pva_file.txt'];
+    calc_error(rs232,navpath)
     %%
     % if cfg.adap==1
     %     nav11(:,imuindex:end)=[];
@@ -624,7 +483,9 @@ path_BRC_AEKF=[cfg.outputfolder,'/BRC-AEKF.txt'];
 path_GTS_BRC_AEKF=[cfg.outputfolder,'/GTS-BRC-AEKF.txt'];
 path_GTS_BRC_AEKF_1=[cfg.outputfolder,'/GTS-BRC-1-AEKF.txt'];
 %%
-calc_radial_error(cfg.truthpath,path_AEKF,navdt1spath,navdt1srotatepath)
+calc_radial_error(rs232,path_AEKF,navdt1spath,navdt1srotatepath)
+%%
+plot_trj(rs232,path_AEKF,navdt1spath,navdt1srotatepath)
 %%
 
 myfigurestartup(7,3,'paper')
@@ -650,3 +511,9 @@ end
 % figure
 % calc_radial_error(cfg.truthpath,path1,path3,path4)
 % legend('0.01°/h','0.003°/h','0.005°/h')
+%%
+gnssdata=importdata(cfg.gnssfilepath);
+figure
+plot(diff(gnssdata(:,2)))
+figure
+plot(truth(:,end))

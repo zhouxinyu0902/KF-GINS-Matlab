@@ -35,6 +35,7 @@ function cfg = ProcessConfig_truth(path)
 
     cfg.imufilepath =[path,'/IMU_120.txt'];
     cfg.gnssfilepath = [path,'/pva_830.txt'];
+    cfg.stdfilepath = [path,'/std_830.txt'];
     cfg.inputfolder = path;
     %% configure
     cfg.usegnssvel = false;
@@ -42,17 +43,18 @@ function cfg = ProcessConfig_truth(path)
     cfg.odoupdaterate = 1; % [Hz]
 
     %% initial information
-    pva_830=importdata(cfg.gnssfilepath);
-    pva_120=importdata([path,'/pva_file.txt']);
+    pva_830 = importdata(cfg.gnssfilepath);
+    pva_120 = importdata([path,'/pva_RS.txt']);
     % 选择计算时间段
-    cfg.starttime = pva_830(1,2);
+    id = 1;
+    cfg.starttime = pva_830(id,2);
     cfg.endtime = pva_830(end,2);
     % cfg.endtime = cfg.starttime + 5000;
     % 初始状态
 
-    cfg.initpos =pva_830(1,3:5)'; % [deg, deg, m]
+    cfg.initpos = pva_830(id,3:5)'; % [deg, deg, m]
     cfg.initvel = [0; 0; 0]; % [m/s]
-    cfg.initatt = pva_120(1,9:11)'; % [deg]
+    cfg.initatt = pva_120(id,9:11)'; % [deg]
     cfg.initgyrbias = [0; 0; 0]; % [deg/h]
     cfg.initaccbias = [0; 0; 0]; % [mGal]
     cfg.initgyrscale = [0; 0; 0]; % [ppm]
@@ -92,7 +94,7 @@ function cfg = ProcessConfig_truth(path)
 
     cfg.gyrscalestd = 10; % [ppm] 刻度系数标准差
     cfg.accscalestd = 10; % [ppm] 
-    cfg.corrtime = 0; % [h] 时间相关系数，衡量系统误差随时间相关程度的重要指标
+    cfg.corrtime = 1; % [h] 时间相关系数，衡量系统误差随时间相关程度的重要指标
     %% install parameters 安装参数
     % cfg.antlever = [0.65; 0.048;0.9]; % [m]
     % cfg.antlever = [0.136; -0.301; -0.184]; % [m]
