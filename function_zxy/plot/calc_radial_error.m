@@ -1,4 +1,4 @@
-function calc_radial_error(truthpath, varargin)
+function fig=calc_radial_error(truthpath, varargin)
 % CALC_RADIAL_ERROR 计算并绘制多个导航结果的径向误差对比
 %
 % 输入:
@@ -91,7 +91,7 @@ function calc_radial_error(truthpath, varargin)
         all_times{i} = all_times{i} -all_times{i} (1);
     end
     %% 绘制径向误差对比图
-    myfigurestartup(12,5,'prese')
+    fig = myfigurestartup(12,5,'prese');
 
     % 主图：径向误差时间序列
     % subplot(2, 1, 1);

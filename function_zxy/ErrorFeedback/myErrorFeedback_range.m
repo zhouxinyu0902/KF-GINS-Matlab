@@ -29,8 +29,6 @@ function [kf, navstate] = myErrorFeedback_range(kf, navstate)
     % reset state vector
     kf.x (1:6) = zeros(6,1);
     % kf.x ([3,6])= zeros(2, 1);
-    kf.x (7:end)= zeros(length(kf.x (7:end)), 1);
-    
+    kf.x (7:end)= zeros(length(kf.x (7:end)), 1);    
     % kf.P = 0.5*kf.P;
-
 end

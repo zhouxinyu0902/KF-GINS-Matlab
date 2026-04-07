@@ -1,53 +1,33 @@
 clear;
-% 支持纯惯导+1sgnss
+% 支持纯惯导+1s gnss
 %% 定义全局参数
-nnn=1;
-seq=[1,2,3];
-global rangstd
-rangstd = 10;
-global depstd
-depstd = 0.5;
 rng(1)
-feedback = 1; % 是否反馈，不反馈则可以观察参数
+feedback = 0; % 是否反馈，不反馈则可以观察参数
+imuerrrecord = 1;
+stdrecord = 1;
 glvs
 %% 定义参数+加载过程配置
 param = Param();
 cfg = ProcessConfig_exper();
 %% 加载数据
-% imudata
+
 imudata = importdata(cfg.imufilepath);
 imustarttime = imudata(1, 1);
 imuendtime = imudata(end, 1);
 
-% gnss data
-% gnssdata = importdata(cfg.gnssfilepath);
-gnssdata = importdata(cfg.truthreffilepath);
 
+gnss = importdata(cfg.gnssfilepath);
+stdd = importdata(cfg.stdfilepath);
+gnssdata = [gnss(:,2:5),stdd(:,2:4),gnss(:,6:8),stdd(:,5:7)];
 gnssdata(:, 2:3) = gnssdata(:, 2:3) * param.D2R;
-if (size(gnssdata, 2) < 13)
-    cfg.usegnssvel = false;
-end
+
 gnssstarttime = gnssdata(1, 1);
 gnssendtime = gnssdata(end, 1);
 
-% height data
-truth = importdata(cfg.truthpath);
-height = truth(:,[2,5]);
-height(:,2) = height(:,2)+normrnd(0,depstd,size(height(:,2)));
-heistarttime = height(1, 1);
-heitendtime = height(end, 1);
-
+heightdata = importdata(cfg.heightfilepath);
 %% 获取处理时间，调整时间
-if imustarttime > heistarttime
-    starttime = imustarttime;
-else
-    starttime = heistarttime;
-end
-if imuendtime > heitendtime
-    endtime = heitendtime;
-else
-    endtime = imuendtime;
-end
+starttime = imustarttime;
+endtime = imuendtime;
 if cfg.starttime < starttime
     cfg.starttime = starttime;
 end
@@ -55,37 +35,35 @@ if cfg.endtime > endtime
     cfg.endtime = endtime;
 end
 
-% data in process interval
 imudata = imudata(imudata(:,1) >= cfg.starttime, :);
 imudata = imudata(imudata(:,1) <= cfg.endtime, :);
 gnssdata = gnssdata(gnssdata(:, 1) >= cfg.starttime, :);
 gnssdata = gnssdata(gnssdata(:, 1) <= cfg.endtime, :);
-
+heightdata = heightdata(heightdata(:, 1) >= cfg.starttime, :);
+heightdata = heightdata(heightdata(:, 1) <= cfg.endtime, :);
 %% 设置文件保存路径
-% navpath = [cfg.outputfolder, '/NavResult-gnss-1s'];
-navpath = [cfg.outputfolder, '/NavResult-gnss'];
 
-navpath = [navpath, '.nav'];
+navpath = [cfg.outputfolder, '/NavResult-gnss-record.nav'];
 navfp = fopen(navpath, 'wt');
-
-imuerrpath = [cfg.outputfolder, '/ImuError-gnss.txt'];
-imuerrfp = fopen(imuerrpath, 'wt');
-% 
-% stdpath = [cfg.outputfolder, '/NavSTD.txt'];
-% stdfp = fopen(stdpath, 'wt');
-% 
-if feedback==0
+if imuerrrecord == 1
+    imuerrpath = [cfg.outputfolder, '/NavResult-gnss-ImuError.txt'];
+    imuerrfp = fopen(imuerrpath, 'wt');
+end
+if stdrecord == 1
+    stdpath = [cfg.outputfolder, '/NavSTD.txt'];
+    stdfp = fopen(stdpath, 'wt');
+end
+if feedback == 0
     xkpath = [cfg.outputfolder, '/xk-gnss.txt'];
     xkfp = fopen(xkpath, 'wt');
 end
-%% for debug
+%% 调试
 disp("Start GNSS/INS Processing!");
 lastprecent = 0;
-%% initialization 
+%% 初始化
 [kf, navstate] = myInitialize_15state(cfg);
 laststate = navstate;
 
-% data index preprocess
 lastimu = imudata(1, :)';
 thisimu = imudata(1, :)';
 imudt = thisimu(1, 1) - lastimu(1, 1);
@@ -94,7 +72,6 @@ gnssindex = 1;
 while gnssdata(gnssindex, 1) < thisimu(1, 1)
     gnssindex = gnssindex + 1;
 end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% MAIN PROCEDD PROCEDURE!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -107,8 +84,8 @@ for imuindex = 2:size(imudata, 1)
     imudt = thisimu(1, 1) - lastimu(1, 1);
 
     %% compensate IMU error
-    thisimu(2:4, 1) = (thisimu(2:4, 1) - imudt * navstate.gyrbias)./(ones(3, 1) + navstate.gyrscale);
-    thisimu(5:7, 1) = (thisimu(5:7, 1) - imudt * navstate.accbias)./(ones(3, 1) + navstate.accscale);
+    % thisimu(2:4, 1) = (thisimu(2:4, 1) - imudt * navstate.gyrbias)./(ones(3, 1) + navstate.gyrscale);
+    % thisimu(5:7, 1) = (thisimu(5:7, 1) - imudt * navstate.accbias)./(ones(3, 1) + navstate.accscale);
 
     %% adjust GNSS index
     while (gnssindex <= size(gnssdata, 1) && gnssdata(gnssindex, 1) < lastimu(1, 1))
@@ -120,15 +97,6 @@ for imuindex = 2:size(imudata, 1)
         break;
     end
 
-    %% adjust range index
-    % while (rangeindex <= size(rangedata, 1) && rangedata(rangeindex, 1) < lastimu(1, 1))
-    %     rangeindex = rangeindex + 1;
-    % end
-    % % check whether gnss data is valid
-    % if (rangeindex > size(rangedata, 1))
-    %     disp('range file END!');
-    %     break;
-    % end
     %% determine whether gnss update is required
     if lastimu(1, 1) == gnssdata(gnssindex, 1)
         % do gnss update for the current state
@@ -136,7 +104,8 @@ for imuindex = 2:size(imudata, 1)
         kf = myGNSSUpdate_15state(navstate, thisgnss, kf);
         % kf = myGNSSUpdate(navstate, thisgnss, kf, cfg.antlever);
         if feedback==1
-            [kf, navstate] = myErrorFeedback_15state(kf, navstate);
+            [kf, navstate] = myErrorFeedback_noatt(kf, navstate);
+            % [kf, navstate] = myErrorFeedback_15state(kf, navstate);
         end
         gnssindex = gnssindex + 1;
         laststate = navstate;
@@ -144,7 +113,7 @@ for imuindex = 2:size(imudata, 1)
         % do propagation for current imu data
         imudt = thisimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, thisimu);
-        navstate.pos(3) = height(imuindex,2);
+        % navstate.pos(3) = heightdata(imuindex,2);
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
     elseif (lastimu(1, 1) < gnssdata(gnssindex, 1) && thisimu(1, 1) > gnssdata(gnssindex, 1))
         % ineterpolate imu to gnss time
@@ -153,7 +122,7 @@ for imuindex = 2:size(imudata, 1)
         % do propagation for first imu
         imudt = firstimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, firstimu);
-        navstate.pos(3) = height(imuindex,2);
+        navstate.pos(3) = heightdata(imuindex,2);
         kf = myInsPropagate_15state(navstate, firstimu, imudt, kf);
 
         % do gnss update
@@ -161,7 +130,8 @@ for imuindex = 2:size(imudata, 1)
         kf = myGNSSUpdate_15state(navstate, thisgnss, kf);
         % kf = myGNSSUpdate(navstate, thisgnss, kf, cfg.antlever);
         if feedback==1
-            [kf, navstate] = myErrorFeedback_15state(kf, navstate);
+            [kf, navstate] = myErrorFeedback_noatt(kf, navstate);
+            % [kf, navstate] = myErrorFeedback_15state(kf, navstate);
         end
         gnssindex = gnssindex + 1;
         laststate = navstate;
@@ -170,14 +140,12 @@ for imuindex = 2:size(imudata, 1)
         % do propagation for second imu
         imudt = secondimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, secondimu);
-        navstate.pos(3) = height(imuindex,2);
+        % navstate.pos(3) = heightdata(imuindex,2);
         kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
     else
         %% only do propagation
-        % INS mechanization
         navstate = InsMech(laststate, lastimu, thisimu);
-        navstate.pos(3) = height(imuindex,2);
-        % error propagation
+        % navstate.pos(3) = heightdata(imuindex,2);
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
     end
     %% save data
@@ -190,31 +158,31 @@ for imuindex = 2:size(imudata, 1)
     nav(9:11, 1) = navstate.att * param.R2D;
     fprintf(navfp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav);
     % % 保存估计的状态值
+    
     % xk = zeros(16, 1);
     % xk(1) = navstate.time;
     % xk(2:16) = kf.x(1:15);
     % fprintf(xkfp, '%12.6f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f\n', xk);
-    % write imu error, convert to common unit
-    imuerror = zeros(13, 1);
-    imuerror(1, 1) = navstate.time;
-    imuerror(2:4, 1) = navstate.gyrbias * param.R2D * 3600;
-    imuerror(5:7, 1) = navstate.accbias * 1e5;
-    imuerror(8:10, 1) = navstate.gyrscale * 1e6;
-    imuerror(11:13, 1) = navstate.accscale * 1e6;
-    fprintf(imuerrfp, '%12.6f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', imuerror);
-
-    % % write state std, convert to common unit
-    % std = zeros(1, 22);
-    % std(1) = navstate.time;
-    % for idx=1:21
-    %     std(idx + 1) = sqrt(kf.P(idx, idx));
-    % end
-    % std(8:10) = std(8:10) * param.R2D;
-    % std(11:13) = std(11:13) * param.R2D *3600;
-    % std(14:16) = std(14:16) * 1e5;
-    % std(17:22) = std(17:22) * 1e6;
-    % fprintf(stdfp, '%12.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f \n', std);
-    % 
+    if imuerrrecord == 1
+        imuerror = zeros(13, 1);
+        imuerror(1, 1) = navstate.time;
+        imuerror(2:4, 1) = navstate.gyrbias * param.R2D * 3600;
+        imuerror(5:7, 1) = navstate.accbias * 1e5;
+        imuerror(8:10, 1) = navstate.gyrscale * 1e6;
+        imuerror(11:13, 1) = navstate.accscale * 1e6;
+        fprintf(imuerrfp, '%12.6f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', imuerror);
+    end
+    if stdrecord == 1
+        std = zeros(1, length(kf.P)+1);
+        std(1) = navstate.time;
+        for idx=1:length(kf.P)
+            std(idx + 1) = sqrt(kf.P(idx, idx));
+        end
+        std(8:10) = std(8:10) * param.R2D;
+        std(11:13) = std(11:13) * param.R2D *3600;
+        std(14:16) = std(14:16) * 1e5;
+        fprintf(stdfp, '%12.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f \n', std);
+    end
 
     %% print processing information
     if (imuindex / size(imudata, 1) - lastprecent > 0.20) 
@@ -223,27 +191,24 @@ for imuindex = 2:size(imudata, 1)
     end
 end
 %%
-% close file
-fclose(imuerrfp);
-% fclose(xkfp);
-fclose(navfp);
-% fclose(stdfp);
+fclose all;
 disp("gnss/INS Integration Processing Finished!");
 %%
-plot_imuerror
+fig = calc_error(navpath, cfg.pureinsfilepath);
+
+exportgraphics(fig, fullfile('D:\GitHub\KF-GINS-Matlab\fig\', ...
+    'Radial-error.png'), 'Resolution', 600);
+fig1 = calc_error(cfg.gnssfilepath, navpath);
+% fig1 = calc_radial_error(navpath,cfg.gnssfilepath);
+exportgraphics(fig1, fullfile('D:\GitHub\KF-GINS-Matlab\fig\', ...
+    'Radial-error-1.png'), 'Resolution', 600);
+%%               
+plot_result(cfg.gnssfilepath)
+plot_result(cfg.pureinsfilepath)
+plot_result(navpath)
 %%
-plot_xk(xkpath,navpath,cfg.truthpath)
+plot_std;
 %%
-calc_error(cfg.truthpath,navpath)
-calc_error(cfg.truthpath,'惯导实验数据/output/NavResult-pureins.nav')
+plot_imuerror;
 %%
-calc_error(cfg.truthpath,'惯导实验数据/input/pva_430.txt')
-%%
-% calc_error(cfg.truthpath,'惯导实验数据/input/pva_830.txt')
-% %%
-% calc_error(cfg.truthpath,'惯导实验数据/input/pva_RS.txt')
-%%
-leg={'参考','nav','range','puerins'};
-plot_trj(cfg.truthpath,navpath)
-% plot_result(navpath)                  
-% plot_result("dataset1/truth.nav")
+plot_xk(xkpath, navpath, truthpath)

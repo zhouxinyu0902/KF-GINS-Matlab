@@ -20,7 +20,7 @@ if nargin<2
 end
 if type=="full"
     % velocity
-    myfigurestartup(10,10,'prese')
+    myfigurestartup(10,10,'prese');
     
     subplot 323
     plot(navdata(:, 2), navdata(:, 6:8));

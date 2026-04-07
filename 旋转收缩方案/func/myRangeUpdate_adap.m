@@ -2,8 +2,6 @@
 function kf = myRangeUpdate_adap(navstate, Rangedata, depthdata, kf)
 % Rangedata:4：6是信标的位置，3是水平距离，2是斜距，1是时间
 % depthdata:4：2是深度，1是时间
-global rangstd
-global depstd
 param = Param();
 
 % % 根据惯导和信标位置计算水平距离
@@ -19,30 +17,9 @@ HorizR=sqrt(SlantR.^2-delta_pos(:,3).^2);
 Z = [HorizR-Rangedata(3);
     navstate.pos(3)-depthdata(2)];
 kf.Z=Z;
-% disp(Z)
-%% 非线性更新一步量测预测值---无用
-% lonlath=navstate.pos(1:3)-kf.x(1:3);
-% h=navstate.pos(3)-kf.x(3);
-% [~,range]=caldot2dot(lonlath',bcn');
-% kf.Zkk_1 = [Rangedata(3)-range;
-%             depthdata(2)-h];
-% Z = [Rangedata(3);
-%     depthdata(2)];
-% [~,range_ins_non]=caldot2dot((navstate.pos-kf.x(1:3))',bcn');
-% kf.Zkk_1 =[range_ins_non;navstate.pos(3)-kf.x(3)];
-
-%% 调整增益
-% meas=15*(abs(Z(1))/700)+15;
-% disp([Z(1),meas]);
-% format bank
-% meas=rangstd;
-% meas=5+(1-(navstate.time-122235)/5000)*10;
-% disp(meas)
-% meas=15;
-% disp('-----')
 
 %% 量测矩阵和噪声矩阵
-vk = [rangstd,depstd];
+vk = [kf.rangstd,kf.depthstd];
 R = diag(vk.^2);
 H = zeros(2, kf.RANK);
 b = (navstate.pos'-bcn')*(diag([rm + h, (rn + h)*cos(bcn(1)), -1])^2)/HorizR;
@@ -52,46 +29,16 @@ H(2, 3) = 1;
 kf.Zkk_1 = H * kf.x;
 %% 自适应因子
 [alpha, d_squared,chi2_threshold, is_anomaly] = calculate_adaptive_factor(Z(1), H(1,:), kf.P, R(1), 0.05);
-kf.alpha = alpha;
+kf.alpha = 1/alpha;
 kf.d_squared = d_squared;
 kf.chi2_threshold = chi2_threshold;
 kf.is_anomaly = is_anomaly;
 
-
-% kf.P = alpha * kf.P;
 %% 更新协方差和状态量
-% alpha=1;
+
 K = alpha * kf.P * H' / (H * alpha * kf.P * H' + R);
-% K = kf.P * H' / (H *kf.P * H' + R);
 kf.x = kf.x + K*(Z - kf.Zkk_1 );
 kf.P =(eye(kf.RANK) - K*H) * kf.P * (eye(kf.RANK) - K*H)' + K * R * K';
-
-% UKF更新x和P
-% alpha = 1e-3; beta = 2; kappa = 0;
-% n = length(kf.x);
-% lambda = alpha^2*(n+kappa) - n;
-% gamma = sqrt(n+lambda);
-% Wm = [lambda/gamma^2; repmat(1/(2*gamma^2),2*n,1)];
-% Wc = [Wm(1)+(1-alpha^2+beta); Wm(2:end)];
-% sPxx = gamma*chol(kf.P)';    % Choleskey decomposition
-% xn = repmat(kf.x,1,n);
-% X = [kf.x, xn+sPxx, xn-sPxx];
-% Y(:,1) = H*X(:,1); m=length(Y); zkk_1 = Wm(1)*Y(:,1);
-% Y = repmat(Y,1,2*n+1);
-% for k=2:1:2*n+1     % Sigma points nolinear propagation
-%     Y(:,k) = H*X(:,k);
-%     zkk_1 = zkk_1 + Wm(k)*Y(:,k);
-% end
-% Pyy = zeros(m); Pxy = zeros(n,m);
-% for k=1:1:2*n+1
-%     yerr = Y(:,k)-zkk_1;
-%     Pyy = Pyy + Wc(k)*(yerr*yerr');  % variance
-%     xerr = X(:,k)-kf.x;
-%     Pxy = Pxy + Wc(k)*xerr*yerr';  % covariance
-% end
-% K = Pxy / (Pyy + R);
-% kf.x = kf.x + K*(Z - zkk_1 );
-% kf.P = kf.P - K*(Pyy + R)*K';
 
 %% 反馈后，再次计算残差
 pos_new = navstate.pos-kf.x(1:3);

@@ -1,7 +1,7 @@
 %% 用于仿真与实验数据类似的数据
 clear all
-refpva=importdata('旋转收缩方案/input/truth.nav');
-imu120=importdata('旋转收缩方案/input/IMU_120.txt');
+refpva=importdata('D:\GitHub\KF-GINS-Matlab\旋转收缩方案1\input\input1/truth.nav');
+imu120=importdata('D:\GitHub\KF-GINS-Matlab\旋转收缩方案1\input\input1/IMU_120.txt');
 %% 转换坐标系
 glvs
 refavp=pvaNED2ENU(refpva);
@@ -35,8 +35,8 @@ trj = trjsimu(avp0, seg.wat, ts, 1); % 只需要位置和姿态信息就可以
 [nn, ts, nts] = nnts(1, trj.ts);
 sum(trj.wat(:,1))
 %%
-% figure
-% insplot(trj.avp)
+figure
+insplot(trj.avp)
 % figure
 % insplot(refavp)
 %% 

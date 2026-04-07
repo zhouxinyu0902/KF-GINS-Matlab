@@ -1,4 +1,4 @@
-% -------------------------------------------------------------------------
+   % -------------------------------------------------------------------------
 % KF-GINS-Matlab: An EKF-based GNSS/INS Integrated Navigation System in Matlab
 %
 % Copyright (C) 2024, i2Nav Group, Wuhan University
@@ -14,8 +14,8 @@
 imuerrorfile = imuerrpath;
 err = importdata(imuerrorfile);
 
-figure('Name','估计IMU误差')
-myfigurestartup(7,7,'prese')
+
+myfigurestartup(7,7,'prese');
 subplot 221 
 % figure()
 plot(err(:, 1), err(:, 2:4))

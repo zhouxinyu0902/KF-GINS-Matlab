@@ -11,33 +11,31 @@
 function cfg = ProcessConfig_exper()
     param = Param();
     %% filepath
-    cfg.imufilepath = '惯导实验数据/input/IMU_120.txt';
-    cfg.gnssfilepath = '惯导实验数据/input/GNSS_01s.txt';
-    cfg.truthreffilepath = '惯导实验数据/input/gnss_ref_01s.txt';
-    cfg.depthfilepath = '惯导实验数据/input/height.txt';
+    cfg.imufilepath = 'D:\GitHub\KF-GINS-Matlab\惯导实验数据/input/IMU_120.txt';
+    cfg.gnssfilepath = 'D:\GitHub\KF-GINS-Matlab\惯导实验数据/input/pva_830.txt';
+    cfg.heightfilepath = 'D:\GitHub\KF-GINS-Matlab\惯导实验数据/input/height.txt';
+    cfg.stdfilepath = 'D:\GitHub\KF-GINS-Matlab\惯导实验数据/input/std_830.txt';
+
+    
+    cfg.pureinsfilepath = 'D:\GitHub\KF-GINS-Matlab\惯导实验数据/output/NavResult-pureins-height.nav';
+    cfg.pureinsfilepath1 = 'D:\GitHub\KF-GINS-Matlab\惯导实验数据/output/NavResult-pureins.nav';
     % cfg.odofilepath = '';
-    cfg.rangefile1path = '惯导实验数据/input/range1.txt';
-    cfg.rangefile2path = '惯导实验数据/input/range2.txt';
-    cfg.rangefile3path = '惯导实验数据/input/range3.txt';
-    cfg.outputfolder = '惯导实验数据/output';
-    % cfg.truthpath='惯导实验数据/input/truth_inte.txt';
-    cfg.truthpath='惯导实验数据/output/NavResult-truth.nav';
+    cfg.rangefile1path = 'D:\GitHub\KF-GINS-Matlab\惯导实验数据/input/range1.txt';
+    cfg.rangefile2path = 'D:\GitHub\KF-GINS-Matlab\惯导实验数据/input/range2.txt';
+    cfg.rangefile3path = 'D:\GitHub\KF-GINS-Matlab\惯导实验数据/input/range3.txt';
+    cfg.outputfolder = 'D:\GitHub\KF-GINS-Matlab\惯导实验数据/output';
+    % cfg.truthpath='D:\GitHub\KF-GINS-Matlab\惯导实验数据/input/truth_inte.txt';
+    cfg.truthpath='D:\GitHub\KF-GINS-Matlab\惯导实验数据/output/truth.nav';
     %% configure
     cfg.usegnssvel = false;
     cfg.useodonhc = false;
     cfg.odoupdaterate = 1; % [Hz]
 
     %% initial information
-    cfg.starttime = 122215.56;
-    cfg.endtime = cfg.starttime+5000;
-    cfg.initpos = [36.40042003;120.68981831;15.25]; % [deg, deg, m]
-    cfg.initvel = [0; 0; 0]; % [m/s]
-    cfg.initatt = [1.743;1.515;322.463]; % [deg]
-
-
+    
     % 选择计算时间段
     cfg.starttime = 122235;
-    cfg.endtime = cfg.starttime+5000;
+    cfg.endtime = cfg.starttime + 5000;
     cfg.initpos = [36.40042005;120.68981831;15.25]; % [deg, deg, m]
     cfg.initvel = [0; 0; 0]; % [m/s]
     cfg.initatt = [1.743;1.516;322.463]; % [deg]
@@ -66,7 +64,7 @@ function cfg = ProcessConfig_exper()
     cfg.accbiasstd = 7; % [mGal] 加速度计零偏标准差
     cfg.gyrscalestd = 10; % [ppm] 刻度系数标准差
     cfg.accscalestd = 10; % [ppm] 
-    cfg.corrtime = 0; % [h] 时间相关系数，衡量系统误差随时间相关程度的重要指标
+    cfg.corrtime = 1; % [h] 时间相关系数，衡量系统误差随时间相关程度的重要指标
 
     %% install parameters 安装参数
     % cfg.antlever = [0.65; 0.048;0.9]; % [m]
