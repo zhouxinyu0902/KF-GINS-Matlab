@@ -4,6 +4,8 @@ pva_430=importdata('惯导实验数据/input/pva_430.txt');
 std_430=importdata('惯导实验数据/input/std_430.txt');
 std_830=importdata('惯导实验数据/input/std_830.txt');
 pva_RS=importdata('惯导实验数据/input/pva_RS.txt');
+
+pva_truth = importdata('惯导实验数据/output/truth.nav');
 %% 误差对比
 ax1 = myfigurestartup(4,5,'paper');
 
@@ -63,8 +65,8 @@ fprintf('830 MAX    | %-15.4f | %-15.4f | %-15.4f\n', max_err_830);
 fprintf('430 MAX    | %-15.4f | %-15.4f | %-15.4f\n', max_err_430);
 fprintf('============================================================\n');
 
-exportgraphics(ax1, fullfile('D:\GitHub\KF-GINS-Matlab\fig\', ...
-    'Preview_Figure_1.png'), 'Resolution', 600);
+% exportgraphics(ax1, fullfile('D:\GitHub\KF-GINS-Matlab\fig\', ...
+%     'Preview_Figure_1.png'), 'Resolution', 600);
 %%
 myfigurestartup(5,5,'paper');
 plot(pva_830(:,3))
@@ -74,7 +76,7 @@ plot(diff(pva_830(:,5)),'.')
 subplot 122
 plot(pva_830(:,8))
 %% 生成高度数据
-height=pva_830(:,[2,5]);
+height = pva_truth(:,[2,5]);
 % 数据保存：高度数据
 output_file="D:\Github\KF-GINS-Matlab\惯导实验数据\input\height.txt";
 try
@@ -85,7 +87,7 @@ catch ME
 end
 %% 构造静止信标数据
 % 构造GNSS数据：直接选择gps数据/选择参考数据
-GNSS_1s = pva_830(1:100:end,2:5);
+GNSS_1s = pva_truth(1:100:end,2:5);
 glvs
 pos0 = d2r([36.40042003, 120.68981831, 0]);
 % 原始等边三角形坐标（单位：米）

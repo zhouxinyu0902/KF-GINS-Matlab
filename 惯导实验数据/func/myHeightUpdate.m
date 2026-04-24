@@ -17,7 +17,7 @@ H(1, 3) = 1;
 kf.Zkk_1 = H * kf.x;
 
 %% 3. 计算卡尔曼增益 K
-R = kf.depthstd^2;
+R = kf.depthstd ^ 2;
 K_full = kf.P * H' / (H * kf.P * H' + R);
 
 %% 4. 实施“解耦反馈”掩码 (Decoupled Feedback Mask)
@@ -33,7 +33,7 @@ mask(vel_u_idx) = 1;
 
 % 强制截断增益
 K = K_full .* mask;
-
+% K = K_full;
 %% 5. 更新状态量与协方差矩阵
 % 更新状态量 (此时只有位置和速度的天向分量会被修改)
 kf.x = kf.x + K * (Z - kf.Zkk_1);

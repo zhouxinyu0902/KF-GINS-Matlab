@@ -8,7 +8,7 @@ rng(1)
 backwardIsOpen = 0;
 % smoothWay = 'Linear';
 smoothWay = 'RTS';
-SmoothIsOpen = 1;
+SmoothIsOpen = 0;
 tic
 %% importdata data
 % imudata
@@ -37,10 +37,12 @@ end
 rangestarttime = rangedata(1, 1);
 rangeendtime = rangedata(end, 1);
 
+
 height = importdata(cfg.heightfilepath);
 heightdata = height(id*100:id*100:end,:);
 heightstarttime = heightdata(1, 1);
 heightendtime = heightdata(end, 1);
+
 %% 设置文件保存路径
 navpath = [cfg.outputfolder, '/NavResult-RANGE-1.nav'];
 navfp = fopen(navpath, 'wt');
@@ -87,13 +89,14 @@ rangstd = 6;
 
 height = height(height(:, 1) >= cfg.starttime, :);
 height = height(height(:, 1) <= cfg.endtime, :);
-height(:,2) = height(:,2) + normrnd(1,rangstd,size(height(:,2)));
+height(:,2) = height(:,2) + normrnd(1,depthstd,size(height(:,2)));
 
 heightdata = heightdata(heightdata(:, 1) >= cfg.starttime, :);
 heightdata = heightdata(heightdata(:, 1) <= cfg.endtime, :);
 heightdata_true = heightdata(:,2) ;
-heightdata(:,2) = heightdata(:,2) + normrnd(1,rangstd,size(heightdata(:,2)));
-
+heightdata(:,2) = heightdata(:,2) + normrnd(1,depthstd,size(heightdata(:,2)));
+writematrix(rangedata, '惯导实验数据\input\rangedata_noised.txt', 'Delimiter', 'space'); % 空格
+writematrix(height, '惯导实验数据\input\height_noised.txt', 'Delimiter', 'space'); % 空格
 %% 计算并提取添加的误差
 % % 提取时间轴
 % time_range = rangedata(:, 1);
@@ -136,7 +139,7 @@ heightdata(:,2) = heightdata(:,2) + normrnd(1,rangstd,size(heightdata(:,2)));
 % % 调整整体布局
 % % sgtitle('仿真传感器误差特性可视化');
 %% for debug
-disp("Start GNSS/RANGE Processing!");
+disp("Start INS/RANGE Processing!");
 lastprecent = 0;
 %% initialization
 [kf, navstate] = myInitialize_15state(cfg);
@@ -213,14 +216,14 @@ for imuindex = 2:size(imudata, 1)-1
                     Pk_k1propa    = Pk_k1propa(1:valid_len, :);
                     Pk_propa    = Pk_propa(1:valid_len, :);
                     PHI   = PHI(1:valid_len, :);
-                   
+
                     % % 调用 RTS 平滑函数
                     [nav_matrix, bridge_error,rtsstate_buffer] = perform_RTS_smoothing(state_buffer,  Pk_propa, Pk_k1propa,  PHI, xk_final, param, rangeindex);
                     % 批量写入文件
                     fprintf(navfp2, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav_matrix);
                     bridge_err(rangeindex,:) = bridge_error;
                     % 1. 先对【当前的 7 分钟】做一次常规 RTS 平滑，拿到桥接误差 bridge_error
-                    
+
                     % [nav_matrix, bridge_error] = perform_RTS_smoothing_new(state_buffer, Pk_propa, Pk_k1propa, PHI, xk_final, param, rangeindex);
                     % fprintf(navfp2, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav_matrix);
 
@@ -232,14 +235,14 @@ for imuindex = 2:size(imudata, 1)-1
                         prev_Pk_k1propa   = Pk_k1propa;
                         prev_PHI          = PHI;
                         prev_rangeindex   = rangeindex;
-                        
+
                     else
                         % 如果有上一个 7 分钟的数据 (比如现在算完了 7-14min)
                         % 核心操作：把 7-14min 算出的起始误差 (bridge_error)，当作 0-7min 的终点误差！
 
                         % [nav_matrix_prev_resmoothed, ~] = perform_RTS_smoothing_new(prev_state_buffer, prev_Pk_propa, prev_Pk_k1propa, prev_PHI, bridge_error, param, prev_rangeindex);
                         % [nav_matrix_prev_resmoothed, ~] = perform_RTS_smoothing(prev_state_buffer,  prev_Pk_propa, prev_Pk_k1propa,  prev_PHI, bridge_error, param, rangeindex);
-                        
+
                         nav_matrix_prev_resmoothed = perform_block_smoothing(prev_state_buffer, bridge_error, param, prev_rangeindex);
                         % 将经历过“未来信息”二次洗礼的上一段数据，写入文件！
                         fprintf(navfp1, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav_matrix_prev_resmoothed);
@@ -256,13 +259,11 @@ for imuindex = 2:size(imudata, 1)-1
                     % 批量写入文件
                     fprintf(navfp1, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav_matrix);
                 end
-                
+
                 % 清空所有缓存，开启下个 7min 周期
                 buf_idx = 1;
             end
         end
-
-
 
         [kf, navstate] = myErrorFeedback_range(kf, navstate);
         % [kf, navstate] = myErrorFeedback_range_posonly(kf, navstate);
@@ -273,45 +274,44 @@ for imuindex = 2:size(imudata, 1)-1
         imudt = thisimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, thisimu);
 
-
-        if backwardIsOpen == 1
-            % 计算这 7 分钟数据在整个 imudata 里的起止索引
-            % buf_idx - 1 就是这段时间经历了多少个点
-            valid_len = buf_idx1 - 1;
-            start_idx = imuindex - valid_len;
-            end_idx   = imuindex;
-
-            % 【核心切片】剥离出这 7 分钟的 IMU 和高度数据
-            imu_block    = imudata(start_idx : end_idx, :);
-            height_block = height(start_idx : end_idx, :);
-            if rangeindex == 2
-                meas=[];
-            else
-                meas.range = rangedata(rangeindex-2,:);
-                meas.height = heightdata(rangeindex-2,:);
-            end
-            % 极简调用反向推算函数
-            nav_matrix_bw = perform_backward(imu_block, height_block, navstate, kf, param, meas,rangeindex);
-
-            % 批量写入反向结果文件
-            fprintf(navfp_bw, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav_matrix_bw);
-            buf_idx1 = 1;
-        end
-
-        if SmoothIsOpen == 1
-            Pk_propa(buf_idx,:) = kf.P(:)';
-        end
-        
-        kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
-
-        if SmoothIsOpen == 1
-            nav = [navstate.time;navstate.pos;navstate.vel;navstate.att];
-            state_buffer(buf_idx,:) =  nav';
-            Xk_k1propa(buf_idx,:) = kf.x(:)';
-            Pk_k1propa(buf_idx,:) = kf.P(:)';
-            PHI(buf_idx,:) = kf.phi(:)';
-            buf_idx = buf_idx + 1;
-        end
+        % if backwardIsOpen == 1
+        %     % 计算这 7 分钟数据在整个 imudata 里的起止索引
+        %     % buf_idx - 1 就是这段时间经历了多少个点
+        %     valid_len = buf_idx1 - 1;
+        %     start_idx = imuindex - valid_len;
+        %     end_idx   = imuindex;
+        % 
+        %     % 【核心切片】剥离出这 7 分钟的 IMU 和高度数据
+        %     imu_block    = imudata(start_idx : end_idx, :);
+        %     height_block = height(start_idx : end_idx, :);
+        %     if rangeindex == 2
+        %         meas=[];
+        %     else
+        %         meas.range = rangedata(rangeindex-2,:);
+        %         meas.height = heightdata(rangeindex-2,:);
+        %     end
+        %     % 极简调用反向推算函数
+        %     nav_matrix_bw = perform_backward(imu_block, height_block, navstate, kf, param, meas,rangeindex);
+        % 
+        %     % 批量写入反向结果文件
+        %     fprintf(navfp_bw, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav_matrix_bw);
+        %     buf_idx1 = 1;
+        % end
+        % 
+        % if SmoothIsOpen == 1
+        %     Pk_propa(buf_idx,:) = kf.P(:)';
+        % end
+        % 
+        % kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
+        % 
+        % if SmoothIsOpen == 1
+        %     nav = [navstate.time;navstate.pos;navstate.vel;navstate.att];
+        %     state_buffer(buf_idx,:) =  nav';
+        %     Xk_k1propa(buf_idx,:) = kf.x(:)';
+        %     Pk_k1propa(buf_idx,:) = kf.P(:)';
+        %     PHI(buf_idx,:) = kf.phi(:)';
+        %     buf_idx = buf_idx + 1;
+        % end
 
     % elseif (lastimu(1, 1) < rangedata(rangeindex, 1) && thisimu(1, 1) > rangedata(rangeindex, 1))
     %     % ineterpolate imu to range time
@@ -408,14 +408,17 @@ for imuindex = 2:size(imudata, 1)-1
         %% only do propagation
         % INS mechanization
         navstate = InsMech(laststate, lastimu, thisimu);
-        % navstate.pos(3) = height(imuindex,2);
+        
+
         kf = myHeightUpdate(navstate, height(imuindex,:), kf);
         navstate.pos(3) = navstate.pos(3) - kf.x(3);
         navstate.vel(3) = navstate.vel(3) - kf.x(6);
         kf.x = zeros(size(kf.x));
+        % navstate.pos(3) = height(imuindex,2); 
         if SmoothIsOpen == 1
             Pk_propa(buf_idx,:) = kf.P(:)';
         end
+
         % error propagation
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
         if SmoothIsOpen == 1
@@ -427,7 +430,6 @@ for imuindex = 2:size(imudata, 1)-1
             PHI(buf_idx,:) = kf.phi(:)';
             buf_idx = buf_idx + 1;
         end
-
 
         buf_idx1 = buf_idx1 + 1;
     end
@@ -487,13 +489,14 @@ end
 fclose all;
 toc
 %%
+calc_error(navpath,cfg.truthpath);
+%%
 glvs
 error=sqrt((bridge_err(:,1)*glv.Re).^2+(bridge_err(:,2)*glv.Re*cos(36/180*pi)).^2);
 figure
 plot(error,'*')
 %%
 % plot_result(navpath)
-calc_error(navpath,cfg.truthpath);
 
 %%
 calc_radial_error(cfg.truthpath,navpath,navpath2,navpath1);

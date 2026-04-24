@@ -43,7 +43,6 @@ imudt = thisimu(1, 1) - lastimu(1, 1);
 %%% MAIN PROCEDD PROCEDURE!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for imuindex = 2:size(imudata, 1)
-
     lastimu = thisimu;
     laststate = navstate;
     thisimu = imudata(imuindex, :)';
