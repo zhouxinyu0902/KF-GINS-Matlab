@@ -1,11 +1,11 @@
 % 仿真一些数据
 %% 获取高度信息以及距离信息
 clear
-truth=importdata('dataset1/input/truth.nav');
+truth = importdata('dataset1/input/truth.nav');
 fprintf("参考结果的频率：%.2f Hz\n",1/(truth(2,2)-truth(1,2)))
 
-gnss=importdata('dataset1/input/GNSS-RTK.txt');
-gnss=[zeros(length(gnss),1),gnss];
+gnss = importdata('dataset1/input/GNSS-RTK.txt');
+gnss = [zeros(length(gnss),1),gnss];
 myfigurestartup(7,7,'prese')
 subplot 221
 plot(truth(:,2),truth(:,3))

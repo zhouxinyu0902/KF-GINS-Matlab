@@ -55,7 +55,7 @@ function kf = myInsPropagate_15state(navstate, thisimu, dt, kf)
     Fvr(3, 1) = 2 * param.WGS84_WIE * vel(2) * sin(pos(1)) / rmh;
     Fvr(3, 3) = -vel(2)^2 / rnh / rnh - vel(1)^2 / rmh / rmh + 2 * gravity / (sqrt(rm * rn) + pos(3));
     Fvr(:,1) = Fvr(:,1) * rmh;% 修改
-    Fvr(:,3) = -Fvr(:,3);
+    Fvr(:,3) = -Fvr(:,3);% 修改
     F(4:6, 1:3) = Fvr;
 
     Fvv = zeros(3, 3);
@@ -100,7 +100,10 @@ function kf = myInsPropagate_15state(navstate, thisimu, dt, kf)
     % F(7:9, 16:18) = -cbn * diag(omega);
 
     % IMU bias error and scale error, first-order Gauss-Markov process
-    F(10:15, 10:15) = zeros(6,6);
+    % F(10:15, 10:15) = zeros(6,6);
+    corrtime = 3600;
+    F(10:12, 10:12) = -1 / corrtime * eye(3); 
+    F(13:15, 13:15) = -1 / corrtime * eye(3);
     % F(16:18, 16:18) = -1 / corrtime * eye(3); 
     % F(19:21, 19:21) = -1 / corrtime * eye(3);
 
@@ -112,6 +115,9 @@ function kf = myInsPropagate_15state(navstate, thisimu, dt, kf)
     G = zeros(kf.RANK, kf.NOISE_RANK);
     G(4:6, 1:3) = cbn;
     G(7:9, 4:6) = cbn;
+
+    G(10:12, 7:9) = cbn;   % Qc(7:9) 陀螺零偏驱动白噪声 -> 投影并驱动陀螺零偏状态 (10~12行)
+    G(13:15, 10:12) = cbn; % Qc(10:12) 加速度计零偏驱动白噪声 -> 投影并驱动加速度计零偏状态 (13~15行)
     % G(10:12, 7:9) = eye(3);
     % G(13:15, 10:12) = eye(3);
     % G(16:18, 13:15) = eye(3);

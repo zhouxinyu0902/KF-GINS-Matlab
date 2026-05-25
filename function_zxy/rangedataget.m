@@ -1,5 +1,5 @@
 function rangedataget(path)
-truth = importdata([path,'/truth.nav']);
+truth = importdata([path,'\truth.nav']);
 GNSS_1s=truth(1:100:end,2:5);
 %% 根据GNSS数据构造距离数据
 glvs
@@ -32,7 +32,7 @@ trajectory_xyz = pos2dxyz(trj, orgin0');
 trajectory_ddm=GNSS_1s(:, 2:4);
 
 % 绘图
-plot_trajectory_and_beacons(trajectory_xyz/1000, beaconxyz, beaconddm, trajectory_ddm)
+plot_trajectory_and_beacons_m(trajectory_xyz, beaconxyz)
 trajectory_x = trajectory_xyz(:, 1);
 trajectory_y = trajectory_xyz(:, 2);
 for i=1:3

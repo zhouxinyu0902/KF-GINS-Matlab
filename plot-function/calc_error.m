@@ -284,7 +284,7 @@ sigma_n = std(error_ned(:, 2));
 CEP = 0.5887 * (sigma_e + sigma_n); % 常用近似公式
 
 %% 6. 统一绘图
-fig=myfigurestartup(12, 7, 'prese'); % 假设这是你的自定义绘图初始化
+fig = myfigurestartup(12, 7, 'prese'); % 假设这是你的自定义绘图初始化
 set(gcf, 'Color', 'w', 'Name', 'Navigation Error Analysis');
 
 % 子图 1: 位置误差
