@@ -28,3 +28,10 @@ dataset-simu/zz/output/
 /潜标位置标定/data2
 /潜标位置标定/data1
 graduation/DR_INS/inputimu_data.txt
+/潜标位置标定/Circle_ArrayCenter_Trj
+/潜标位置标定/Circle_Beacon1_Trj
+/潜标位置标定/Line_ArrayCenter_Trj
+/潜标位置标定/Line_Beacon1_Trj
+/潜标位置标定/result_file
+/潜标位置标定/Square_ArrayCenter_Trj
+/潜标位置标定/Square_Beacon1_Trj

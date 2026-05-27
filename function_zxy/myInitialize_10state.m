@@ -42,7 +42,7 @@ function [kf, navstate] = myInitialize_10state(cfg)
     navstate.gyrscale = cfg.initgyrscale;
     navstate.accscale = cfg.initaccscale;
     
-    navstate.theta_calib = 10/180*pi; % 弧度
+    navstate.theta_calib = 0; % 弧度
     navstate.phi_calib   = 0; % 弧度
 
 

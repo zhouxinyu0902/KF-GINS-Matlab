@@ -1,9 +1,8 @@
-function cfg = Config_10state(output)
+function cfg = Config_10state(output,type)
     param = Param();
     %% filepath
-
     cfg.outputfolder = output;
-
+    cfg.input = [output,'input\'];
     % 检查文件夹是否存在（'dir' 表示明确检查是否为文件夹）
     if ~exist(cfg.outputfolder, 'dir')
         mkdir(cfg.outputfolder); % 如果不存在，则递归创建该路径
@@ -11,28 +10,12 @@ function cfg = Config_10state(output)
     else
         disp(['输出文件夹已存在，无需创建：', cfg.outputfolder]);
     end
-    filepath=cfg.outputfolder;
-    if filepath(end-4)=='2'
-        cfg.imufilepath = [filepath,'/imu_data_stage2.txt'];
-        cfg.truthpath=[filepath,'/truth_stage2.nav'];
-        cfg.rangefile1path = [filepath,'/range1_stage2.txt'];
-        cfg.rangefile2path = [filepath,'/range2_stage2.txt'];
-        cfg.rangefile3path = [filepath,'/range3_stage2.txt'];
-        cfg.rangefile1calpath = [filepath,'/range_calib1.txt'];
-        cfg.rangefile2calpath = [filepath,'/range_calib2.txt'];
-        cfg.rangefile3calpath = [filepath,'/range_calib3.txt'];
-        cfg.rangefile1truepath = [filepath,'/range_true1.txt'];
-        cfg.rangefile2truecalpath = [filepath,'/range_true2.txt'];
-        cfg.rangefile3truecalpath = [filepath,'/range_true3.txt'];
+    if ~strcmp(type,'align')
+        cfg.imufilepath = [cfg.input,'/imu_data_stage2.txt'];
+        cfg.truthpath=[cfg.input,'/truth_stage2.nav'];
     else
-        cfg.imufilepath = [filepath,'/imu_data.txt'];
-        cfg.truthpath=[filepath,'/truth.nav'];
-        cfg.rangefile1path = [filepath,'/range1.txt'];
-        cfg.rangefile2path = [filepath,'/range2.txt'];
-        cfg.rangefile3path = [filepath,'/range3.txt'];
-        cfg.rangefile1calpath = [filepath,'/range_calib1.txt'];
-        cfg.rangefile2calpath = [filepath,'/range_calib2.txt'];
-        cfg.rangefile3calpath = [filepath,'/range_calib3.txt'];
+        cfg.imufilepath = [cfg.input,'/imu_data.txt'];
+        cfg.truthpath=[cfg.input,'/truth.nav'];
     end
     %% configure
     cfg.usegnssvel = false;
@@ -43,7 +26,7 @@ function cfg = Config_10state(output)
     % 选择计算时间段
     glvs
     cfg.starttime = 0;
-    cfg.endtime = cfg.starttime + 5000;
+    cfg.endtime = cfg.starttime + 11000;
     % 初始状态
     all_lines = load(cfg.truthpath); 
     pva0 = all_lines(1,:);

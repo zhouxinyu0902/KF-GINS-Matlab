@@ -22,13 +22,17 @@ function nav_matrix = perform_block_smoothing(state_buffer, kf_x, param, range_i
         % Δx_j = (j/N) * ΔX_total
         curr_pos_err = scale * pos_err;
         curr_vel_err = scale * vel_err;
-        
+
+        DR = diag([6335439 + state_buffer(j, 4), (6378137 + state_buffer(j, 4))*cos(state_buffer(j, 2)), -1]);
+        DR_inv = inv(DR);
+
         % 2. 执行修正 (单位均为 rad 或 m)
         % 修正后的值 = 惯导推算值 - 估计的误差值
-        curr_pos_rad = state_buffer(j, 2:4)' - curr_pos_err;
+        curr_pos_rad = state_buffer(j, 2:4)' - DR_inv *curr_pos_err;
         curr_vel = state_buffer(j, 5:7)' - curr_vel_err;
         
         % 3. 准备输出数据 (单位转换：弧度 -> 度)
+        
         pos_deg = [curr_pos_rad(1:2) * param.R2D; curr_pos_rad(3)];
         att_deg = state_buffer(j, 8:10) * param.R2D;
         

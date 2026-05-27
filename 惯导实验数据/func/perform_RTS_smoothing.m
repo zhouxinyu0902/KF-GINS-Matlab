@@ -69,7 +69,9 @@ function [nav_matrix,bridge_error,rtsstate_buffer] = perform_RTS_smoothing(state
         curr_xs = xs(j, :)';
         
         % 修正推算状态 (名义值 - 误差值)
-        curr_pos_rad = state_buffer(j, 2:4)' - curr_xs(1:3);
+        DR = diag([6335439 + state_buffer(j, 4), (6378137 + state_buffer(j, 4))*cos(state_buffer(j, 2)), -1]);
+        DR_inv = inv(DR);
+        curr_pos_rad = state_buffer(j, 2:4)' -DR_inv* curr_xs(1:3);
         curr_vel = state_buffer(j, 5:7)' - curr_xs(4:6);
         % curr_att_rad = state_buffer(j, 8:10)' - curr_xs(7:9);
         curr_att_rad = state_buffer(j, 8:10)' - zeros(3,1);

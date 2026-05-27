@@ -172,7 +172,7 @@ prev_PHI = [];
 prev_rangeindex = 0;
 
 buf_idx = 1;
-buf_idx1 = 1;
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% MAIN PROCEDD PROCEDURE!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -203,9 +203,7 @@ for imuindex = 2:size(imudata, 1)-1
     if lastimu(1, 1) == rangedata(rangeindex, 1)
         Rangedata = rangedata(rangeindex,:);
         depthdata = heightdata(rangeindex,:);
-
         kf = myRangeUpdate(navstate, Rangedata, depthdata, kf);
-
         if SmoothIsOpen == 1
             if buf_idx > 1
                 valid_len = buf_idx - 1;
@@ -431,7 +429,6 @@ for imuindex = 2:size(imudata, 1)-1
             buf_idx = buf_idx + 1;
         end
 
-        buf_idx1 = buf_idx1 + 1;
     end
 
     %% save data

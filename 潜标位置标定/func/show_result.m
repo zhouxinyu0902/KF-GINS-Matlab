@@ -1,20 +1,17 @@
-%% ==================== 7. 标定成果综合评估对账与准静态距离数据导出 ====================
-fprintf('\n========================================================================\n');
-fprintf('         7. 正在执行标定成果全要素评估对账 与 补偿数据导出流程            \n');
-fprintf('========================================================================\n');
-
-% --- 【核心输入提取】从 xk 终点状态中提取你的流场反演成果 ---
-theta_est = xk(end, 10); 
-phi_est   = xk(end, 11); 
+function [S_est_xyz,theta_next,phi_next] = show_result(id, S_gnss_geo, S_true_geo, pos0_geo, theta_est, phi_est, theta_ref, phi_ref)
+%% ==================== 标定成果综合评估对账与表格统一看板 ====================
+glvs
+S_gnss_xyz = pos2dxyz(S_gnss_geo, pos0_geo);
+S_true_xyz = pos2dxyz(S_true_geo, pos0_geo);
 
 % 1. 参数准备与度数转换
 if ~exist('glv','var') || ~isfield(glv,'deg')
     glv.deg = pi/180;
-    fprintf('注意：已自动定义 glv.deg = pi/180\n');
 end
 
-theta_true_rad = theta_true;   % 继承数据发生器的真值（20*glv.deg）
-phi_true_rad   = phi_true;     % 继承真值（45*glv.deg）
+% 💡 真值角度是标量，不再进行多维数组处理
+theta_true_rad = d2r(theta_ref); 
+phi_true_rad   = d2r(phi_ref);     
 theta_est_rad  = theta_est;
 phi_est_rad    = phi_est;
 
@@ -23,46 +20,21 @@ phi_true_deg   = phi_true_rad   / glv.deg;
 theta_est_deg  = theta_est_rad  / glv.deg;
 phi_est_deg    = phi_est_rad    / glv.deg;
 
-theta_err_deg = theta_est_deg - theta_true_deg;
-phi_err_deg   = phi_est_deg   - phi_true_deg;
+% 计算每一个潜标的角度估计误差
+theta_err_deg  = theta_est_deg - theta_true_deg;
+phi_err_deg    = phi_est_deg   - phi_true_deg;
 
-% 2. 打印：角度估计质量
-fprintf('\n==================== 1. 角度估计质量 ====================\n');
-fprintf('真值     : theta = %.6f°, phi = %.6f°\n', theta_true_deg, phi_true_deg);
-fprintf('估计值   : theta = %.6f°, phi = %.6f°\n', theta_est_deg, phi_est_deg);
-fprintf('绝对误差 : Δtheta = %.6f°, Δphi = %.6f°\n', theta_err_deg, phi_err_deg);
-
-fprintf('结论     : ');
-if abs(theta_err_deg) < 0.1 && abs(phi_err_deg) < 0.5
-    fprintf('角度估计精度很高，完美满足深海标定工程需求。\n');
-elseif abs(theta_err_deg) < 0.5 && abs(phi_err_deg) < 2
-    fprintf('角度估计精度尚可，可接受。\n');
-else
-    fprintf('角度估计误差偏大，建议检查滤波 P0 阵设置或观测数据时间对齐。\n');
-end
-
-% 3. 无补偿前的真实偏移分量计算
-depth = -S_gnss_xyz(:,3);   % 提取已知发声深度：[1000; 1015; 985] 米
+% 2. 无补偿前的真实偏移分量计算
+depth = -S_gnss_xyz(:,3);   % 提取已知发声深度
 n = length(depth);
 
-% 【物理对齐修复】：严格契合数据发生器几何投影：X对应东向(sin)，Y对应北向(cos)
+% 【物理对齐】：X对应东向(sin)，Y对应北向(cos)
 delta_x_true = depth .* tan(theta_true_rad) .* sin(phi_true_rad);
 delta_y_true = depth .* tan(theta_true_rad) .* cos(phi_true_rad);
+delta_x_est  = depth .* tan(theta_est_rad)  .* sin(phi_est_rad);
+delta_y_est  = depth .* tan(theta_est_rad)  .* cos(phi_est_rad);
 
-delta_x_est = depth .* tan(theta_est_rad) .* sin(phi_est_rad);
-delta_y_est = depth .* tan(theta_est_rad) .* cos(phi_est_rad);
-
-fprintf('\n==================== 2. 水平偏移分量对账单（单位：米） ====================\n');
-fprintf('潜标编号\t深度(m)\t真实dx(东)\t真实dy(北)\t估计dx(东)\t估计dy(北)\tdx误差\tdy误差\n');
-for i = 1:n
-    fprintf('%d\t\t%.0f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n', ...
-        i, depth(i), ...
-        delta_x_true(i), delta_y_true(i), ...
-        delta_x_est(i), delta_y_est(i), ...
-        delta_x_est(i)-delta_x_true(i), delta_y_est(i)-delta_y_true(i));
-end
-
-% 4. 位置还原误差与补偿坐标重构
+% 3. 位置还原误差与补偿坐标重构
 S_est_xyz = zeros(n, 3);
 for i = 1:n
     surf_x = S_gnss_xyz(i,1);
@@ -72,42 +44,128 @@ end
 pos_err_3d = sqrt(sum((S_est_xyz - S_true_xyz).^2, 2));  % 三维位置还原绝对误差
 pos_err_horiz = sqrt( (delta_x_est - delta_x_true).^2 + (delta_y_est - delta_y_true).^2 ); % 水平平面误差
 
-fprintf('\n==================== 3. 潜标位置还原误差评估（米） ====================\n');
-fprintf('潜标编号\t深度(m)\t三维位置误差\t水平位置误差\n');
+% 4. 二次联合估计：残差角度计算
+delta_x_rem = delta_x_true - delta_x_est; 
+delta_y_rem = delta_y_true - delta_y_est; 
+theta_rem_rad = zeros(n, 1);
+phi_rem_rad   = zeros(n, 1);
+
+% 预分配 17 列“标定全链条集成对账矩阵”
+combinedTableData = zeros(n, 17);
+
 for i = 1:n
-    fprintf('%d\t\t%.0f\t%.3f\t\t%.3f\n', i, depth(i), pos_err_3d(i), pos_err_horiz(i));
+    horiz_rem = sqrt(delta_x_rem(i)^2 + delta_y_rem(i)^2);
+    theta_rem_rad(i) = atan2(horiz_rem, depth(i));
+    phi_rem_rad(i) = atan2(delta_x_rem(i), delta_y_rem(i));
+    
+    if phi_rem_rad(i) < 0
+        phi_rem_rad(i) = phi_rem_rad(i) + 2*pi;
+    end
+    
+    theta_rem_deg = theta_rem_rad(i) / glv.deg;
+    phi_rem_deg   = phi_rem_rad(i) / glv.deg;
+    
+    % ✨【Bug 修复核心位置】
+    % 将 theta_true_deg 和 phi_true_deg 的 (i) 索引去掉，作为固定的标量填入每行
+    combinedTableData(i, :) = [ ...
+        i, depth(i), ...                                                % 1, 2: 基础属性
+        theta_true_deg, phi_true_deg, ...                              % 3, 4: ✨ 修复：角度真值为固定单值
+        theta_est_deg,  phi_est_deg, ...                         % 5, 6: 滤波估计角度(各个潜标不同)
+        theta_err_deg,  phi_err_deg, ...                         % 7, 8: 角度绝对误差
+        delta_x_true(i),   delta_y_true(i), ...                        % 9, 10: 真实流场位移(m)
+        delta_x_est(i),    delta_y_est(i), ...                         % 11, 12: 估计流场位移(m)
+        delta_x_est(i)-delta_x_true(i), delta_y_est(i)-delta_y_true(i), ... % 13, 14: 位置标定分量误差(m)
+        pos_err_horiz(i), ...                                           % 15: 一次水平位置还原误差(m)
+        theta_rem_deg,     phi_rem_deg ...                              % 16, 17: 二次迭代角度建议值(°)
+    ];
 end
-fprintf('平均三维位置误差: %.3f m, 平均水平位置误差: %.3f m\n', mean(pos_err_3d), mean(pos_err_horiz));
 
-% 5. 综合评语打分
-fprintf('\n==================== 4. 综合评估结论 ====================\n');
-fprintf('1. 角度标定误差：倾角误差 %.4f°，方位角误差 %.4f°。\n', theta_err_deg, phi_err_deg);
-fprintf('2. 深度 %d m 处，最大水平偏移估计误差被压缩至 %.3f m。\n', round(max(depth)), max(pos_err_horiz));
-fprintf('3. 全部潜标阵列反演平均三维点位残差为 %.3f m。\n', mean(pos_err_3d));
+theta_next_step = mean(theta_rem_rad);
+phi_next_step   = mean(phi_rem_rad);
 
-if mean(pos_err_3d) < 0.5
-    fprintf('4. 最终评价：估计效果极其优秀，已成功逆向抹除海流摆动，可直接用于导航补偿。\n');
-elseif mean(pos_err_3d) < 1.0
-    fprintf('4. 最终评价：估计效果良好，满足高精度水声标定应用需求。\n');
-else
-    fprintf('4. 最终评价：估计效果一般，建议调优滤波器过程噪声 Qc 或检查大噪声 R 阵阻尼。\n');
-end
-
-
-% 6. 图形可视化展示
-figure('Color', [1 1 1], 'Position', [100 100 1000 400]);
+% 5. 图形可视化展示 (保留柱状图，不涉及命令行打印)
+figure('Name', '流场位移对比柱状图', 'Color', [1 1 1], 'Position', [100 650 1000 320]);
 subplot(1,2,1);
 bar(1:n, [delta_x_true, delta_x_est]);
 xlabel('潜标编号'); ylabel('东向偏移 (m)');
 legend('真实(真值模型)', '估计(10维滤波器)', 'Location','best');
-title('X方向（东向）流场位移对比');
-grid on;
+title('X方向（东向）流场位移对比'); grid on;
 
 subplot(1,2,2);
 bar(1:n, [delta_y_true, delta_y_est]);
 xlabel('潜标编号'); ylabel('北向偏移 (m)');
 legend('真实(真值模型)', '估计(10维滤波器)', 'Location','best');
-title('Y方向（北向）流场位移对比');
-grid on;
+title('Y方向（北向）流场位移对比'); grid on;
+sgtitle('深海潜标阵列水平偏移在线估计与标定补偿效果');
 
-sgtitle('深海潜标阵列水平偏移在线估计与标定补偿效果对账大盘');
+
+%% ==================== UI集成大看板窗口弹出 ====================
+
+% 创建超宽屏分辨率窗口 (1620x340)
+fig = uifigure('Name', '深海潜标一/二次联合反演标定全要素融合看板', 'Position', [50 200 1620 340]);
+
+% 1. 顶部级联参数与指标综合对账面板
+lbl = uilabel(fig, 'Position', [20 225 1580 100], 'WordWrap', 'on', 'FontSize', 12);
+lbl.BackgroundColor = [0.94 0.97 1.0]; % 浅蓝色背景
+lbl.Text = sprintf([ ...
+    ' 📊【评估结论】\n', ...
+    ' 1. 角度标定误差：全阵列平均倾角误差 %.4f°，平均方位角误差 %.4f°。\n', ...
+    ' 2. 潜标阵列还原：平均三维位置误差 %.3f m，平均水平还原误差被压缩至 %.3f m。\n\n', ...
+    ' 🎯【下级迭代级联参数建议】\n', ...
+    ' 二次联合估计初始注入建议值：倾角 theta_next = %.6f° (%.8f rad)  |  方位角 phi_next = %.6f° (%.8f rad)' ...
+    ], mean(theta_err_deg), mean(phi_err_deg), mean(pos_err_3d), mean(pos_err_horiz), ...
+       theta_next_step / glv.deg, theta_next_step, phi_next_step / glv.deg, phi_next_step);
+theta_next = r2d(theta_next_step);
+phi_next = r2d(phi_next_step);
+% 2. 落地全维度集成表格
+uit = uitable(fig, 'Position', [20 15 1580 195]);
+uit.Data = combinedTableData;
+
+% 17列逻辑环环相扣的表头栏
+uit.ColumnName = { ...
+    '潜标编号', '深度 (m)', ...
+    '真值 theta(°)', '真值 phi(°)', ...
+    '估计 theta(°)', '估计 phi(°)', ...
+    'theta 误差(°)', 'phi 误差(°)', ...
+    '真实 dx(东)', '真实 dy(北)', ...
+    '估计 dx(东)', '估计 dy(北)', ...
+    'dx 标定误差', 'dy 标定误差', ...
+    '水平还原误差 (m)', ...
+    '二次迭代 theta(°)', '二次迭代 phi(°)' ...
+};
+
+% 批量精细格式化数据列
+columnFormats = repmat({'numeric'}, 1, 17);
+columnFormats{1} = 'char';
+uit.ColumnFormat = columnFormats;
+
+% 17列专属像素宽度分配
+uit.ColumnWidth = {65, 75, 95, 95, 95, 95, 95, 95, 90, 90, 90, 90, 95, 95, 115, 120, 120};
+% ==================== ✨ 追加的自动导出 Excel 逻辑 ====================
+% 1. 组装带有表头的数据 Cell 矩阵
+exportHeader = { ...
+    '潜标编号', '深度 (m)', ...
+    '真值 theta(°)', '真值 phi(°)', ...
+    '估计 theta(°)', '估计 phi(°)', ...
+    'theta 误差(°)', 'phi 误差(°)', ...
+    '真实 dx(东)', '真实 dy(北)', ...
+    '估计 dx(东)', '估计 dy(北)', ...
+    'dx 标定误差', 'dy 标定误差', ...
+    '水平还原误差 (m)', ...
+    '二次迭代 theta(°)', '二次迭代 phi(°)' ...
+};
+
+% 将数据转为 cell 并与表头垂直拼接
+exportData = [exportHeader; num2cell(combinedTableData)];
+
+% 2. 自动保存至当前目录下的 Excel 文件中
+outputExcelName = ['深海潜标标定结果_',id,'.xlsx'];
+try
+    writecell(exportData, outputExcelName);
+    % 如果是老版本 MATLAB，请使用下行命令：
+    % xlswrite(outputExcelName, exportData); 
+catch
+    warning('Excel 文件正被占用，自动导出失败，请先关闭该 Excel。');
+end
+% =====================================================================
+end
