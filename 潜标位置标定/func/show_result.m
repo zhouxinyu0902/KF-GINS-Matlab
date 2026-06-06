@@ -1,4 +1,4 @@
-function [S_est_xyz,theta_next,phi_next] = show_result(id, S_gnss_geo, S_true_geo, pos0_geo, theta_est, phi_est, theta_ref, phi_ref)
+function [S_est_xyz,theta_next,phi_next] = show_result(id, S_gnss_geo, S_true_geo, pos0_geo, theta_est, phi_est, theta_ref, phi_ref,outputExcelName)
 %% ==================== 标定成果综合评估对账与表格统一看板 ====================
 glvs
 S_gnss_xyz = pos2dxyz(S_gnss_geo, pos0_geo);
@@ -102,10 +102,10 @@ sgtitle('深海潜标阵列水平偏移在线估计与标定补偿效果');
 %% ==================== UI集成大看板窗口弹出 ====================
 
 % 创建超宽屏分辨率窗口 (1620x340)
-fig = uifigure('Name', '深海潜标一/二次联合反演标定全要素融合看板', 'Position', [50 200 1620 340]);
+fig = uifigure('Name', '深海潜标一/二次联合反演标定全要素融合看板', 'Position', [50 200 1000 340]);
 
 % 1. 顶部级联参数与指标综合对账面板
-lbl = uilabel(fig, 'Position', [20 225 1580 100], 'WordWrap', 'on', 'FontSize', 12);
+lbl = uilabel(fig, 'Position', [20 225 1100 100], 'WordWrap', 'on', 'FontSize', 12);
 lbl.BackgroundColor = [0.94 0.97 1.0]; % 浅蓝色背景
 lbl.Text = sprintf([ ...
     ' 📊【评估结论】\n', ...
@@ -118,7 +118,7 @@ lbl.Text = sprintf([ ...
 theta_next = r2d(theta_next_step);
 phi_next = r2d(phi_next_step);
 % 2. 落地全维度集成表格
-uit = uitable(fig, 'Position', [20 15 1580 195]);
+uit = uitable(fig, 'Position', [20 15 1000 195]);
 uit.Data = combinedTableData;
 
 % 17列逻辑环环相扣的表头栏
@@ -159,7 +159,7 @@ exportHeader = { ...
 exportData = [exportHeader; num2cell(combinedTableData)];
 
 % 2. 自动保存至当前目录下的 Excel 文件中
-outputExcelName = ['深海潜标标定结果_',id,'.xlsx'];
+% outputExcelName = ['深海潜标标定结果_',id,'.xlsx'];
 try
     writecell(exportData, outputExcelName);
     % 如果是老版本 MATLAB，请使用下行命令：

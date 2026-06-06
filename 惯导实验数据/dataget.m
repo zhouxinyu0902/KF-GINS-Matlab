@@ -1,165 +1,200 @@
-clear
-pva_830=importdata('惯导实验数据/input/pva_830.txt');
-pva_430=importdata('惯导实验数据/input/pva_430.txt');
-std_430=importdata('惯导实验数据/input/std_430.txt');
-std_830=importdata('惯导实验数据/input/std_830.txt');
-pva_RS=importdata('惯导实验数据/input/pva_RS.txt');
+clear; clc; close all;
+% 获取高度、距离数据
+%% ===================== 路径配置 =====================
+baseDir = 'D:\Github\KF-GINS-Matlab';
+inputDir = fullfile(baseDir, '惯导实验数据', 'input');
+outputDir = fullfile(baseDir, '惯导实验数据', 'output');
+figDir = fullfile(baseDir,'惯导实验数据', 'fig');
 
-pva_truth = importdata('惯导实验数据/output/truth.nav');
-%% 误差对比
-ax1 = myfigurestartup(4,5,'paper');
+if ~exist(figDir, 'dir')
+    mkdir(figDir);
+end
 
-% 纬度误差对比
-subplot(3,1,1);
-plot(std_830 (:,1), std_830 (:,2), 'r.'); hold on;
-plot(std_430 (:,1), std_430 (:,2), 'b.');
-ylabel('纬度误差 (m)');
-title('各维度定位误差对比');
-legend('pva\_830', 'pva\_430');
-ylim([0 0.08])
-grid on;
+%% ===================== 数据读取 =====================
+pva_830 = importdata(fullfile(inputDir, 'pva_830.txt'));
+pva_430 = importdata(fullfile(inputDir, 'pva_430.txt'));
+std_430 = importdata(fullfile(inputDir, 'std_430.txt'));
+std_830 = importdata(fullfile(inputDir, 'std_830.txt'));
+pva_RS  = importdata(fullfile(inputDir, 'pva_RS.txt'));
 
-% 经度误差对比
-subplot(3,1,2);
-plot(std_830 (:,1), std_830 (:,3), 'r.'); hold on;
-plot(std_430 (:,1), std_430 (:,3), 'b.');
-ylim([0 0.08])
-ylabel('经度误差 (m)');
-grid on;
+pva_truth = importdata(fullfile(outputDir, 'truth.nav'));
 
-% 高度误差对比
-subplot(3,1,3);
-plot(std_830 (:,1), std_830 (:,4), 'r.'); hold on;
-plot(std_430 (:,1), std_430 (:,4), 'b.');
-ylim([0 0.08])
-xlabel('时间 (s)');
-ylabel('高度误差 (m)');
-grid on;
+%% ===================== 误差对比绘图 =====================
+fig1 = myfigurestartup(4, 5, 'paper');
 
+errNames = {'纬度误差 (m)', '经度误差 (m)', '高度误差 (m)'};
+errCols = 2:4;
 
-% 假设 pva_830/430 的第 6, 7, 8 列分别是 纬度、经度、高度的误差 (单位: m)
-% 时间列为第 2 列
+for i = 1:3
+    subplot(3, 1, i);
+    plot(std_830(:, 1), std_830(:, errCols(i)), 'r.'); hold on;
+    plot(std_430(:, 1), std_430(:, errCols(i)), 'b.');
+    
+    ylabel(errNames{i});
+    ylim([0 0.08]);
+    grid on;
+    
+    if i == 1
+        title('各维度定位误差对比');
+        legend('pva\_830', 'pva\_430');
+    elseif i == 3
+        xlabel('时间 (s)');
+    end
+end
 
-% 定义数据矩阵
-data_830 = std_830(:, 2:4); 
+% 如需导出图片，取消注释
+% exportgraphics(fig1, fullfile(figDir, 'Preview_Figure_1.png'), 'Resolution', 600);
+
+%% ===================== 误差统计分析 =====================
+data_830 = std_830(:, 2:4);
 data_430 = std_430(:, 2:4);
 
-% 计算统计指标
-rmse_830 = sqrt(mean(data_830.^2));
-rmse_430 = sqrt(mean(data_430.^2));
+rmse_830 = sqrt(mean(data_830.^2, 1));
+rmse_430 = sqrt(mean(data_430.^2, 1));
 
-std830 = std(data_830);
-std430 = std(data_430);
+std_830_val = std(data_830, 0, 1);
+std_430_val = std(data_430, 0, 1);
 
-max_err_830 = max(abs(data_830));
-max_err_430 = max(abs(data_430));
+max_err_830 = max(abs(data_830), [], 1);
+max_err_430 = max(abs(data_430), [], 1);
 
-% 打印量化结果表格
-fprintf('\n================ 导航误差量化对比 (单位: m) ================\n');
-fprintf('%-10s | %-15s | %-15s | %-15s\n', '指标', '纬度 (Lat)', '经度 (Lon)', '高度 (Alt)');
-fprintf('------------------------------------------------------------\n');
-fprintf('830 RMSE   | %-15.4f | %-15.4f | %-15.4f\n', rmse_830);
-fprintf('430 RMSE   | %-15.4f | %-15.4f | %-15.4f\n', rmse_430);
-fprintf('------------------------------------------------------------\n');
-fprintf('830 MAX    | %-15.4f | %-15.4f | %-15.4f\n', max_err_830);
-fprintf('430 MAX    | %-15.4f | %-15.4f | %-15.4f\n', max_err_430);
-fprintf('============================================================\n');
+printErrorStatistics(rmse_830, rmse_430, std_830_val, std_430_val, max_err_830, max_err_430);
 
-% exportgraphics(ax1, fullfile('D:\GitHub\KF-GINS-Matlab\fig\', ...
-%     'Preview_Figure_1.png'), 'Resolution', 600);
-%%
-myfigurestartup(5,5,'paper');
-plot(pva_830(:,3))
-myfigurestartup(7,5,'paper');
-subplot 121
-plot(diff(pva_830(:,5)),'.')
-subplot 122
-plot(pva_830(:,8))
-%% 生成高度数据
-height = pva_truth(:,[2,5]);
-% 数据保存：高度数据
-output_file="D:\Github\KF-GINS-Matlab\惯导实验数据\input\height.txt";
-try
-    writematrix(height, output_file, 'Delimiter', ' ');
-    fprintf('height信息已成功写入到 %s\n', output_file);
-catch ME
-    error('错误：写入文件失败。错误信息：%s', ME.message);
-end
-%% 构造静止信标数据
-% 构造GNSS数据：直接选择gps数据/选择参考数据
-GNSS_1s = pva_truth(1:100:end,2:5);
-glvs
+%% ===================== 简单数据检查绘图 =====================
+myfigurestartup(5, 5, 'paper');
+plot(pva_830(:, 3));
+title('pva\_830 第3列数据');
+grid on;
+
+myfigurestartup(7, 5, 'paper');
+
+subplot(1, 2, 1);
+plot(diff(pva_830(:, 5)), '.');
+title('pva\_830 第5列差分');
+grid on;
+
+subplot(1, 2, 2);
+plot(pva_830(:, 8));
+title('pva\_830 第8列数据');
+grid on;
+
+%% ===================== 生成高度数据 =====================
+height = pva_truth(:, [2, 5]);
+writeMatrixSafe(height, fullfile(inputDir, 'height.txt'), 'height');
+
+%% ===================== 构造静止信标数据 =====================
+GNSS_1s = pva_truth(1:100:end, 2:5);
+
+glvs;
 pos0 = d2r([36.40042003, 120.68981831, 0]);
-% 原始等边三角形坐标（单位：米）
-dxyz_original = [0, -5*sqrt(3), 0;
-                -10, 5*sqrt(3), 0;
-                -20, -5*sqrt(3), 0;] * 1000;
-% 定义旋转角度（15度）
+
+% 原始等边三角形信标坐标，单位：m
+dxyz_original = [
+     0,  -5 * sqrt(3), 0;
+   -10,   5 * sqrt(3), 0;
+   -20,  -5 * sqrt(3), 0
+] * 1000;
+
+% 绕 Z 轴旋转角度
 theta_deg = 15;
 theta_rad = deg2rad(theta_deg);
-% 创建绕Z轴的旋转矩阵
-R = [cos(theta_rad), -sin(theta_rad), 0;
-     sin(theta_rad), cos(theta_rad),  0;
-     0,              0,              1];
-% 对每个点应用旋转
-beacon_xyz = (R * dxyz_original')'; % 转置以便矩阵乘法
-% 分开获取信标和轨迹原点
-beacon_rrm = dxyz2pos(beacon_xyz, pos0');
-beacon_ddm = [r2d(beacon_rrm(:, 1:2)),beacon_rrm(:, 3)];
 
+Rz = [
+    cos(theta_rad), -sin(theta_rad), 0;
+    sin(theta_rad),  cos(theta_rad), 0;
+    0,               0,              1
+];
+
+beacon_xyz = (Rz * dxyz_original')';
+
+% 信标坐标转换
+beacon_rrm = dxyz2pos(beacon_xyz, pos0');
+beacon_ddm = [r2d(beacon_rrm(:, 1:2)), beacon_rrm(:, 3)];
+
+% 轨迹坐标转换
 trj = GNSS_1s(:, 2:4);
-trj(:,1:2) = d2r(trj(:,1:2));
+trj(:, 1:2) = d2r(trj(:, 1:2));
+
 trajectory_xyz = pos2dxyz(trj, pos0');
 trajectory_ddm = GNSS_1s(:, 2:4);
-% 绘图
-plot_navigation_scene(trajectory_xyz, 'static', beacon_xyz, 'type', 'xyz')
-exportgraphics(gca, fullfile('D:\GitHub\KF-GINS-Matlab\fig\', ...
-    'plot_navigation_scene.png'), 'Resolution', 600);
-plot_navigation_scene(trajectory_ddm(:,[2,1,3]), 'static', beacon_ddm(:,[2,1,3]), 'type', 'lla')
-%%
+
+%% ===================== 导航场景绘图 =====================
+plot_navigation_scene(trajectory_xyz, 'static', beacon_xyz, 'type', 'xyz');
+exportgraphics(gca, fullfile(figDir, 'plot_navigation_scene.png'), 'Resolution', 600);
+
+plot_navigation_scene( ...
+    trajectory_ddm(:, [2, 1, 3]), ...
+    'static', ...
+    beacon_ddm(:, [2, 1, 3]), ...
+    'type', 'lla' ...
+);
+
+%% ===================== 计算轨迹到各信标距离 =====================
 trajectory_x = trajectory_xyz(:, 1);
 trajectory_y = trajectory_xyz(:, 2);
-myfigurestartup(12,5,'prese');
-for i=1:3
-    % 获取信标的坐标 (东向，北向，天向)
-    beacon1_x = beacon_xyz(i, 1);
-    beacon1_y = beacon_xyz(i, 2);
-    % 计算每个轨迹点到第一个信标的2D距离
-    distances(:,i) = sqrt((trajectory_x - beacon1_x).^2 + ...
-        (trajectory_y - beacon1_y).^2);
-    % 创建新的图窗来绘制距离曲线
-    subplot(1,3,i)
-    plot(GNSS_1s(:,1), distances(:,i), 'LineWidth', 1.5); % 洋红色实线
-    xlabel('时间 (s) ');
-    ylabel('距离 (km)');
+
+numEpochs = size(trajectory_xyz, 1);
+numBeacons = size(beacon_xyz, 1);
+
+distances = zeros(numEpochs, numBeacons);
+
+myfigurestartup(12, 5, 'prese');
+
+for i = 1:numBeacons
+    dx = trajectory_x - beacon_xyz(i, 1);
+    dy = trajectory_y - beacon_xyz(i, 2);
+    
+    distances(:, i) = sqrt(dx.^2 + dy.^2);
+    
+    subplot(1, numBeacons, i);
+    plot(GNSS_1s(:, 1), distances(:, i), 'LineWidth', 1.5);
+    xlabel('时间 (s)');
+    ylabel('距离 (m)');
+    title(sprintf('信标 %d 距离', i));
     grid on;
 end
+
 distances_N_by_1_max = max(distances, [], 2);
-beacon1 = ones(length(distances),3)*diag(beacon_rrm(1,:));
-beacon2 = ones(length(distances),3)*diag(beacon_rrm(2,:));
-beacon3 = ones(length(distances),3)*diag(beacon_rrm(3,:));
-range1 = [GNSS_1s(:,1),distances(:,1),distances(:,1),beacon1];
-range2 = [GNSS_1s(:,1),distances(:,2),distances(:,2),beacon2];
-range3 = [GNSS_1s(:,1),distances(:,3),distances(:,3),beacon3];
-%%
-output_file="D:\Github\KF-GINS-Matlab\惯导实验数据\input\range1.txt";
-try
-    writematrix(range1, output_file, 'Delimiter', ' ');
-    fprintf('height信息已成功写入到 %s\n', output_file);
-catch ME
-    error('错误：写入文件失败。错误信息：%s', ME.message);
+
+%% ===================== 生成 range 数据 =====================
+rangeData = cell(numBeacons, 1);
+
+for i = 1:numBeacons
+    beaconPos = repmat(beacon_rrm(i, :), numEpochs, 1);
+    
+    rangeData{i} = [
+        GNSS_1s(:, 1), ...
+        distances(:, i), ...
+        distances(:, i), ...
+        beaconPos
+    ];
+    
+    outputFile = fullfile(inputDir, sprintf('range%d.txt', i));
+    writeMatrixSafe(rangeData{i}, outputFile, sprintf('range%d', i));
 end
-output_file="D:\Github\KF-GINS-Matlab\惯导实验数据\input\range2.txt";
-try
-    writematrix(range2, output_file, 'Delimiter', ' ');
-    fprintf('height信息已成功写入到 %s\n', output_file);
-catch ME
-    error('错误：写入文件失败。错误信息：%s', ME.message);
+
+%% ===================== 局部函数 =====================
+
+function writeMatrixSafe(data, outputFile, dataName)
+    try
+        writematrix(data, outputFile, 'Delimiter', ' ');
+        fprintf('%s 信息已成功写入到：%s\n', dataName, outputFile);
+    catch ME
+        error('错误：%s 写入失败。错误信息：%s', dataName, ME.message);
+    end
 end
-output_file="D:\Github\KF-GINS-Matlab\惯导实验数据\input\range3.txt";
-try
-    writematrix(range3, output_file, 'Delimiter', ' ');
-    fprintf('height信息已成功写入到 %s\n', output_file);
-catch ME
-    error('错误：写入文件失败。错误信息：%s', ME.message);
+
+function printErrorStatistics(rmse_830, rmse_430, std_830, std_430, max_830, max_430)
+    fprintf('\n================ 导航误差量化对比，单位：m ================\n');
+    fprintf('%-12s | %-15s | %-15s | %-15s\n', '指标', '纬度 Lat', '经度 Lon', '高度 Alt');
+    fprintf('------------------------------------------------------------\n');
+    fprintf('830 RMSE    | %-15.4f | %-15.4f | %-15.4f\n', rmse_830);
+    fprintf('430 RMSE    | %-15.4f | %-15.4f | %-15.4f\n', rmse_430);
+    fprintf('------------------------------------------------------------\n');
+    fprintf('830 STD     | %-15.4f | %-15.4f | %-15.4f\n', std_830);
+    fprintf('430 STD     | %-15.4f | %-15.4f | %-15.4f\n', std_430);
+    fprintf('------------------------------------------------------------\n');
+    fprintf('830 MAX     | %-15.4f | %-15.4f | %-15.4f\n', max_830);
+    fprintf('430 MAX     | %-15.4f | %-15.4f | %-15.4f\n', max_430);
+    fprintf('============================================================\n');
 end

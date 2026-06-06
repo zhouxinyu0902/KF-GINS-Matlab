@@ -1,4 +1,4 @@
-function range_reconstruct(path, pathpos, outputfolder, id, S_est_xyz)
+function range_reconstruct(path, pathpos, outputfolder, id, S_est_xyz,filenn)
 % -------------------------------------------------------------------------
 % 功能：利用标定成果算出来的估计位置 S_est_xyz 以及数据发生器的真实位置 S_true_xyz，
 %       对阶段二（长距离直行巡航）的时序测距文件进行静态代偿重构（保持原文件名加后缀）
@@ -44,16 +44,18 @@ function range_reconstruct(path, pathpos, outputfolder, id, S_est_xyz)
         
         %% C. 分层双精密落地保存文本（直接在原名后追加后缀）
         % 落地一：原文件名 + _calib
-        file_c = fullfile(outputfolder, [filename, '_calib_', num2str(id), fileext]);
+        % file_c = [filenn, fileext];
+        % save(file_c, 'range_calib', '-ascii', '-double'); 
+        file_c = fullfile('D:\Github\KF-GINS-Matlab\潜标位置标定\Non-idealization\rangeconstruct\', [filename, '_calib_', num2str(id), filenn, fileext]);
         save(file_c, 'range_calib', '-ascii', '-double');
         
-        % 落地二：原文件名 + _true
-        file_t = fullfile(outputfolder, [filename, '_true',fileext]);
-        save(file_t, 'range_true', '-ascii', '-double');
+        % % 落地二：原文件名 + _true
+        % file_t = fullfile(outputfolder, [filename, '_true',fileext]);
+        % save(file_t, 'range_true', '-ascii', '-double');
         
         fprintf('【潜标 #%d 导出成功】\n', i);
         fprintf('  └─ 估计位置代偿流 -> %s\n', file_c);
-        fprintf('  └─ 真实点位代偿流 -> %s\n', file_t);
+        % fprintf('  └─ 真实点位代偿流 -> %s\n', file_t);
     end
     fprintf('================================================================================\n\n');
 end

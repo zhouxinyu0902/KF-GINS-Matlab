@@ -40,15 +40,16 @@ function cfg = Config_10state(output,type)
     cfg.initaccscale = [0; 0; 0]; % [ppm]
 
     % 初始协方差
-    cfg.initposstd = [0.005; 0.004; 0.008]; %[m]
-    cfg.initvelstd = [0.003; 0.004; 0.004]; %[m/s]
-    cfg.initattstd = [0.008; 0.008; 0.075]; %[deg]
+    cfg.initposstd = [0.005; 0.004; 0.008]/2; %[m]
+    cfg.initvelstd = [0.003; 0.004; 0.004]/2; %[m/s]
+    cfg.initattstd = [0.008; 0.008; 0.075]/2; %[deg]
     % 参数设置
-    eb = 0.01;
-    db  = 20;
-    web = 0.0005;
+    % eb = 0.01;
+    % db  = 20;
+    % web = 0.0005;
     wdb = 10e-6;
 
+    eb = 0.003; db = 10; web = 0.0002;
     cfg.initgyrbiasstd = [eb; eb; eb]; % [deg/h]
     cfg.initaccbiasstd = [db; db; db]; % [mGal]
     

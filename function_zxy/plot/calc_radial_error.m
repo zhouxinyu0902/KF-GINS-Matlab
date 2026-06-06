@@ -15,7 +15,7 @@ function [fig,finalExcelData] = calc_radial_error(truthpath, varargin)
 
     % 绘图样式定义
     colors = lines(num_tests); 
-    line_styles = {'-', '-', ':', '-.'};
+    line_styles = {'-', '-', '-', '-'};
 
     %% 2. 读取真值数据
     try
@@ -95,7 +95,8 @@ function [fig,finalExcelData] = calc_radial_error(truthpath, varargin)
 
     %% 5. 绘制径向误差对比图
     if exist('myfigurestartup', 'file')
-        fig = myfigurestartup(6, 3, 'paper');
+        % fig = myfigurestartup(6, 3, 'paper');
+        fig = myfigurestartup(6, 4, 'prese');
     else
         fig = figure('Color', 'w'); 
     end
@@ -214,10 +215,8 @@ end
 
 %% 辅助函数：获取系统标签
 function label = get_system_label(filename)
-    name_map = containers.Map(...
-        {'pure_ins', 'gps', 'ins', 'gnss', 'filter', 'ekf', 'ukf', 'truth', 'mems', 'origin'}, ...
-        {'纯惯性', 'GPS', 'INS', 'GNSS', '滤波', 'EKF', 'UKF', '真值', 'MEMS-EKF',  '未修正(Origin)'}...
-    );
+    name_map = containers.Map({'Origin_Drop_1', 'Origin_Drop_3', 'Origin_Drop_5', 'Origin_Drop_7', 'Origin_Drop_9', 'Origin_Drop_11', 'ukf', 'truth', 'mems'}, ...
+        {'Origin-Drop-1', 'Origin-Drop-3', 'Origin-Drop-5', 'Origin-Drop-7', 'Origin-Drop-9', 'Origin-Drop-11', 'UKF', '真值', 'MEMS-EKF'});
 
     lower_name = lower(filename);
     keys = name_map.keys;

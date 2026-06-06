@@ -35,3 +35,7 @@ graduation/DR_INS/inputimu_data.txt
 /潜标位置标定/result_file
 /潜标位置标定/Square_ArrayCenter_Trj
 /潜标位置标定/Square_Beacon1_Trj
+/惯导实验数据/output
+/潜标位置标定/Non-idealization/output
+/潜标位置标定/Non-idealization
+/惯导实验数据/output

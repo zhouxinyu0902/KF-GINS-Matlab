@@ -309,8 +309,6 @@ for dataType = 1:4
                 Pk_propa(buf_idx,:) = kf.P(:)';
             end
 
-
-
             % error propagation
             kf = myInsPropagate_15state_m(navstate, thisimu, imudt, kf);
 

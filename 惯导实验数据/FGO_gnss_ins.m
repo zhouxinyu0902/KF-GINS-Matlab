@@ -2,25 +2,23 @@ clear;
 % 支持纯惯导+1s gnss
 %% 定义全局参数
 rng(1)
-feedback = 0; % 是否反馈，不反馈则可以观察参数
-imuerrrecord = 1;
-stdrecord = 1;
+feedback = 1; % 是否反馈，不反馈则可以观察参数
+imuerrrecord = 0;
+stdrecord = 0;
 glvs
 %% 定义参数+加载过程配置
 param = Param();
 cfg = ProcessConfig_exper();
 %% 加载数据
-
 imudata = importdata(cfg.imufilepath);
 imustarttime = imudata(1, 1);
 imuendtime = imudata(end, 1);
 
-
-gnss = importdata(cfg.gnssfilepath);
+GNSS = importdata(cfg.gnssfilepath);
 stdd = importdata(cfg.stdfilepath);
-gnssdata = [gnss(:,2:5),stdd(:,2:4),gnss(:,6:8),stdd(:,5:7)];
-gnssdata(:, 2:3) = gnssdata(1:100:end, 2:3) * param.D2R;
-
+gnss = [GNSS(:,2:5),stdd(:,2:4),GNSS(:,6:8),stdd(:,5:7)];
+gnssdata = gnss(1:100:end,1:7);
+gnssdata(:, 2:3) = gnss(1:100:end, 2:3) * param.D2R;
 gnssstarttime = gnssdata(1, 1);
 gnssendtime = gnssdata(end, 1);
 
@@ -42,8 +40,13 @@ gnssdata = gnssdata(gnssdata(:, 1) <= cfg.endtime, :);
 heightdata = heightdata(heightdata(:, 1) >= cfg.starttime, :);
 heightdata = heightdata(heightdata(:, 1) <= cfg.endtime, :);
 %% 设置文件保存路径
-navpath = [cfg.outputfolder, '/NavResult-gnss.nav'];
-navfp = fopen(navpath, 'wt');
+if feedback ==1
+    navpath = [cfg.outputfolder, '/GnssIns.nav'];
+    navfp = fopen(navpath, 'wt');
+else
+    navpath = [cfg.outputfolder, '/PureIns.nav'];
+    navfp = fopen(navpath, 'wt');
+end
 if imuerrrecord == 1
     imuerrpath = [cfg.outputfolder, '/NavResult-gnss-ImuError.txt'];
     imuerrfp = fopen(imuerrpath, 'wt');
@@ -62,7 +65,7 @@ lastprecent = 0;
 %% 初始化
 [kf, navstate] = myInitialize_15state(cfg);
 laststate = navstate;
-
+kf.depthstd = 0.2;
 lastimu = imudata(1, :)';
 thisimu = imudata(1, :)';
 imudt = thisimu(1, 1) - lastimu(1, 1);
@@ -98,10 +101,8 @@ for imuindex = 2:size(imudata, 1)
 
     %% determine whether gnss update is required
     if lastimu(1, 1) == gnssdata(gnssindex, 1)
-        % do gnss update for the current state
         thisgnss = gnssdata(gnssindex, :)';
         kf = myGNSSUpdate_15state(navstate, thisgnss, kf);
-        % kf = myGNSSUpdate(navstate, thisgnss, kf, cfg.antlever);
         if feedback==1
             [kf, navstate] = myErrorFeedback_noatt(kf, navstate);
             % [kf, navstate] = myErrorFeedback_15state(kf, navstate);
@@ -109,34 +110,25 @@ for imuindex = 2:size(imudata, 1)
         gnssindex = gnssindex + 1;
         laststate = navstate;
 
-        % do propagation for current imu data
         imudt = thisimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, thisimu);
         % navstate.pos(3) = heightdata(imuindex,2);
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
     elseif (lastimu(1, 1) < gnssdata(gnssindex, 1) && thisimu(1, 1) > gnssdata(gnssindex, 1))
-        % ineterpolate imu to gnss time
         [firstimu, secondimu] = interpolate(lastimu, thisimu, gnssdata(gnssindex, 1));
-
-        % do propagation for first imu
         imudt = firstimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, firstimu);
         navstate.pos(3) = heightdata(imuindex,2);
         kf = myInsPropagate_15state(navstate, firstimu, imudt, kf);
-
-        % do gnss update
         thisgnss = gnssdata(gnssindex, :)';
         kf = myGNSSUpdate_15state(navstate, thisgnss, kf);
-        % kf = myGNSSUpdate(navstate, thisgnss, kf, cfg.antlever);
-        if feedback==1
+        if feedback == 1
             [kf, navstate] = myErrorFeedback_noatt(kf, navstate);
             % [kf, navstate] = myErrorFeedback_15state(kf, navstate);
         end
         gnssindex = gnssindex + 1;
         laststate = navstate;
         lastimu = firstimu;
-
-        % do propagation for second imu
         imudt = secondimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, secondimu);
         % navstate.pos(3) = heightdata(imuindex,2);
@@ -144,8 +136,22 @@ for imuindex = 2:size(imudata, 1)
     else
         %% only do propagation
         navstate = InsMech(laststate, lastimu, thisimu);
-        % navstate.pos(3) = heightdata(imuindex,2);
+        if feedback==0 % 纯惯导还是需要更新一下，不然发散会特别快
+            navstate.pos(3) = heightdata(imuindex,2); % 这里也不用，因为1s都在更新位置信息
+        end
+        % 在这里不管用，可能是因为这里的组合导航太频繁了，高度更新的残差特别小
+        % % 调用高度卡尔曼量测更新
+        % kf = myHeightUpdate(navstate, heightdata(imuindex, :), kf);
+        % 
+        % % 反馈修正惯导状态 (仅修正天向)
+        % navstate.pos(3) = navstate.pos(3) + kf.x(3);
+        % navstate.vel(3) = navstate.vel(3) - kf.x(6);
+        % 
+        % % 💡 反馈后，将整个误差状态量清零（代表误差已融入主状态）
+        % kf.x = zeros(size(kf.x));
+        % 
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
+        
     end
     %% save data
     % xkk(imuindex-1,:)=[navstate.time;kf.x];
@@ -192,6 +198,9 @@ end
 %%
 fclose all;
 disp("gnss/INS Integration Processing Finished!");
+%%
+calc_radial_error_gjb(cfg.truthpath,navpath,true);
+calc_error(navpath, cfg.truthpath);
 %%
 fig = calc_error(navpath, cfg.pureinsfilepath);
 

@@ -12,28 +12,21 @@ param = Param();
 path='D:\GitHub\KF-GINS-Matlab\旋转收缩方案1/input/input6';
 cfg = ProcessConfigforSemiPhy_all(path);
 type = {"single","moving","3","2"};
-beacontype = type{2};
+beacontype = type{3};
 
 type = {"Range","Range+azi","Range+azi+pos","pos"};
-meas = type{3};
+meas = type{1};
 
-isoptim = 1; expand = 20; % 是否优化
+isoptim = 0; expand = 20; % 是否优化
 
-
-backwardIsOpen_1s = 0;
-
+backwardIsOpen_1s = 1;
+IsEKFRotate = 1 ;
 feedback = 1; % 是否反馈，不反馈则可以观察参数
-
-RTSIsOpen = 0; % 是否RTS平滑
-
 IsHardConstrain = 0; MaxLimit = 100;
-
-IsEKFRotate = 0 ;
-%%
+%% 获取距离数据
 % get3beacons(path)
 % get1beacon(path,[-10000,4000,0])
 % getmovingbeacon(path,'follow')
-
 % close all
 %% 加载数据
 % imudata
@@ -42,7 +35,7 @@ imustarttime = imudata(1, 1);
 imuendtime = imudata(end, 1);
 
 % 构造距离信息
-id = 2;
+id = 420;
 rangedata1 = importdata(cfg.rangefile1path);
 rangedata2 = importdata(cfg.rangefile2path);
 rangedata3 = importdata(cfg.rangefile3path);
@@ -60,9 +53,9 @@ if beacontype=="3"||beacontype=="2"
     for i=1:numnum
         rangedata(i:numnum:end,:)=range{seq(nnn,i)}(i:numnum:end,:);
     end
-elseif beacontype=="single"
+elseif beacontype == "single"
     rangedata = range{4};
-elseif beacontype=="moving"
+elseif beacontype == "moving"
     rangedata = range{5};
 end
 
@@ -74,61 +67,40 @@ azi_old = rangedata(:, 7);
 rangedata(:, 7) = add_azimuth_noise_irregular(rangedata(:, 7), para);
 azi_new = rangedata(:, 7);
 
-
+fig = plot_trajectory_and_beacons(cfg.truthpath, rangedata(1:3,4:6));
 % rangedata(4,:)=[];
-%%
-myfigurestartup(10,10,'prese')
-
-% --- 1. 方位角分析 ---
-subplot 221
-plot(azi_old, 'LineWidth', 1); hold on; plot(azi_new, '--');
-legend('参考方位角','观测方位角'); grid on; ylabel('角度/deg');
-title('方位角序列对比');
-
-subplot 222
-err_azi = mod(azi_new - azi_old + 180, 360) - 180;
-plot(err_azi,'.'); hold on; yline(rms(err_azi),'r', 'LineWidth', 1.5);
-title(sprintf('方位角残差 (RMSE: %.2f°)', rms(err_azi)));
-grid on; ylabel('偏差/deg');
-
-% --- 2. 距离分析 ---
-subplot 223
-plot(range_old, 'LineWidth', 1); hold on; plot(range_new, '--');
-legend('参考距离','观测距离'); grid on; ylabel('距离/m');
-title('距离序列对比');
-
-subplot 224
-err_range = range_new - range_old;
-plot(err_range,'.'); hold on; yline(rms(err_range),'r', 'LineWidth', 1.5);
-title(sprintf('距离残差 (RMSE: %.2f m)', rms(err_range)));
-grid on; ylabel('偏差/m');
-
-% % --- 3. 添加全图总标题 ---
-% sgtitle('定位源数据误差统计示意图', 'FontSize', 16);
+%% 方位角和距离分析
+% myfigurestartup(10,10,'prese')
+% % --- 1. 方位角分析 ---
+% subplot 221
+% plot(azi_old, 'LineWidth', 1); hold on; plot(azi_new, '--');
+% legend('参考方位角','观测方位角'); grid on; ylabel('角度/deg');
+% title('方位角序列对比');
 % 
-% figure;
-% % 绘制方位角 vs. 残差
-% plot(azi_old, err_azi, '.', 'MarkerSize', 10, 'Color', [0 0.447 0.741]); 
-% hold on;
-% % 添加零电平参考线
-% yline(0, 'k--', 'LineWidth', 1.2);
-% % 添加 RMSE 包络线（可选，用于观察波动）
-% yline(rms(err_azi), 'r--', 'RMSE');
-% yline(-rms(err_azi), 'r--');
+% subplot 222
+% err_azi = mod(azi_new - azi_old + 180, 360) - 180;
+% plot(err_azi,'.'); hold on; yline(rms(err_azi),'r', 'LineWidth', 1.5);
+% title(sprintf('方位角残差 (RMSE: %.2f°)', rms(err_azi)));
+% grid on; ylabel('偏差/deg');
 % 
-% grid on;
-% xlabel('参考方位角 / deg');
-% ylabel('方位角残差 / deg');
-% title('方位角误差随角度分布情况');
-%%
+% % --- 2. 距离分析 ---
+% subplot 223
+% plot(range_old, 'LineWidth', 1); hold on; plot(range_new, '--');
+% legend('参考距离','观测距离'); grid on; ylabel('距离/m');
+% title('距离序列对比');
+% 
+% subplot 224
+% err_range = range_new - range_old;
+% plot(err_range,'.'); hold on; yline(rms(err_range),'r', 'LineWidth', 1.5);
+% title(sprintf('距离残差 (RMSE: %.2f m)', rms(err_range)));
+% grid on; ylabel('偏差/m');
 
+%%
 rangestarttime = rangedata(1, 1);
 rangeendtime = rangedata(end, 1);
-
 % 构造高度数据
 truth = importdata(cfg.truthpath);
 height = truth(:,[2,5]);
-
 height(:,2) = height(:,2) + normrnd(0,depstd,size(height(:,2)));
 heistarttime = height(1, 1);
 heitendtime = height(end, 1);
@@ -166,6 +138,8 @@ if backwardIsOpen_1s == 1
     navdt1s = [];
     NAV = [];
 end
+
+
 if IsHardConstrain == 0
     
     dxx = zeros(1,length(rangedata));
@@ -201,7 +175,7 @@ for type = "EKF"
         navdt1spath = [cfg.outputfolder,'/FOG-',sprintf('%s',type),'dt.nav']; %% 后向滤波
         navdt1sfp = fopen(navdt1spath,'wt');
         navdt1srotatepath = [cfg.outputfolder,'/FOG-',sprintf('%s',type),'dtrotate.nav']; %% 后向滤波
-        navdt1srotatefp = fopen(navdt1srotatepath,'wt');        
+        navdt1srotatefp = fopen(navdt1srotatepath,'wt');
     end
 
     navdtmeapath = [cfg.outputfolder,'/FOG-mea.nav'];
@@ -213,14 +187,6 @@ for type = "EKF"
 
     end
 
-    % 其余数据保存
-    % imuerrpath = [cfg.outputfolder, '/ImuError.txt'];
-    % imuerrfp = fopen(imuerrpath, 'wt');
-    %
-    % stdpath = [cfg.outputfolder, '/NavSTD.txt'];
-    % stdfp = fopen(stdpath, 'wt');
-    %
-
     if feedback==0
         xkpath = [cfg.outputfolder, '/xk_range.txt'];
         xkfp = fopen(xkpath, 'wt');
@@ -230,6 +196,8 @@ for type = "EKF"
     lastprecent = 0;
     %% initialization
     [kf, navstate] = myInitialize_15state(cfg);
+    kf.rangstd = rangstd;
+    kf.depthstd = depstd;
     Pk = zeros(length(imudata), 16 );
     % kf.Qc = kf.Qc * 5;
     % kf.P0 = 10 * kf.P;
@@ -287,7 +255,7 @@ for type = "EKF"
             if isoptim == 1
                 optimize_imu;
             end
-
+            
             if cfg.adap==1
                 kf = myRangeUpdate_adap(navstate, Rangedata, depthdata, kf);
             else
@@ -320,8 +288,7 @@ for type = "EKF"
                 kf = hard_constrain(navstate,pos0,imudt,kf,MaxLimit);
                 % drange(rangeindex) = norm([kf.x(1)*glv.Re,kf.x(1)*glv.Re*cos(navstate.pos(1))]);
                 % if drange(rangeindex) > 20
-                % kf.x = 0.5*kf.x;
-                
+                % kf.x = 0.5*kf.x;       
             end
 
             if feedback==1
@@ -431,7 +398,7 @@ for type = "EKF"
             % do propagation for second imu
             imudt = secondimu(1, 1) - lastimu(1, 1);
             navstate = InsMech(laststate, lastimu, secondimu);
-            kf = myInsPropagate_15state_NED(navstate, secondimu, imudt, kf);
+            kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
 
             if backwardIsOpen_1s == 1
                 runArgs.imudata      = imudata;
@@ -480,7 +447,6 @@ for type = "EKF"
 
 
         if IsEKFRotate == 1 && IsRangeUpdate == 1
-            
             rotatepoint = [navstate.pos(1:2);0];% 旋转点
             index = indexrecord2(ki2-1):imuindex-2;
             
@@ -498,29 +464,6 @@ for type = "EKF"
             xk(2:16) = kf.x(1:15);
             fprintf(xkfp, '%12.6f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f\n', xk);
         end
-
-        % write imu error, convert to common unit
-        % imuerror = zeros(13, 1);
-        % imuerror(1, 1) = navstate.time;
-        % imuerror(2:4, 1) = navstate.gyrbias * param.R2D * 3600;
-        % imuerror(5:7, 1) = navstate.accbias * 1e5;
-        % imuerror(8:10, 1) = navstate.gyrscale * 1e6;
-        % imuerror(11:13, 1) = navstate.accscale * 1e6;
-        % fprintf(imuerrfp, '%12.6f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', imuerror);
-        %
-        % % write state std, convert to common unit
-        % std = zeros(1, 22);
-        % std(1) = navstate.time;
-        % for idx=1:21
-        %     std(idx + 1) = sqrt(kf.P(idx, idx));
-        % end
-        % std(8:10) = std(8:10) * param.R2D;
-        % std(11:13) = std(11:13) * param.R2D *3600;
-        % std(14:16) = std(14:16) * 1e5;
-        % std(17:22) = std(17:22) * 1e6;
-        % fprintf(stdfp, '%12.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f \n', std);
-        %
-
         % print processing information
         if (imuindex / size(imudata, 1) - lastprecent > 0.20)
             disp("processing " + num2str(floor(imuindex * 100 / size(imudata, 1))) + " %!");
@@ -540,29 +483,36 @@ end
 disp("range/INS Integration Processing Finished!");
 
 Pk(imuindex-1:end,:)=[];
-%% -----RTS 平滑--------
-if RTSIsOpen==1
-    calc_error(navRTSpath,cfg.truthpath)
-end
+calc_radial_error(cfg.truthpath,navpath)
+
 %% ------每个测距周期反向推算----
 if backwardIsOpen_1s == 1
     fprintf(navdt1sfp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', navdt1s');
     fprintf(navdt1srotatefp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', NAV');
     fclose all;
-    calc_error(navdt1spath,cfg.truthpath)
-    calc_error(navdt1srotatepath,cfg.truthpath)
-    calc_radial_error(cfg.truthpath,navpath,navdt1spath)
-    calc_radial_error(cfg.truthpath,navpath,navdt1spath,navdt1srotatepath)
-    plot_trj(cfg.truthpath,navdt1spath,navdt1srotatepath,navpath)
+    calc_error(navdt1spath,cfg.truthpath);
+    calc_error(navdt1srotatepath,cfg.truthpath);
+    calc_radial_error(cfg.truthpath,navpath,navdt1spath);
+    calc_radial_error(cfg.truthpath,navpath,navdt1spath,navdt1srotatepath);
+    plot_trj(cfg.truthpath,navdt1spath,navdt1srotatepath,navpath);
 end
-%%
+
+%% -----RTS 平滑--------
 if IsEKFRotate == 1 
-    calc_radial_error(cfg.truthpath,navpath,navdt1spath,navdt1srotatepath,navEKFRotatepath,navdtmeapath)
-    calc_radial_error(cfg.truthpath,navpath,navdt1spath,navdt1srotatepath,navEKFRotatepath)
-    calc_radial_error(cfg.truthpath,navdtmeapath)
+    navdt1spath = [cfg.outputfolder,'/FOG-',sprintf('%s',type),'dt.nav']; %% 后向滤波
+    navdt1srotatepath = [cfg.outputfolder,'/FOG-',sprintf('%s',type),'dtrotate.nav']; %% 后向滤波
+    navRTS = [cfg.outputfolder,'/FOG-LinearDistribute.nav'];
+    % calc_radial_error(cfg.truthpath,navpath,navdt1spath,navdt1srotatepath,navEKFRotatepath,navdtmeapath)
+    calc_radial_error(cfg.truthpath,navpath,navdt1spath,navdt1srotatepath,navEKFRotatepath,navRTS);
+    % calc_radial_error(cfg.truthpath,navdtmeapath)
+end
+
+%%
+if RTSIsOpen==1
+    calc_error(navRTSpath,cfg.truthpath)
 end
 %%
-calc_radial_error(cfg.truthpath,navpath)
+
 calc_error(navpath,cfg.truthpath)
 marker=[">","hexagram","pentagram"];
 plot_trj(cfg.truthpath,navpath)
@@ -607,63 +557,4 @@ dr_sync = interp1(nn(:,2), nn(:,3:5), time_common);
 beacon_sync_deg = interp1(rangedata(:,1), [r2d(rangedata(:,4:5)), rangedata(:,6)], time_common);
 period = 60;
 plot_trajectory_analysis(time_common, truth_sync, dr_sync, beacon_sync_deg, period);
-%% 残差及自适应因子
-% adap_factor_visualize(z,z_back)
-% adap_factor_visualize_gui(z, z_back)
-%% 几个固定信标位置对比
-% chosen=[1,5,6,7,8];
-% myfigurestartup(12,5,'prese')
-% dxyz_truth = pos2dxyz([d2r(truth(:,3:4)),truth(:,5)],[d2r(truth(1,3:4)),truth(1,5)]');
-% plot(dxyz_truth(:,1),dxyz_truth(:,2),'DisplayName','轨迹')
-% hold on
-% plot(dxyz_truth(1,1),dxyz_truth(1,2),'.','DisplayName','起点')
-% plot(dxyz_truth(end,1),dxyz_truth(end,2),'.','DisplayName','终点')
-% for i=1:5
-%     plot(poss(chosen(i),1),poss(chosen(i),2),"hexagram",'DisplayName',sprintf('信标%d',chosen(i)))
-% end
-% axis equal
-% legend()
-%% 几个固定信标的误差对比
-% for i=1:5
-%     navv{i} = [cfg.outputfolder, '/MEMS-',num2str(chosen(i)),sprintf('%s.nav',type)];
-% end
-% myfigurestartup(12,5,'prese')
-% calc_radial_error(cfg.truthpath,navv{1},navv{2},navv{3},navv{4},navv{5})
-% plot_trj(cfg.truthpath,navv{1},navv{2},navv{3},navv{4},navv{5})
-%% 优化参数
-% path=[cfg.outputfolder,'\MEMS-EKF-none.nav'];
-% path1=[cfg.outputfolder,'\MEMS-EKF-opti-40.nav'];
-% path2=[cfg.outputfolder,'\MEMS-EKF-opti-70.nav'];
-% path3=[cfg.outputfolder,'\MEMS-EKF-opti-75.nav'];
-% path4=[cfg.outputfolder,'\MEMS-EKF-opti-20.nav'];
-% myfigurestartup(12,5,'prese')
-% % calc_radial_error(cfg.truthpath,path,path4,path1,path2,path3)
-% plot_trj(cfg.truthpath,path,path4,path1,path2,path3)
-%% 针对600s的时候
-% path=[cfg.outputfolder,'\MEMS-EKF-600s-none.nav'];
-% % path1=[cfg.outputfolder,'\MEMS-EKF-600s-20.nav'];
-% % path2=[cfg.outputfolder,'\MEMS-EKF-600s-40.nav'];
-% path80=[cfg.outputfolder,'\MEMS-EKF-600s-80.nav'];
-% % path4=[cfg.outputfolder,'\MEMS-EKF-600s-100.nav'];
-% path120=[cfg.outputfolder,'\MEMS-EKF-600s-120.nav'];
-% path150=[cfg.outputfolder,'\MEMS-EKF-600s-150.nav'];
-% path160=[cfg.outputfolder,'\MEMS-EKF-600s-160.nav'];
-% path170=[cfg.outputfolder,'\MEMS-EKF-600s-170.nav'];
-% path180=[cfg.outputfolder,'\MEMS-EKF-600s-180.nav'];
-% myfigurestartup(12,5,'prese')
-% calc_radial_error(cfg.truthpath,path,path80,path160,path180)
-% % plot_trj(cfg.truthpath,path,path1,path2,path3)
-%% 移动信标对比
-% path=[cfg.outputfolder,'\MEMS-EKF-moving-none.nav'];
-% path1=[cfg.outputfolder,'\MEMS-EKF-moving-1.nav'];
-% path5=[cfg.outputfolder,'\MEMS-EKF-moving-5.nav'];
-% path10=[cfg.outputfolder,'\MEMS-EKF-moving-10.nav'];
-% path20=[cfg.outputfolder,'\MEMS-EKF-moving-20.nav'];
-% path30=[cfg.outputfolder,'\MEMS-EKF-moving-30.nav'];
-% path40=[cfg.outputfolder,'\MEMS-EKF-moving-40.nav'];
-% myfigurestartup(12,5,'prese')
-% calc_radial_error(cfg.truthpath,path,path20,path30,path40)
-%% 估计误差对比
-if feedback==0
-    plot_xk(xkpath,navpath,cfg.truthpath)
-end
+
