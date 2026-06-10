@@ -7,8 +7,8 @@ param = Param();
 % path_input = 'D:\Github\KF-GINS-Matlab\潜标位置标定\data3\input\';
 TYPE = {'square','line','circle','square-bea','line-bea','circle-bea'};
 
-% path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Square_ArrayCenter_Trj\';
-% type =  TYPE{1};
+path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Square_ArrayCenter_Trj\';
+type =  TYPE{1};
 
 % path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Line_ArrayCenter_Trj\';
 % type =  TYPE{2};
@@ -22,7 +22,7 @@ TYPE = {'square','line','circle','square-bea','line-bea','circle-bea'};
 % path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Line_Beacon1_Trj\';
 % type =  TYPE{5};
 
-path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Circle_Beacon1_Trj\';
+% path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Circle_Beacon1_Trj\';
 type =  TYPE{6};
 
 cfg = Config_10state(path_used,'align');
@@ -39,19 +39,9 @@ for id = 1:2
     feedback = 1;
     %% 获取距离
     % 构造距离信息
-    if id == 1
-        rangedata1 = importdata([cfg.input, '/range1.txt']);
-        rangedata2 = importdata([cfg.input, '/range2.txt']);
-        rangedata3 = importdata([cfg.input, '/range3.txt']);
-        %
-        % rangedata1 = importdata(cfg.rangefile1path);
-        % rangedata2 = importdata(cfg.rangefile2path);
-        % rangedata3 = importdata(cfg.rangefile3path);
-    else
-        rangedata1 = importdata([cfg.input, '/range1_calib_1.txt']);
-        rangedata2 = importdata([cfg.input, '/range2_calib_1.txt']);
-        rangedata3 = importdata([cfg.input, '/range3_calib_1.txt']);
-    end
+    rangedata1 = importdata([cfg.input, '/range1.txt']);
+    rangedata2 = importdata([cfg.input, '/range2.txt']);
+    rangedata3 = importdata([cfg.input, '/range3.txt']);
     %% 获取处理时间，调整时间
     starttime = imustarttime;
     endtime = imuendtime;
@@ -74,6 +64,11 @@ for id = 1:2
     rangedata2 = rangedata2(rangedata2(:, 1) <= cfg.endtime, :);
     rangedata3 = rangedata3(rangedata3(:, 1) >= cfg.starttime, :);
     rangedata3 = rangedata3(rangedata3(:, 1) <= cfg.endtime, :);
+
+    ID = 2;
+    rangedata1 = rangedata1(1:ID:end,:);
+    rangedata2 = rangedata2(1:ID:end,:);
+    rangedata3 = rangedata3(1:ID:end,:);
     %% 设置文件保存路径
     navpath = [cfg.outputfolder, '/NavResult_est_angle.nav'];
     navfp = fopen(navpath, 'wt');
@@ -85,6 +80,10 @@ for id = 1:2
     lastprecent = 0;
     %% 初始化
     [kf, navstate] = myInitialize_10state(cfg);
+    if id==2
+        navstate.theta_calib = (theta_next + 1) * glv.deg; % 弧度
+        navstate.phi_calib   = (phi_next + 1)* glv.deg; % 弧度
+    end
     kf.depthstd = 0.2;
     laststate = navstate;
     kf.rangstd = 10;
@@ -201,12 +200,17 @@ for id = 1:2
     S_gnss_geo = rangedata(:,4:6);
     string = [type,'_',num2str(id)];
     %%
-    [S_est_xyz,theta_next_step,phi_next_step] = show_result(string,S_gnss_geo,S_true_geo,pos0_geo,theta_est,phi_est,theta_next_step,phi_next_step);
-    
-    %% 重构阶段1的距离数据，用于二次处理，增加精度
-    path11 = {[cfg.input, '/range1.txt'],[cfg.input, '/range2.txt'],[cfg.input, '/range3.txt']};
-    range_reconstruct(path11, path_pos,cfg.input, id ,S_est_xyz);
-    %% 重构阶段2的距离数据
-    path_range = {[cfg.input, '/range1_stage2.txt'],[cfg.input, '/range2_stage2.txt'],[cfg.input, '/range3_stage2.txt']};
-    range_reconstruct(path_range,path_pos,cfg.input,id,S_est_xyz);
+    theta_next= r2d(theta_est);
+    phi_next = r2d(phi_est);
+    %%
+    if id == 2
+        % [S_est_xyz,theta_next_step,phi_next_step] = show_result(string,S_gnss_geo,S_true_geo,pos0_geo,theta_est,phi_est,theta_next_step,phi_next_step);
+        [S_est_xyz,theta_next,phi_next] = show_result(id, S_gnss_geo, S_true_geo, pos0_geo, theta_est, phi_est, 45, 20,'估计.xlsx');
+        % %% 重构阶段1的距离数据，用于二次处理，增加精度
+        % path = {[cfg.input, '/range1.txt'],[cfg.input, '/range2.txt'],[cfg.input, '/range3.txt']};
+        % range_reconstruct(path, path_pos,cfg.input, id ,S_est_xyz,'_squ');
+        %% 重构阶段2的距离数据
+        path_range = {[cfg.input, '/range1_stage2.txt'],[cfg.input, '/range2_stage2.txt'],[cfg.input, '/range3_stage2.txt']};
+        range_reconstruct(path_range, path_pos,cfg.input, id ,S_est_xyz,'_squ');
+    end
 end

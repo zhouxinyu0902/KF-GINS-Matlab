@@ -17,7 +17,7 @@ function plot_trajectory_and_beacons_m(trajectory_xyz_m, local_beacons_m)
 
     %% 2. 绘图：本地坐标系下的 2D 轨迹与信标 (X-Y 平面)
     
-    myfigurestartup(7,5,'prese')
+    myfigurestartup(7,5,'prese');
     
     hold on; % 保持图窗
 

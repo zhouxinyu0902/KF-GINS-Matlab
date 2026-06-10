@@ -2,7 +2,7 @@ clear;
 
 % 参数初始化
 param = Param();
-cfg = ProcessConfig_exper_m();
+cfg = ProcessConfig_exper();
 
 %% 定义标准差和其他设置
 
@@ -10,7 +10,6 @@ rngstd = 6;
 depthstd = 0.4;
 rng(1);
 
-backwardIsOpen = 0; % 是否启用反向推算
 smoothWay = 'RTS'; % 平滑方式，选择RTS或线性
 SmoothIsOpen = 1;
 feedback = 1;
@@ -68,6 +67,7 @@ if SmoothIsOpen == 1
     navpath2 = fullfile(cfg.outputfolder, sprintf('%s-SingleSmooth-rad.nav', smoothWay));
     navfp2 = fopen(navpath2, 'wt');
 end
+
 
 %% 时间调整
 
@@ -255,6 +255,22 @@ for imuindex = 2:size(imudata, 1)
         imudt = thisimu(1, 1) - lastimu(1, 1);
         navstate = InsMech(laststate, lastimu, thisimu);
         kf = myInsPropagate_15state(navstate, thisimu, imudt, kf);
+    elseif (lastimu(1, 1) < rangedata(rangeindex, 1) && thisimu(1, 1) > rangedata(rangeindex, 1))&& cfg.userange==1
+        kf = myRangeUpdate(navstate, rangedata(rangeindex,:), height(imuindex,:), kf);
+        if feedback == 1
+            [kf, navstate] = myErrorFeedback_range(kf, navstate);
+            % [kf, navstate] = myErrorFeedback_15state(kf, navstate);
+        end
+        rangeindex = rangeindex + 1;
+        laststate = navstate;
+        lastimu = firstimu;
+
+        % do propagation for second imu
+        imudt = secondimu(1, 1) - lastimu(1, 1);
+        navstate = InsMech(laststate, lastimu, secondimu);
+        kf = myInsPropagate_15state(navstate, secondimu, imudt, kf);
+        pos0 = navstate.pos;
+        vel0 = navstate.vel;
     else
         %% only do propagation
         % INS mechanization

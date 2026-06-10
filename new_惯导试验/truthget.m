@@ -8,10 +8,11 @@ glvs
 param = Param();
 % path='旋转收缩方案1/input/input_nt';
 % path='旋转收缩方案1/input/input_pm';
-path='F:/2_Data/惯导试验/实验数据/All_data/input2';
+ID = 8;
+path=['F:/2_Data/惯导试验/实验数据/All_data/input',num2str(ID)];
 % cfg = ProcessConfigforSemiPhy_all(path);
 cfg = ProcessConfig_truth(path);
-cfg.outputfolder ='D:\Github\KF-GINS-Matlab\new_惯导试验\output/output2';
+cfg.outputfolder =['D:\Github\KF-GINS-Matlab\new_惯导试验\output/output',num2str(ID)];
 mkdir(cfg.outputfolder)
 %% 加载数据
 % imudata
@@ -23,6 +24,9 @@ imuendtime = imudata(end, 1);
 % 1. gnss data 读取与合并
 % ==============================================================
 gnssdata_raw = importdata(cfg.gnssfilepath);
+
+find(gnssdata_raw(:,3)>37|gnssdata_raw(:,3)<36)
+
 std_raw = importdata(cfg.stdfilepath);
 
 % 提取列: [时间sec, lat, lon, alt, std_lat, std_lon, std_alt]
@@ -31,6 +35,8 @@ gnssdata = [gnssdata_raw(:,2:5), std_raw(:,2:4)];
 % 去除可能存在的重复时间戳 (必须做，否则 interp1 函数会报错)
 [~, unique_idx] = unique(gnssdata(:,1));
 gnssdata = gnssdata(unique_idx, :);
+
+
 
 % ==============================================================
 % 2. 🌟 核心：时间轴线性插值，完全覆盖掉帧
@@ -257,11 +263,11 @@ disp("gnss/INS Integration Processing Finished!");
 calc_error(navpath,cfg.gnssfilepath);
 % calc_error(navpath,[path,'/pva_RS.txt'])
 % calc_error(navpath,[path,'/pva_430.txt'])
-calc_error([path,'/pva_830.txt'],[path,'/pva_430.txt'])
+% calc_error([path,'/pva_830.txt'],[path,'/pva_430.txt'])
 
 %%
-rangedataget(path);
+rangedataget(path,'bottom');
 %%
 % plot_result(cfg.gnssfilepath)
-plot_result(navpath)
+% plot_result(navpath)
 

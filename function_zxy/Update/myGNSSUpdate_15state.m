@@ -25,12 +25,12 @@ if size(gnssdata,1) == 13
     H(4:6, 4:6) = eye(3);
 elseif size(gnssdata,1) == 7
     Z = navstate.pos - gnssdata(2:4);% N系下的NED
-    if gnssdata(5)==0||gnssdata(6)==0||gnssdata(7)==0
-        vk = [0.02;0.02;0.02];
-    else
-        vk = gnssdata(5:7);
-    end
-    % vk = [1;1;0.2];
+    % if gnssdata(5)==0||gnssdata(6)==0||gnssdata(7)==0
+    %     vk = [0.02;0.02;0.02];
+    % else
+    %     vk = gnssdata(5:7);
+    % end
+    vk = [0.6;0.6;0.2];
     R = diag(power(DR^-1*vk, 2));% m m m
     H = zeros(3, kf.RANK);
     H(1:3, 1:3) = eye(3);
