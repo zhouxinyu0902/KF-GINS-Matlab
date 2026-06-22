@@ -1,4 +1,4 @@
-function range_reconstruct(path, pathpos, outputfolder, id, S_est_xyz,filenn)
+function range_reconstruct(path, pathpos, outputfolder, id, S_est_xyz, filenn)
 % -------------------------------------------------------------------------
 % 功能：利用标定成果算出来的估计位置 S_est_xyz 以及数据发生器的真实位置 S_true_xyz，
 %       对阶段二（长距离直行巡航）的时序测距文件进行静态代偿重构（保持原文件名加后缀）

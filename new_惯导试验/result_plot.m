@@ -20,6 +20,7 @@ for id = target_rounds
     path1 = fullfile(current_out_dir, 'Origin-rad.nav');
     path2 = fullfile(current_out_dir, 'RTS-DoubleSmooth-rad.nav');
     path3 = fullfile(current_out_dir, 'RTS-SingleSmooth-rad.nav');
+    path4 = fullfile(current_out_dir, 'Linear-SingleSmooth-rad.nav');
     truth1 = fullfile(current_input_dir, 'truth.nav');
     
     % 3. 检查文件是否存在
@@ -30,14 +31,17 @@ for id = target_rounds
     
     % 4. 执行计算
     % 注意：你需要确保你的 calc_radial_error_gjb 函数返回的 fig 变量名称一致
+    if id == 6
+    [fig, finalExcelData] = calc_radial_error_gjb(truth1, path1, path2, path3, path4);
+    else
     [fig, finalExcelData] = calc_radial_error_gjb(truth1, path1, path2, path3);
-    
+    end
     % 5. 导出 Excel
-    outputExcelName = fullfile(current_out_dir, sprintf('导航系统径向误差统计报告-%d.xlsx', id));
+    outputExcelName = fullfile(current_out_dir, sprintf('导航系统径向误差统计报告-rad-%d.xlsx', id));
     writecell(finalExcelData, outputExcelName);
     
     % 6. 导出高清图片
-    outputImageName = fullfile(current_out_dir, sprintf('补偿前后误差对比-%d.png', id));
+    outputImageName = fullfile(current_out_dir, sprintf('补偿前后误差对比-rad-%d.png', id));
     exportgraphics(fig, outputImageName, 'Resolution', 600);
     
     fprintf('✅ 第 %d 组报告导出完成。\n', id);

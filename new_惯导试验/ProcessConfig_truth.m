@@ -1,57 +1,60 @@
-function cfg = Config_10state(output,type)
+% -------------------------------------------------------------------------
+% KF-GINS-Matlab: An EKF-based GNSS/INS Integrated Navigation System in Matlab
+%
+% Copyright (C) 2024, i2Nav Group, Wuhan University
+%
+%  Author : Liqiang Wang
+% Contact : wlq@whu.edu.cn
+%    Date : 2023.3.3
+% -------------------------------------------------------------------------
+
+function cfg = ProcessConfig_truth(path)
     param = Param();
     %% filepath
-    cfg.outputfolder = output;
-    
-    % 检查文件夹是否存在（'dir' 表示明确检查是否为文件夹）
-    if ~exist(cfg.outputfolder, 'dir')
-        mkdir(cfg.outputfolder); % 如果不存在，则递归创建该路径
-        disp(['已成功创建输出文件夹：', cfg.outputfolder]);
-    else
-        disp(['输出文件夹已存在，无需创建：', cfg.outputfolder]);
-    end
-    if ~strcmp(type,'align')
-        cfg.input = [output,'input_stage2\'];
-        cfg.imufilepath = [cfg.input,'/imu_data.txt'];
-        cfg.truthpath=[cfg.input,'/truth.nav'];
-    else
-        cfg.input = [output,'input_stage1\'];
-        cfg.imufilepath = [cfg.input,'/imu_data.txt'];
-        cfg.truthpath=[cfg.input,'/truth.nav'];
-    end
+    cfg.imufilepath =[path,'/IMU_120.txt'];
+    cfg.gnssfilepath = [path,'/pva_830.txt'];
+    cfg.stdfilepath = [path,'/std_830.txt'];
+    cfg.inputfolder = path;
     %% configure
     cfg.usegnssvel = false;
     cfg.useodonhc = false;
     cfg.odoupdaterate = 1; % [Hz]
 
     %% initial information
+    pva_830 = importdata(cfg.gnssfilepath);
+    pva_120 = importdata([path,'/pva_RS.txt']);
     % 选择计算时间段
-    glvs
-    cfg.starttime = 0;
-    cfg.endtime = cfg.starttime + 11000;
+    cfg.starttime = pva_830(1,2);
+    cfg.endtime = pva_830(end,2);
     % 初始状态
-    all_lines = load(cfg.truthpath); 
-    pva0 = all_lines(1,:);
-    cfg.initpos = pva0(3:5)'+ d2r([0.005; 0.004; 0.008])/2/glv.Re; % [deg, deg, m]
-    cfg.initvel = pva0(6:8)'+[0.002; 0.002; 0.002]; % [m/s]
-    cfg.initatt = pva0(9:11)'+[0.008; 0.008; 0.075]/2; % [deg]
 
+    cfg.initpos = pva_830(1,3:5)'; % [deg, deg, m]
+    cfg.initvel = [0; 0; 0]; % [m/s]
+    cfg.initatt = pva_120(1,9:11)'; % [deg]
     cfg.initgyrbias = [0; 0; 0]; % [deg/h]
     cfg.initaccbias = [0; 0; 0]; % [mGal]
     cfg.initgyrscale = [0; 0; 0]; % [ppm]
     cfg.initaccscale = [0; 0; 0]; % [ppm]
 
     % 初始协方差
-    cfg.initposstd = [0.005; 0.004; 0.008]/2; %[m]
-    cfg.initvelstd = [0.003; 0.004; 0.004]/2; %[m/s]
-    cfg.initattstd = [0.008; 0.008; 0.075]/2; %[deg]
+    cfg.initposstd = [0.005; 0.004; 0.008]; %[m]
+    cfg.initvelstd = [0.003; 0.004; 0.004]; %[m/s]
+    cfg.initattstd = [0.008; 0.008; 0.075]; %[deg]
     % 参数设置
-    % eb = 0.01;
-    % db  = 20;
-    % web = 0.0005;
-    wdb = 10e-6;
+    eb=0.01;
+    db=7;
+    web=0.0005;
+    wdb=10e-6;
 
-    eb = 0.003; db = 10; web = 0.0002;
+    % eb=0.003;
+    % db=7;
+    % web=0.0003;
+    % wdb=10e-7*1e5/3600;
+
+    % eb=0.05;
+    % db=10;
+    % web=0.003;
+    % wdb=10e-5*1e5/3600;
     cfg.initgyrbiasstd = [eb; eb; eb]; % [deg/h]
     cfg.initaccbiasstd = [db; db; db]; % [mGal]
     
@@ -81,9 +84,9 @@ function cfg = Config_10state(output,type)
     cfg.initpos(2) = cfg.initpos(2) * param.D2R;
     cfg.initatt = cfg.initatt * param.D2R;
 
-    % [rm, rn] = getRmRn(cfg.initpos(1) , param);
-    % DR = diag([rm + cfg.initpos(3), (rn + cfg.initpos(3))*cos(cfg.initpos(1)), -1]);
-    % cfg.initposstd = DR^-1*cfg.initposstd ;
+    [rm, rn] = getRmRn(cfg.initpos(1) , param);
+    DR = diag([rm + cfg.initpos(3), (rn + cfg.initpos(3))*cos(cfg.initpos(1)), -1]);
+    cfg.initposstd = DR^-1*cfg.initposstd ;
     
     cfg.initattstd = cfg.initattstd * param.D2R;
 
@@ -109,3 +112,4 @@ function cfg = Config_10state(output,type)
     cfg.cbv = euler2dcm(cfg.installangle);
 
 end
+

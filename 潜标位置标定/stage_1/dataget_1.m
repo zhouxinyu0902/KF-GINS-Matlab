@@ -81,7 +81,7 @@ ts = 0.01;
 trj = trjsimu(avp0, seg.wat, ts, 1);
 
 % 【核心导出】：将 AUV 真实参考轨迹转换为标准 NED(北东地) 格式并保存到文件 truth.nav
-outputfolder = 'D:\Github\KF-GINS-Matlab\潜标位置标定\data1\';
+outputfolder = 'D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\';
 if ~exist(outputfolder, 'dir'), mkdir(outputfolder); end % 若路径不存在则自动创建
 file_ref_100 = [outputfolder, 'truth.nav'];
 pva = avpENU2NED(trj.avp);
@@ -120,9 +120,9 @@ legend('1号潜标海面点', '1号实际发声点', 'AUV真实方形轨迹', '�
 
 %% ==================== 3. FN-120 级光纤惯导数据仿真与机理更新 ====================
 % 根据 FN-120 物理手册性能指标配置传感器级误差结构体
-eb      = 0.01;    % 陀螺常值零偏 (deg/h)
+eb      = 0.003;    % 陀螺常值零偏 (deg/h)
 db      = 10;      % 加速度计常值零偏 (ug)
-web     = 0.001;   % 陀螺角度随机游走系数 (deg/sqrt(h))
+web     = 0.0002;   % 陀螺角度随机游走系数 (deg/sqrt(h))
 wdb     = 7;       % 加速度计速度随机游走系数 (ug/sqrt(Hz))
 
 % 一阶马尔可夫相关噪声 (模拟环境变温引起的慢变漂移)
@@ -242,7 +242,7 @@ fprintf('2号潜标时序文本成功导出至: %s\n', file_range2);
 fprintf('3号潜标时序文本成功导出至: %s\n', file_range3);
 
 true_bea = [outputfolder, 'true_beacon.mat'];
-save D:\Github\KF-GINS-Matlab\潜标位置标定\data1\beacon_pos.mat S_true_geo S_gnss_geo S_true_xyz  S_gnss_xyz pos0_geo theta_true phi_true
+save D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\beacon_pos.mat S_true_geo S_gnss_geo S_true_xyz  S_gnss_xyz pos0_geo theta_true phi_true
 
 
 

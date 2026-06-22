@@ -29,7 +29,6 @@ seg = trjsegment(seg, 'deaccelerate',   3/(20/9.8), xxx, 20/9.8);
 repeats=1;
 trj2= trjsimu(avp0, seg.wat, ts, repeats); 
 
-figure()
 myfigurestartup(7,7,'prese')
 insplot(trj2.avp)
 % fprintf('轨迹总时长%d（s）\n',repeats*sum(trj2.wat(:,1)))

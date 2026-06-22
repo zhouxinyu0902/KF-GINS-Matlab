@@ -3,7 +3,7 @@ clear
 glvs
 %% 定义参数+加载过程配置
 param = Param();
-cfg = Config_10state('D:\Github\KF-GINS-Matlab\潜标位置标定\data1');
+cfg = Config_10state('D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\','align');
 %% 加载数据
 % imudata
 imudata = importdata(cfg.imufilepath);
@@ -11,12 +11,24 @@ imustarttime = imudata(1, 1);
 imuendtime = imudata(end, 1);
 truth = importdata(cfg.truthpath);
 feedback = 1;
+id = 2;
 %% 获取距离
 % 构造距离信息
-id = 1;
-rangedata1 = importdata(cfg.rangefile1path);
-rangedata2 = importdata(cfg.rangefile2path);
-rangedata3 = importdata(cfg.rangefile3path);
+rangpath1 = "D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\input\range1.txt";
+rangpath2 = "D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\input\range2.txt";
+rangpath3 = "D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\input\range3.txt";
+if id==1
+    rangedata1 = importdata(rangpath1);
+    rangedata2 = importdata(rangpath2);
+    rangedata3 = importdata(rangpath3);
+else
+    rangpath11 = "D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\input\range1_calib_1_20s.txt";
+    rangpath22 = "D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\input\range2_calib_1_20s.txt";
+    rangpath33 = "D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\input\range3_calib_1_20s.txt";
+    rangedata1 = importdata(rangpath11);
+    rangedata2 = importdata(rangpath22);
+    rangedata3 = importdata(rangpath33);
+end
 %% 获取处理时间，调整时间
 starttime = imustarttime;
 endtime = imuendtime;
@@ -50,6 +62,15 @@ disp("Start Processing!");
 lastprecent = 0;
 %% 初始化
 [kf, navstate] = myInitialize_10state(cfg);
+if id==2
+    % --- 【手写扩展核心】：并入潜标静态流场不确定度 ---
+    kf.P(9, 9)     = power(5.0 * glv.deg, 2);                  % 9:   潜标共同流场倾角（放宽到3度）
+    kf.P(10, 10)   = power(5.0 * glv.deg, 2);                % 10:  潜标方位角不确定度（全向360度）
+    kf.P0 = kf.P;
+    navstate.theta_calib = d2r(2.8); % 弧度
+    navstate.phi_calib   = d2r(68); % 弧度
+end
+
 kf.depthstd = 0.2;
 laststate = navstate;
 kf.rangstd = 6;
@@ -154,17 +175,44 @@ disp("PureIns Integration Processing Finished!");
 % calc_radial_error(cfg.truthpath,navpath)
 calc_error(navpath,cfg.truthpath);
 xk = importdata(xkpath);
-figure
-subplot 121
-plot(r2d(xk(:,10)));
-subplot 122
-plot(r2d(xk(:,11)));
 %%
-load('D:\Github\KF-GINS-Matlab\潜标位置标定\data1\beacon_pos.mat')
+myfigurestartup(7,3,'zxy');
+subplot(1,2,1)
+plot(r2d(xk(:,10)), 'LineWidth', 1.5)
+hold on
+plot(20*ones(size(xk(:,10))), '--r', 'LineWidth', 1.5)
+grid on
+xlabel('迭代步')
+ylabel('倾角 \theta (deg)')
+legend('估计值', '真值 20°', 'Location', 'best')
+
+subplot(1,2,2)
+plot(r2d(xk(:,11)), 'LineWidth', 1.5)
+hold on
+plot(45*ones(size(xk(:,11))), '--r', 'LineWidth', 1.5)
+grid on
+xlabel('迭代步')
+ylabel('方位角 \phi (deg)')
+legend('估计值', '真值 45°', 'Location', 'best')
+%%
+load('D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\beacon_pos.mat')
 theta_est =  xk(end,10);
 phi_est = xk(end,11);
-
-show_result;
-path_pos='D:\Github\KF-GINS-Matlab\潜标位置标定\data1\beacon_pos.mat';
-path_range = {cfg.rangefile1path,cfg.rangefile2path,cfg.rangefile3path};
-range_reconstruct(path_range,path_pos,cfg.outputfolder,S_est_xyz);
+if id ==1
+    outputExcelName ='D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\标定结果_1.xlsx' ;
+    [S_est_xyz,theta_next,phi_next] = show_result1(1, S_gnss_geo, S_true_geo, pos0_geo, theta_est, phi_est, 20, 45,outputExcelName);
+else
+    outputExcelName ='D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\标定结果_2.xlsx' ;
+    [S_est_xyz,theta_next,phi_next] = show_result1(2, S_gnss_geo, S_true_geo, pos0_geo, theta_est, phi_est, 2.82, 68,outputExcelName);
+end
+%%
+pathpos='D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\beacon_pos.mat';
+outputfolder = 'D:\Github\KF-GINS-Matlab\潜标位置标定\stage_1\data1\input\';
+path_range = {rangpath1,rangpath2,rangpath3};
+outputFiles = range_reconstruct1( ...
+    path_range, ...
+    pathpos, ...
+    outputfolder, ...
+    id, ...
+    S_est_xyz, ...
+    '20s');

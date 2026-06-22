@@ -40,3 +40,8 @@ graduation/DR_INS/inputimu_data.txt
 /潜标位置标定/Non-idealization
 /惯导实验数据/output
 /new_惯导试验/output
+/潜标位置标定/stage_1/data1/input
+/潜标位置标定/stage_1/data1
+/潜标位置标定/stage_2/data/Circle_ArrayCenter_Trj/input_stage2
+/潜标位置标定/stage_2/data/Circle_ArrayCenter_Trj/input_stage1
+/潜标位置标定/stage_2/data/Circle_ArrayCenter_Trj

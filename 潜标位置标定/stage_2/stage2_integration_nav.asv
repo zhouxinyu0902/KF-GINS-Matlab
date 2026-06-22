@@ -9,8 +9,8 @@ param = Param();
 % path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Line_ArrayCenter_Trj\';
 % trj='-line';
 
-% path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Circle_ArrayCenter_Trj\';
-% trj='-circle';
+path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\stage_2\data\Circle_ArrayCenter_Trj\';
+trj='-circle';
 
 
 % path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Square_Beacon1_Trj\';
@@ -19,8 +19,8 @@ param = Param();
 % path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Line_Beacon1_Trj\';
 % trj='-line-bea';
 
-path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Circle_Beacon1_Trj\';
-trj='-circle-bea';
+% path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Circle_Beacon1_Trj\';
+% trj='-circle-bea';
 
 cfg = Config_10state(path_used,'integration');
 %% 加载数据
@@ -31,54 +31,60 @@ imuendtime = imudata(end, 1);
 truth = importdata(cfg.truthpath);
 feedback = 1;
 
-SmoothIsOpen = 1;
+SmoothIsOpen = 0;
 smoothWay = 'Linear';
 %% 获取距离
 % rangedataget('D:\Github\KF-GINS-Matlab\graduation\DR_INS\input')
 % 构造距离信息
 id = 420/20;
 % dataType = 2;
-for dataType = 1:4
+for dataType = 1:3
     switch dataType
         case 1
             disp('>>> [数据流切换]: 载入【未修正前】的原始距离数据...');
-            rangedata1 = importdata([cfg.input, '/range1_stage2.txt']);
-            rangedata2 = importdata([cfg.input, '/range2_stage2.txt']);
-            rangedata3 = importdata([cfg.input, '/range3_stage2.txt']);
+            rangedata1 = importdata([cfg.input, '/range1.txt']);
+            rangedata2 = importdata([cfg.input, '/range2.txt']);
+            rangedata3 = importdata([cfg.input, '/range3.txt']);
 
             % 动态输出对应的标准导航结果文件名
             navFileName = '/Origin.nav';
-            xkFileName  = '/xk-origin.nav';
+            if feedback == 0
+                xkFileName  = '/xk-origin.nav';
+            end
 
         case 2
-            disp('>>> [数据流切换]: 载入【修正后】的标定补偿距离数据...');
-            % 绑定刚才 range_reconstruct 导出的标定代偿文本
-            rangedata1 = importdata([cfg.input, '/range1_stage2_calib_1.txt']);
-            rangedata2 = importdata([cfg.input, '/range2_stage2_calib_1.txt']);
-            rangedata3 = importdata([cfg.input, '/range3_stage2_calib_1.txt']);
-
-            navFileName = '/Calib.nav';
-            xkFileName  = '/xk-calib.nav';
-
-        case 3
             disp('>>> [数据流切换]: 载入【二次修正后】的标定补偿距离数据...');
             % 绑定刚才 range_reconstruct 导出的标定代偿文本
-            rangedata1 = importdata([cfg.input, '/range1_stage2_calib_2.txt']);
-            rangedata2 = importdata([cfg.input, '/range2_stage2_calib_2.txt']);
-            rangedata3 = importdata([cfg.input, '/range3_stage2_calib_2.txt']);
+            rangedata1 = importdata([cfg.input, '/range1_calib_2_20s.txt']);
+            rangedata2 = importdata([cfg.input, '/range2_calib_2_20s.txt']);
+            rangedata3 = importdata([cfg.input, '/range3_calib_2_20s.txt']);
 
             navFileName = '/Calib-twice.nav';
-            xkFileName  = '/xk-calib-twice.nav';
-        case 4
+            if feedback == 0
+                xkFileName  = '/xk-calib-twice.nav';
+            end
+        case 3
             disp('>>> [数据流切换]: 载入【真实的】潜标无误差距离数据...');
             % 绑定刚才 range_reconstruct 导出的绝对真实真值文本
-            rangedata1 = importdata([cfg.input, '/range1_stage2_true.txt']);
-            rangedata2 = importdata([cfg.input, '/range2_stage2_true.txt']);
-            rangedata3 = importdata([cfg.input, '/range3_stage2_true.txt']);
+            rangedata1 = importdata([cfg.input, '/range1_true_2_20s.txt']);
+            rangedata2 = importdata([cfg.input, '/range2_true_2_20s.txt']);
+            rangedata3 = importdata([cfg.input, '/range3_true_2_20s.txt']);
 
             navFileName = '/True.nav';
-            xkFileName  = '/xk-true.nav';
+            if feedback == 0
+                xkFileName  = '/xk-true.nav';
+            end
+        case 4
+            disp('>>> [数据流切换]: 载入【USBL】潜标无误差距离数据...');
+            % 绑定刚才 range_reconstruct 导出的绝对真实真值文本
+            rangedata1 = importdata([cfg.input, '/range1_true_2_20s.txt']);
+            rangedata2 = importdata([cfg.input, '/range2_true_2_20s.txt']);
+            rangedata3 = importdata([cfg.input, '/range3_true_2_20s.txt']);
 
+            navFileName = '/True.nav';
+            if feedback == 0
+                xkFileName  = '/xk-true.nav';
+            end
         otherwise
             error('错误：未知的数据类型配置类型(dataType)，请在1~4之间选择。');
     end
@@ -86,10 +92,10 @@ for dataType = 1:4
     % ==================== 设置文件保存路径 ====================
     navpath = [cfg.outputfolder, navFileName];
     navfp = fopen(navpath, 'wt');
-
-    xkpath = [cfg.outputfolder, xkFileName];
-    xkfp = fopen(xkpath, 'wt');
-
+    if feedback == 0
+        xkpath = [cfg.outputfolder, xkFileName];
+        xkfp = fopen(xkpath, 'wt');
+    end
     if SmoothIsOpen == 1
         if strcmp(smoothWay,'RTS')
             navpath1 = [cfg.outputfolder, navFileName(1:end-4),smoothWay,'-double.nav'];
@@ -99,7 +105,9 @@ for dataType = 1:4
         navfp2 = fopen(navpath2, 'wt');
     end
     fprintf('>>> 导航轨迹输出路径已自动重定向至: %s\n', navpath);
+    if feedback==0
     fprintf('>>> 状态误差输出路径已自动重定向至: %s\n\n', xkpath);
+    end
     range = {rangedata1,rangedata2,rangedata3};
 
     for i=1:length(range)
@@ -347,7 +355,7 @@ for dataType = 1:4
     end
     %%
     fclose all;
-    disp("PureIns Integration Processing Finished!");
+    disp("Integration Processing Finished!");
     %%
     % plot_result(navpath)
     %%

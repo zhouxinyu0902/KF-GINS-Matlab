@@ -7,11 +7,13 @@ param = Param();
 % path_input = 'D:\Github\KF-GINS-Matlab\潜标位置标定\data3\input\';
 TYPE = {'square','line','circle','square-bea','line-bea','circle-bea'};
 
-path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Square_ArrayCenter_Trj\';
-type =  TYPE{1};
+% path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Square_ArrayCenter_Trj\';
+% type =  TYPE{1};
 
-% path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Line_ArrayCenter_Trj\';
-% type =  TYPE{2};
+path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Line_ArrayCenter_Trj\';
+type =  TYPE{2};
+
+
 
 % path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Circle_ArrayCenter_Trj\';
 % type =  TYPE{3};
@@ -23,12 +25,11 @@ type =  TYPE{1};
 % type =  TYPE{5};
 
 % path_used = 'D:\Github\KF-GINS-Matlab\潜标位置标定\Circle_Beacon1_Trj\';
-type =  TYPE{6};
+% type =  TYPE{6};
 
 cfg = Config_10state(path_used,'align');
 theta_next_step = 20;
 phi_next_step = 45;
-
 for id = 1:2
     %% 加载数据
     % imudata
@@ -80,10 +81,15 @@ for id = 1:2
     lastprecent = 0;
     %% 初始化
     [kf, navstate] = myInitialize_10state(cfg);
-    if id==2
-        navstate.theta_calib = (theta_next + 1) * glv.deg; % 弧度
-        navstate.phi_calib   = (phi_next + 1)* glv.deg; % 弧度
-    end
+    % if id==2
+    %     navstate.theta_calib = (theta_next + 1) * glv.deg; % 弧度
+    %     navstate.phi_calib   = (phi_next + 1)* glv.deg; % 弧度
+    %     kf.P(9, 9)     = power(5.0 * glv.deg, 2);
+    %     kf.P(10, 10)   = power(5.0 * glv.deg, 2);
+    %     kf.P0 = kf.P;
+    % end
+
+
     kf.depthstd = 0.2;
     laststate = navstate;
     kf.rangstd = 10;
@@ -184,13 +190,13 @@ for id = 1:2
     %%
     truthpath=[cfg.input, '/truth.nav'];
     % calc_radial_error(cfg.truthpath,navpath)
-    calc_error(navpath,truthpath);
+    % calc_error(navpath,truthpath);
     xk = importdata(xkpath);
-    figure
-    subplot 121
-    plot(r2d(xk(:,10)));
-    subplot 122
-    plot(r2d(xk(:,11)));
+    % figure
+    % subplot 121
+    % plot(r2d(xk(:,10)));
+    % subplot 122
+    % plot(r2d(xk(:,11)));
 
     path_pos=[cfg.input,'\beacon_pos.mat'];
     load(path_pos)
@@ -203,12 +209,12 @@ for id = 1:2
     theta_next= r2d(theta_est);
     phi_next = r2d(phi_est);
     %%
+    excelname = [path_used,sprintf('估计%d.xlsx',id)];
+    [S_est_xyz,theta_next_step,phi_next_step] = show_result(id,S_gnss_geo,S_true_geo,pos0_geo,theta_est,phi_est,theta_next_step,phi_next_step,excelname);      
+    %% 重构阶段1的距离数据，用于二次处理，增加精度
+    path = {[cfg.input, '/range1.txt'],[cfg.input, '/range2.txt'],[cfg.input, '/range3.txt']};
+    range_reconstruct(path, path_pos, cfg.input, id ,S_est_xyz,'_squ');
     if id == 2
-        % [S_est_xyz,theta_next_step,phi_next_step] = show_result(string,S_gnss_geo,S_true_geo,pos0_geo,theta_est,phi_est,theta_next_step,phi_next_step);
-        [S_est_xyz,theta_next,phi_next] = show_result(id, S_gnss_geo, S_true_geo, pos0_geo, theta_est, phi_est, 45, 20,'估计.xlsx');
-        % %% 重构阶段1的距离数据，用于二次处理，增加精度
-        % path = {[cfg.input, '/range1.txt'],[cfg.input, '/range2.txt'],[cfg.input, '/range3.txt']};
-        % range_reconstruct(path, path_pos,cfg.input, id ,S_est_xyz,'_squ');
         %% 重构阶段2的距离数据
         path_range = {[cfg.input, '/range1_stage2.txt'],[cfg.input, '/range2_stage2.txt'],[cfg.input, '/range3_stage2.txt']};
         range_reconstruct(path_range, path_pos,cfg.input, id ,S_est_xyz,'_squ');
