@@ -14,13 +14,13 @@ function [fig,finalExcelData] = calc_radial_error(truthpath, varargin)
     num_tests = length(test_files);
 
     % 绘图样式定义
-    % colors = lines(num_tests); 
-    colors = [ 0.00 0.00 0.00; % 黑色 
-        0.25 0.25 0.25; % 深灰 
-        0.45 0.45 0.45; % 中灰 
-        0.65 0.65 0.65 ];% 浅灰 
+    colors = lines(num_tests); 
+    % colors = [ 0.00 0.00 0.00; % 黑色 
+    %     0.25 0.25 0.25; % 深灰 
+    %     0.45 0.45 0.45; % 中灰 
+    %     0.65 0.65 0.65 ];% 浅灰 
     line_styles = {'-', '-', '-', '-'};
-    num = [4,4,2,2];
+    num = [2,2,2,2];
     %% 2. 读取真值数据
     try
         temp = importdata(truthpath);

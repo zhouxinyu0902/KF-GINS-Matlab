@@ -21,12 +21,14 @@ glvs;
 % 'Square'  方形轨迹
 % 'Line'    往复直线轨迹
 % 'Circle'  圆形轨迹
-trj_shape = 'Circle';
-
+% trj_shape = 'Circle';
+trj_shape = 'Square';
+% trj_shape = 'Line';
 % 轨迹中心点选项：
 % 'ArrayCenter' 阵列几何中心
 % 'Beacon1'     1号潜标附近
-trj_center = 'ArrayCenter';
+% trj_center = 'ArrayCenter';
+trj_center = 'Beacon1';
 
 % 工况根目录
 basefolder = fullfile( ...

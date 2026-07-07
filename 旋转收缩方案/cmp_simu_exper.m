@@ -10,7 +10,7 @@ path22='旋转收缩方案/output_simu/RANGE1-adap.nav';
 path3='旋转收缩方案/output/rotate+backforward.txt';
 path33='旋转收缩方案/output_simu/rotate+backforward.txt';
 %%
-myfigurestartup(12,5,'prese')
+myfigurestartup(12,5,'prese');
 subplot 122
 plot_trj(truth,path1,path3)
 title('实测数据纯惯导/距离辅助改进算法对比')
@@ -18,9 +18,9 @@ subplot 121
 plot_trj(truth1,path11,path33)
 title('仿真数据纯惯导/距离辅助改进算法对比')
 %%
-myfigurestartup(10,10,'prese')
+myfigurestartup(10,10,'prese');
 subplot 212
-calc_radial_error(truth,path1,path2,path3)s
+calc_radial_error(truth,path1,path2,path3)
 title('实测数据纯惯导/距离辅助改进算法对比')
 subplot 211
 calc_radial_error(truth1,path11,path22,path33)

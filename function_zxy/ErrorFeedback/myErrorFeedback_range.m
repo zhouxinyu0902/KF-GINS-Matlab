@@ -1,5 +1,5 @@
 function [kf, navstate] = myErrorFeedback_range(kf, navstate)
-    b=1;
+    b = 1;
     % b=1/kf.alpha;
     % position and velocity
     navstate.pos(1:2) = navstate.pos(1:2) - b * kf.x(1:2, 1);

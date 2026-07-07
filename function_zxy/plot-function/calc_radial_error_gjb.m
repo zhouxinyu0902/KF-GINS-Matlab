@@ -31,8 +31,16 @@ function [fig,finalExcelData] = calc_radial_error_gjb(truthpath, varargin)
     
     % 绘图样式定义
     colors = lines(num_tests); 
-    line_styles = {'-', '-', '-', '-'};
-
+    colors = [
+    0.00, 0.00, 0.00;  % 纯黑：最通用的基准色，黑白打印也完全清晰
+    0.85, 0.15, 0.15;  % 正酒红：低饱和红色，不会刺眼且辨识度拉满
+    0.10, 0.35, 0.70;  % 深海蓝：顶刊使用频率最高的主色，视觉柔和不发飘
+    0.10, 0.60, 0.20;  % 深墨绿：和蓝、红的色差极大，几乎不会混淆
+    0.60, 0.20, 0.70;  % 暗紫：低饱和紫色，和前四种颜色边界清晰
+    0.95, 0.50, 0.10   % 深橙：替代容易和白色混淆的明黄，对比度充足
+];
+    line_styles = {'-', '--', ':', '-.'};
+    dot = {'none','none','none','none','o','+','*'};
     %% 2. 读取真值数据
     try
         temp = importdata(truthpath);
@@ -129,9 +137,11 @@ function [fig,finalExcelData] = calc_radial_error_gjb(truthpath, varargin)
             plot(all_results(i).time, all_results(i).radial, ...
                  'Color', colors(i,:), ...
                  'LineStyle', line_styles{style_idx}, ...
+                 'Marker',dot{style_idx},...
                  'DisplayName', all_results(i).label);
         end
     end
+    
     xlabel('时间 (s)');
     ylabel('水平径向误差 (m)');
     legend('show', 'Location', 'best');

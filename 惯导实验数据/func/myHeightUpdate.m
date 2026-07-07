@@ -21,7 +21,7 @@ vel_u_idx = 6; % 在大多数15维滤波器中，6是天向速度
 mask = zeros(kf.RANK, 1);
 mask(pos_u_idx) = 1; 
 mask(vel_u_idx) = 1; 
-
+% K = K_full;
 % 强制截断增益
 K = K_full .* mask;
 %% 5. 更新状态量与协方差矩阵

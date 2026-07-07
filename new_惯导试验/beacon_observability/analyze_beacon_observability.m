@@ -207,102 +207,141 @@ function window_table = make_window_table(results)
         HorizontalLambdaMin, HorizontalCondition, HorizontalLogDet, ...
         FullRank, FullWeakSingularValue);
 end
-
+%%
 function plot_results(results, output_dir)
-    colors = lines(numel(results.scenario_names));
-    fig = figure('Color', 'w', 'Name', 'Beacon observability comparison', ...
-        'Position', [100, 100, 1200, 720]);
-    t = tiledlayout(2, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
+    num_scenarios = numel(results.scenario_names);
+    colors = lines(num_scenarios);
 
-    nexttile;
-    plot_metric(results.time, results.horizontal_lambda_min, colors);
-    ylabel('\lambda_{min}(W_{horizontal})');
-    title('Weakest horizontal information');
+    fig = myfigurestartup(9,3,'zxy');
+    t = tiledlayout(fig, 1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+    % title(t, sprintf('Beacon observability comparison (window = %d)', results.window_measurements));
 
-    nexttile;
-    plot_metric(results.time, results.horizontal_condition, colors);
-    set(gca, 'YScale', 'log');
-    ylabel('Condition number');
-    title('Horizontal information conditioning');
+    ax = nexttile(t, 1);
+    plot_metric(ax, results.time, results.horizontal_lambda_min, colors, false);
+    ylabel(ax, '\lambda_{min}(W_{horizontal})');
+    xlabel(ax, 'Time (s)');
+    % title(ax, 'Weakest horizontal information');
 
-    nexttile;
-    plot_metric(results.time, results.horizontal_logdet, colors);
-    ylabel('log_{10} det(W_{horizontal})');
-    xlabel('Time (s)');
-    title('Horizontal information volume');
+    ax = nexttile(t, 2);
+    plot_metric(ax, results.time, results.horizontal_condition, colors, true);
+    ylabel(ax, 'Condition number');
+    xlabel(ax, 'Time (s)');
+    % title(ax, 'Horizontal information conditioning');
 
-    nexttile;
-    plot_metric(results.time, results.full_rank, colors);
-    ylabel('Effective rank');
-    xlabel('Time (s)');
-    title('Full 15-state observability rank');
+    ax = nexttile(t, 3);
+    plot_metric(ax, results.time, results.horizontal_logdet, colors, false);
+    ylabel(ax, 'log_{10} det(W_{horizontal})');
+    xlabel(ax, 'Time (s)');
+    % title(ax, 'Horizontal information volume');
+    
+    short_labels = cell(1, num_scenarios);
+    for k = 1:num_scenarios
+        name = results.scenario_names{k};
+        if strcmp(name, 'Alternating')
+            short_labels{k} = 'Alt';
+        else
+            tok = regexp(name, 'Fixed-B(\d+)', 'tokens', 'once');
+            if ~isempty(tok)
+                short_labels{k} = ['B' tok{1}];
+            else
+                short_labels{k} = name;
+            end
+        end
+    end
 
-    % Shared legend at the bottom of the tiled layout
-    lg = legend(t, results.scenario_names, 'Location', 'south', ...
-        'Orientation', 'horizontal', 'NumColumns', numel(results.scenario_names));
-    lg.Layout.Tile = 'south';
+    legend(results.scenario_names);
 
-    exportgraphics(fig, fullfile(output_dir, 'beacon_observability_comparison.png'), ...
-        'Resolution', 300);
-    exportgraphics(fig, fullfile(output_dir, 'beacon_observability_comparison.svg'));
+    exportgraphics(fig, fullfile(output_dir, 'beacon_observability_comparison.png'), 'Resolution', 600);
     close(fig);
 end
 
 function plot_boxcharts(results, output_dir)
     num_scenarios = numel(results.scenario_names);
     num_windows = size(results.horizontal_lambda_min, 1);
-    group = repmat(1:num_scenarios, num_windows, 1);
-    group = group(:);
-    short_labels = {'Alt', 'B1', 'B2', 'B3'};
-    short_labels = short_labels(1:num_scenarios);
+    colors = lines(num_scenarios);
 
-    fig = figure('Color', 'w', 'Name', ...
-        'Sliding-window observability distributions', ...
-        'Position', [100, 100, 1500, 520]);
-    tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+    short_labels = cell(1, num_scenarios);
+    for k = 1:num_scenarios
+        name = results.scenario_names{k};
+        if strcmp(name, 'Alternating')
+            short_labels{k} = 'Alt';
+        else
+            tok = regexp(name, 'Fixed-B(\d+)', 'tokens', 'once');
+            if ~isempty(tok)
+                short_labels{k} = ['B' tok{1}];
+            else
+                short_labels{k} = name;
+            end
+        end
+    end
 
-    % Suppress boxplot warning about labels when data contains NaN
-    warning('off', 'MATLAB:boxplot:EmptyGroup');
+    fig = myfigurestartup(9,3,'zxy');
+    t = tiledlayout(fig, 1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+    % title(t, sprintf('Sliding-window observability distributions (window = %d)', results.window_measurements), ...
+    %     'FontSize', 11);
 
-    nexttile;
-    boxplot(results.horizontal_lambda_min(:), group, ...
-        'Labels', short_labels);
-    ylabel('\lambda_{min}(W_{horizontal})');
-    title('Weakest horizontal information');
-    grid on;
+    scenario_idx = repelem((1:num_scenarios)', num_windows);
+    scenario_cat = categorical(scenario_idx, 1:num_scenarios, short_labels, 'Ordinal', true);
 
-    nexttile;
-    boxplot(results.horizontal_condition(:), group, ...
-        'Labels', short_labels);
-    set(gca, 'YScale', 'log');
-    ylabel('Condition number');
-    title('Horizontal conditioning');
-    grid on;
+    ax = nexttile(t, 1);
+    plot_box_metric(ax, scenario_cat, results.horizontal_lambda_min(:), colors, ...
+        '\lambda_{min}(W_{horizontal})', 'Weakest horizontal information');
 
-    nexttile;
-    boxplot(results.horizontal_logdet(:), group, ...
-        'Labels', short_labels);
-    ylabel('log_{10} det(W_{horizontal})');
-    title('Horizontal information volume');
-    grid on;
+    ax = nexttile(t, 2);
+    plot_box_metric(ax, scenario_cat, results.horizontal_condition(:), colors, ...
+        'Condition number', 'Horizontal conditioning');
+    set(ax, 'YScale', 'log');
 
-    warning('on', 'MATLAB:boxplot:EmptyGroup');
+    ax = nexttile(t, 3);
+    plot_box_metric(ax, scenario_cat, results.horizontal_logdet(:), colors, ...
+        'log_{10} det(W_{horizontal})', 'Horizontal information volume');
 
-    exportgraphics(fig, fullfile(output_dir, ...
-        'beacon_observability_boxplots.png'), 'Resolution', 300);
-    exportgraphics(fig, fullfile(output_dir, ...
-        'beacon_observability_boxplots.svg'));
+    exportgraphics(fig, fullfile(output_dir, 'beacon_observability_boxplots.png'), 'Resolution', 600);
     close(fig);
 end
 
-function plot_metric(time, values, colors)
-    hold on;
+function plot_metric(ax, time, values, colors, use_log_scale)
+    hold(ax, 'on');
+
     for scenario_id = 1:size(values, 2)
-        valid = isfinite(values(:, scenario_id));
+        valid = isfinite(time) & isfinite(values(:, scenario_id));
         if any(valid)
-            plot(time(valid), values(valid, scenario_id), 'LineWidth', 1.3, ...
+            plot(ax, time(valid), values(valid, scenario_id), ...
+                'LineWidth', 1.4, ...
                 'Color', colors(scenario_id, :));
         end
     end
-    grid on;
+
+    if use_log_scale
+        set(ax, 'YScale', 'log');
+    end
+
+    grid(ax, 'on');
+    box(ax, 'on');
+    xlim(ax, [min(time), max(time)]);
+    set(ax, 'FontSize', 10, 'LineWidth', 1.0);
 end
+
+function plot_box_metric(ax, scenario_cat, values, colors, y_label_text, ttl)
+    hold(ax, 'on');
+    cats = categories(scenario_cat);
+
+    for scenario_id = 1:numel(cats)
+        idx = (scenario_cat == cats{scenario_id}) & isfinite(values);
+        if any(idx)
+            boxchart(ax, scenario_cat(idx), values(idx), ...
+                'BoxFaceColor', colors(scenario_id, :), ...
+                'BoxFaceAlpha', 0.75, ...
+                'MarkerStyle', '.', ...
+                'MarkerColor', [0.35 0.35 0.35], ...
+                'LineWidth', 1.0);
+        end
+    end
+
+    ylabel(ax, y_label_text);
+    % title(ax, ttl);
+    grid(ax, 'on');
+    box(ax, 'on');
+    set(ax, 'FontSize', 10, 'LineWidth', 1.0);
+end
+

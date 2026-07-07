@@ -1,4 +1,4 @@
-close all
+close all hidden
 clear
 clc
 glvs
@@ -9,8 +9,8 @@ glvs
 % baseFolders{2}   = 'D:\Github\KF-GINS-Matlab\潜标位置标定\stage_2\data\Line_Beacon1_Trj\';
 % baseFolders{3}  = 'D:\Github\KF-GINS-Matlab\潜标位置标定\stage_2\data\Square_Beacon1_Trj\';
 baseFolders{1}   = 'D:\Github\KF-GINS-Matlab\潜标位置标定\stage_2\data\Circle_ArrayCenter_Trj\';
-% baseFolders{2}   = 'D:\Github\KF-GINS-Matlab\潜标位置标定\stage_2\data\Line_ArrayCenter_Trj\';
-% baseFolders{2}   = 'D:\Github\KF-GINS-Matlab\潜标位置标定\stage_2\data\Square_ArrayCenter_Trj\';
+baseFolders{2}   = 'D:\Github\KF-GINS-Matlab\潜标位置标定\stage_2\data\Line_ArrayCenter_Trj\';
+baseFolders{3}   = 'D:\Github\KF-GINS-Matlab\潜标位置标定\stage_2\data\Square_ArrayCenter_Trj\';
 for ii = 1:numel(baseFolders)
 
     baseFolder = baseFolders{ii};

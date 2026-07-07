@@ -5,8 +5,9 @@ True = [path_used,'True.nav'];
 USBL = [path_used,'USBL.nav'];
 truth = [path_used,'input_stage2\truth.nav'];
 %%
-[fig,finalExcelData] = calc_radial_error(truth,Origin,Calib,True,USBL);
+[fig,finalExcelData] = calc_radial_error(truth,Origin,True,USBL,Calib);
+legend('未补偿','真实位置','超短基线测定','本发明二次标定')
 % 执行落地保存
-outputExcelName = [path_used,'导航系统径向误差统计报告.xlsx'];
+woutputExcelName = [path_used,'导航系统径向误差统计报告.xlsx'];
 writecell(finalExcelData, outputExcelName);
 exportgraphics(fig, [path_used,'径向误差对比.png'], 'Resolution', 600);

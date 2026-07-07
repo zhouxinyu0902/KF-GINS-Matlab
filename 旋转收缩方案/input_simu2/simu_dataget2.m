@@ -1,7 +1,7 @@
 %% 用于仿真与实验数据类似的数据
 clear all
-refpva=importdata('旋转收缩方案/input/truth.nav');
-imu120=importdata('旋转收缩方案/input/IMU_120.txt');
+refpva=importdata('旋转收缩方案1/input/input6/truth.nav');
+imu120=importdata('旋转收缩方案1/input/input6/IMU_120.txt');
 %% 转换坐标系
 glvs
 refavp=pvaNED2ENU(refpva);
