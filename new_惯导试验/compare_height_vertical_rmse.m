@@ -213,7 +213,14 @@ function plotErrors(errSeries, methodNames)
             break;
         end
     end
-    
+    colors = [
+    0.85, 0.15, 0.15;  % 正酒红：低饱和红色，不会刺眼且辨识度拉满
+    0.10, 0.35, 0.70;  % 深海蓝：顶刊使用频率最高的主色，视觉柔和不发飘
+    0.10, 0.60, 0.20;  % 深墨绿：和蓝、红的色差极大，几乎不会混淆
+    0.60, 0.20, 0.70;  % 暗紫：低饱和紫色，和前四种颜色边界清晰
+    0.95, 0.50, 0.10   % 深橙：替代容易和白色混淆的明黄，对比度充足
+    ];
+    line_styles = {'-', '--', ':', '-.'};
     %% ======================= 子图 1：高度误差 =======================
     ax1 = subplot(2, 1, 1);
     hold on;
@@ -223,7 +230,7 @@ function plotErrors(errSeries, methodNames)
             continue;
         end
         time = errSeries{k}.time-errSeries{k}.time(1);
-        plot(time, errSeries{k}.heightError, 'LineWidth', 1.0);
+        plot(time, errSeries{k}.heightError, 'LineWidth', 1.0,'Color',colors(k,:),'LineStyle',line_styles{k});
     end
     xlabel('Time (s)');
     ylabel('Height error (m)');
@@ -242,7 +249,7 @@ function plotErrors(errSeries, methodNames)
             continue;
         end
         time = errSeries{k}.time-errSeries{k}.time(1);
-        plot(time, errSeries{k}.heightError, 'LineWidth', 1.0);
+        plot(time, errSeries{k}.heightError, 'LineWidth', 1.0,'Color',colors(k,:),'LineStyle',line_styles{k});
     end
     
     xlim(ax_inset1, [t_start, t_start + 50]);
@@ -259,12 +266,12 @@ function plotErrors(errSeries, methodNames)
             continue;
         end
         time = errSeries{k}.time-errSeries{k}.time(1);
-        plot(time, errSeries{k}.verticalVelocityError, 'LineWidth', 1.0);
+        plot(time, errSeries{k}.verticalVelocityError, 'LineWidth', 1.0,'Color',colors(k,:),'LineStyle',line_styles{k});
     end
     xlabel('Time (s)');
     ylabel('Vertical velocity error (m/s)');
     title('Vertical Velocity Error');
-    legend(methodNames, 'Interpreter', 'none', 'Location', 'best');
+    % legend(methodNames, 'Interpreter', 'none', 'Location', 'best');
     xlim([t_start t_end]);
     
     % --------- 局部放大（垂向速度） ---------
@@ -279,7 +286,7 @@ function plotErrors(errSeries, methodNames)
             continue;
         end
         time = errSeries{k}.time-errSeries{k}.time(1);
-        plot(time, errSeries{k}.verticalVelocityError, 'LineWidth', 1.0);
+        plot(time, errSeries{k}.verticalVelocityError, 'LineWidth', 1.0,'Color',colors(k,:),'LineStyle',line_styles{k});
     end
     
     xlim(ax_inset2, [1800, 2600]);

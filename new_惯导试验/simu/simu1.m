@@ -19,7 +19,7 @@ for ID = 2
     rng(1);
     smoothWay = 'RTS'; % 平滑方式，选择RTS或线性
     SmoothIsOpen = 0;
-    feedback = 0;
+    feedback = 1;
     tic; % 启动计时器
     %% 导入数据
     % for smoothWay=["RTS","Linear"]
@@ -280,33 +280,6 @@ for ID = 2
             nav(6:8, 1) = navstate.vel;
             nav(9:11, 1) = navstate.att * param.R2D;
             fprintf(navfp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav);
-            % 保存估计的状态值
-            % xk = zeros(16, 1);
-            % xk(1) = navstate.time;
-            % xk(2:16) = kf.x(1:15);
-            % fprintf(xkfp, '%12.6f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f\n', xk);
-            % write imu error, convert to common unit
-            % imuerror = zeros(13, 1);
-            % imuerror(1, 1) = navstate.time;
-            % imuerror(2:4, 1) = navstate.gyrbias * param.R2D * 3600;
-            % imuerror(5:7, 1) = navstate.accbias * 1e5;
-            % imuerror(8:10, 1) = navstate.gyrscale * 1e6;
-            % imuerror(11:13, 1) = navstate.accscale * 1e6;
-            % fprintf(imuerrfp, '%12.6f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', imuerror);
-            %
-            % % write state std, convert to common unit
-            % std = zeros(1, 22);
-            % std(1) = navstate.time;
-            % for idx=1:21
-            %     std(idx + 1) = sqrt(kf.P(idx, idx));
-            % end
-            % std(8:10) = std(8:10) * param.R2D;
-            % std(11:13) = std(11:13) * param.R2D *3600;
-            % std(14:16) = std(14:16) * 1e5;
-            % std(17:22) = std(17:22) * 1e6;
-            % fprintf(stdfp, '%12.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f \n', std);
-            %
-
             % print processing information
             if (imuindex / size(imudata, 1) - lastprecent > 0.20)
                 disp("processing " + num2str(floor(imuindex * 100 / size(imudata, 1))) + " %!");

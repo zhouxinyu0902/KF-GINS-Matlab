@@ -1,11 +1,11 @@
 clear;
 % 参数初始化
 param = Param();
-ID = 6;
+ID = 5;
 clc
 in_dir = ['F:/2_Data/惯导试验/实验数据/All_data/input',num2str(ID)];
 cfg = config_1(in_dir);
-cfg.outputfolder =['D:\Github\KF-GINS-Matlab\new_惯导试验\output/output',num2str(ID),'_height'];
+cfg.outputfolder =['D:\Github\KF-GINS-Matlab\new_惯导试验\exper\output',num2str(ID),'\heightwayCMP'];
 mkdir(cfg.outputfolder);
 %% 定义标准差和其他设置
 rngstd = 6;
@@ -14,7 +14,7 @@ smoothWay = 'RTS'; % 平滑方式，选择RTS或线性
 SmoothIsOpen = 0;
 feedback = 1;
 tic; % 启动计时器
-for height_updateway = [0,1,2]% 1为传统赋值方式，2为高度更新方式
+for height_updateway = [0,1,2]% 0 什么都没有,1为传统赋值方式，2为高度更新方式
     rng(1);
     %% 导入数据
     % for smoothWay=["RTS","Linear"]
@@ -32,7 +32,7 @@ for height_updateway = [0,1,2]% 1为传统赋值方式，2为高度更新方式
         range = {rangedata1, rangedata2, rangedata3};
 
         % 构造范围数据
-        id = 420; % 420秒 = 7分钟数据周期
+        id = 360; % 420秒 = 7分钟数据周期
         for i = 1:3
             range{i} = range{i}(id:id:end, :);
         end
@@ -70,26 +70,26 @@ for height_updateway = [0,1,2]% 1为传统赋值方式，2为高度更新方式
         %% 设置文件保存路径
         switch height_updateway
             case 0
-                methodLabel = "none";
+                methodLabel = "No-height update";
             case 1
-                methodLabel = "assign";
+                methodLabel = "Direct assignment";
             case 2
-                methodLabel = "measUpdate";
+                methodLabel = "Measurement update";
             otherwise
                 error("Unsupported height_updateway: %d", height_updateway);
         end
 
-        navName = sprintf("Origin-rad-%s-%s.nav", methodLabel, caseLabel);
+        navName = sprintf("%s.nav", methodLabel);
         navpath = fullfile(cfg.outputfolder, navName);
         navfp = fopen(navpath, 'wt');
 
         % 根据设置是否启用平滑
         if SmoothIsOpen == 1
             % 二次平滑结果
-            navpath1 = fullfile(cfg.outputfolder, sprintf('%s-DoubleSmooth-rad.nav', smoothWay));
+            navpath1 = fullfile(cfg.outputfolder, sprintf('Single-stage %s.nav', smoothWay));
             navfp1 = fopen(navpath1, 'wt');
             % 单次平滑结果
-            navpath2 = fullfile(cfg.outputfolder, sprintf('%s-SingleSmooth-rad.nav', smoothWay));
+            navpath2 = fullfile(cfg.outputfolder, sprintf('Proposed two-stage %s.nav', smoothWay));
             navfp2 = fopen(navpath2, 'wt');
         end
 
@@ -366,55 +366,3 @@ for height_updateway = [0,1,2]% 1为传统赋值方式，2为高度更新方式
         [fig,finalExcelData] = calc_radial_error_gjb(cfg.truthpath,navpath);
     end
 end
-%% 对比不同高度更新方式
-navFiles = {
-    fullfile(cfg.outputfolder, 'Origin-rad-none-normal.nav')
-    fullfile(cfg.outputfolder, 'Origin-rad-assign-normal.nav')
-    fullfile(cfg.outputfolder, 'Origin-rad-measUpdate-normal.nav')
-
-    };
-
-[fig1,finalExcelData1] = calc_radial_error_gjb(cfg.truthpath,navFiles{:});
-% 保存对比图片和表格
-savePrefix = fullfile(cfg.outputfolder, "compare-none-assign-measUpdate");
-% 保存图片
-exportgraphics(fig1, savePrefix + ".png", "Resolution", 600);
-savefig(fig1, savePrefix + ".fig");
-% 保存表格
-writecell(finalExcelData1, savePrefix + ".xlsx", "Sheet", "RMSE");
-
-fprintf("对比图片已保存：%s\n", savePrefix + ".png");
-fprintf("对比表格已保存：%s\n", savePrefix + ".xlsx");
-truthPath = cfg.truthpath;
-results = compare_height_vertical_rmse( ...
-    truthPath, navFiles, ...
-    'MethodNames', ["无","直接赋值", "高度量测更新"], ...
-    'OutputFile', fullfile(cfg.outputfolder, 'height_vd_rmse.csv'), ...
-    'FigureFile', fullfile(cfg.outputfolder, 'height_vd_error.png'));
-%%
-navFiles = {
-    fullfile(cfg.outputfolder, 'Origin-rad-none-abnormal.nav')
-    fullfile(cfg.outputfolder, 'Origin-rad-assign-abnormal.nav')
-    fullfile(cfg.outputfolder, 'Origin-rad-measUpdate-abnormal.nav')
-
-    };
-[fig1,finalExcelData1] = calc_radial_error_gjb(cfg.truthpath,navFiles{:});
-% 保存对比图片和表格
-savePrefix = fullfile(cfg.outputfolder, "compare-none-assign-measUpdate-abnormal");
-% 保存图片
-exportgraphics(fig1, savePrefix + ".png", "Resolution", 600);
-savefig(fig1, savePrefix + ".fig");
-% 保存表格
-writecell(finalExcelData1, savePrefix + ".xlsx", "Sheet", "RMSE");
-
-fprintf("对比图片已保存：%s\n", savePrefix + ".png");
-fprintf("对比表格已保存：%s\n", savePrefix + ".xlsx");
-%
-
-truthPath = cfg.truthpath;
-
-results = compare_height_vertical_rmse( ...
-    truthPath, navFiles, ...
-    'MethodNames', ["无","直接赋值", "高度量测更新"], ...
-    'OutputFile', fullfile(cfg.outputfolder, 'height_vd_rmse.csv'), ...
-    'FigureFile', fullfile(cfg.outputfolder, 'height_vd_error.png'));

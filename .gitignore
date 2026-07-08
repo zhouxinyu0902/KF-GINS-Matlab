@@ -48,3 +48,5 @@ graduation/DR_INS/inputimu_data.txt
 /graduation/DR_INS/input
 /潜标位置标定/stage_2/data
 /graduation/DR_INS/input
+/new_惯导试验/fgo_navigation/output
+/new_惯导试验/fgo_navigation/input

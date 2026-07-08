@@ -1,15 +1,15 @@
+%% 分析可观测度
 clear;
-% OBSERVABILITY: make the analysis helpers available.
-observability_code_dir = fileparts(mfilename('fullpath'));
-addpath(observability_code_dir);
-
 % 参数初始化
 param = Param();
-ID = 5;
+ID = 6;
 in_dir = ['F:/2_Data/惯导试验/实验数据/All_data/input',num2str(ID)];
 cfg = config_1(in_dir);
-cfg.outputfolder =['D:\Github\KF-GINS-Matlab\new_惯导试验\output/output',num2str(ID),'/alt-B1-B2-B3/'];
-mkdir(cfg.outputfolder);
+
+cfg.outputfolder =['D:\Github\KF-GINS-Matlab\new_惯导试验\exper\output',num2str(ID),'/alt-B1-B2-B3/'];
+if ~exist(cfg.outputfolder, 'dir')
+    mkdir(cfg.outputfolder);
+end
 %% 定义标准差和其他设置
 rngstd = 6;
 depthstd = 0.4;
@@ -21,8 +21,8 @@ tic; % 启动计时器
 %% 导入数据
 % for smoothWay=["RTS","Linear"]
 for smoothWay = "RTS"
-    % for mode =["alt","b1","b2","b3"]
-        for mode = "alt"
+    for mode =["Alternating","Fixed-B1","Fixed-B2","Fixed-B3"]
+    % for mode = "Alternating"
         % 导入IMU数据
         imudata = importdata(cfg.imufilepath);
         imustarttime = imudata(1, 1);
@@ -36,7 +36,7 @@ for smoothWay = "RTS"
         range = {rangedata1, rangedata2, rangedata3};
 
         % 构造范围数据
-        id = 420; % 420秒 = 7分钟数据周期
+        id = 360; % 420秒 = 7分钟数据周期
         for i = 1:3
             range{i} = range{i}(id:id:end, :);
         end
@@ -53,15 +53,15 @@ for smoothWay = "RTS"
         seq = [1, 2, 3];
 
         switch mode
-            case 'alt'
+            case 'Alternating'
                 for i = 1:3
                     rangedata(i:3:end, :) = range{seq(i)}(i:3:end, :);
                 end
-            case 'b1'
+            case 'Fixed-B1'
                 rangedata = range{1};
-            case 'b2'
+            case 'Fixed-B2'
                 rangedata = range{2};
-            case 'b3'
+            case 'Fixed-B3'
                 rangedata = range{3};
         end
 
@@ -76,7 +76,7 @@ for smoothWay = "RTS"
 
 
         %% 设置文件保存路径
-        navpath = fullfile(cfg.outputfolder, sprintf('Origin-rad-%s.nav', mode));
+        navpath = fullfile(cfg.outputfolder, sprintf('ES-EKF-%s.nav', mode));
         navfp = fopen(navpath, 'wt');
 
         % 根据设置是否启用平滑
@@ -88,24 +88,18 @@ for smoothWay = "RTS"
             navpath2 = fullfile(cfg.outputfolder, sprintf('%s-SingleSmooth-rad-%s.nav', smoothWay, mode));
             navfp2 = fopen(navpath2, 'wt');
         end
-
-
         %% 时间调整
-
         if cfg.starttime < imustarttime
             cfg.starttime = imustarttime;
         end
         if cfg.endtime > imuendtime
             cfg.endtime = imuendtime;
         end
-
         % 筛选在处理时间范围内的数据
         imudata = imudata(imudata(:, 1) >= cfg.starttime & imudata(:, 1) <= cfg.endtime, :);
         rangedata = rangedata(rangedata(:, 1) >= cfg.starttime & rangedata(:, 1) <= cfg.endtime, :);
-
         % 添加随机噪声到范围数据
         rangedata(:, 3) = rangedata(:, 3) + normrnd(0, rngstd, size(rangedata(:, 3)));
-
         % 筛选高度数据并添加噪声
         height = height(height(:, 1) >= cfg.starttime & height(:, 1) <= cfg.endtime, :);
         height(:, 2) = height(:, 2) + normrnd(0, depthstd, size(height(:, 2)));
@@ -177,8 +171,7 @@ for smoothWay = "RTS"
             end
             %% 4、determine whether gnss update is required
             if lastimu(1, 1) == rangedata(rangeindex, 1) && cfg.userange==1
-                % OBSERVABILITY: log the pre-update state and all candidate beacon
-                % Jacobians. The active beacon is inferred from columns 4:6.
+
                 obslog = log_beacon_observation(obslog, ...
                     rangedata(rangeindex, 1), navstate.pos, ...
                     rangedata(rangeindex, 4:6)');
@@ -300,42 +293,14 @@ for smoothWay = "RTS"
             end
 
             %% save data
-            % xkk(imuindex-1,:)=[navstate.time;kf.x];
-            % write navresult to file
+
             nav = zeros(11, 1);
             nav(2, 1) = navstate.time;
             nav(3:5, 1) = [navstate.pos(1) * param.R2D; navstate.pos(2) * param.R2D; navstate.pos(3)];
             nav(6:8, 1) = navstate.vel;
             nav(9:11, 1) = navstate.att * param.R2D;
             fprintf(navfp, '%2d %12.6f %12.8f %12.8f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', nav);
-            % 保存估计的状态值
-            % xk = zeros(16, 1);
-            % xk(1) = navstate.time;
-            % xk(2:16) = kf.x(1:15);
-            % fprintf(xkfp, '%12.6f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f\n', xk);
-            % write imu error, convert to common unit
-            % imuerror = zeros(13, 1);
-            % imuerror(1, 1) = navstate.time;
-            % imuerror(2:4, 1) = navstate.gyrbias * param.R2D * 3600;
-            % imuerror(5:7, 1) = navstate.accbias * 1e5;
-            % imuerror(8:10, 1) = navstate.gyrscale * 1e6;
-            % imuerror(11:13, 1) = navstate.accscale * 1e6;
-            % fprintf(imuerrfp, '%12.6f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f \n', imuerror);
-            %
-            % % write state std, convert to common unit
-            % std = zeros(1, 22);
-            % std(1) = navstate.time;
-            % for idx=1:21
-            %     std(idx + 1) = sqrt(kf.P(idx, idx));
-            % end
-            % std(8:10) = std(8:10) * param.R2D;
-            % std(11:13) = std(11:13) * param.R2D *3600;
-            % std(14:16) = std(14:16) * 1e5;
-            % std(17:22) = std(17:22) * 1e6;
-            % fprintf(stdfp, '%12.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f %8.6f \n', std);
-            %
 
-            % print processing information
             if (imuindex / size(imudata, 1) - lastprecent > 0.20)
                 disp("processing " + num2str(floor(imuindex * 100 / size(imudata, 1))) + " %!");
                 lastprecent = imuindex / size(imudata, 1);
@@ -353,23 +318,12 @@ for smoothWay = "RTS"
         fclose all;
         toc
         [fig,finalExcelData] = calc_radial_error_gjb(cfg.truthpath,navpath);
-        if mode == "alt"
+        if mode == "Alternating"
             num_obs_events = numel(obslog.events);
             window_measurements = min(9, 3 * floor(num_obs_events / 3));
             observability_results = analyze_beacon_observability(obslog, window_measurements, cfg.outputfolder);
+            save(cfg.outputfolder+"observ.mat",'obslog','window_measurements')
         end
     end
 end
-%%
-pathcell={"D:\Github\KF-GINS-Matlab\new_惯导试验\output/output"+num2str(ID)+"/PureIns-rad.nav",...
-    cfg.outputfolder+"/Origin-rad-alt.nav",...
-    cfg.outputfolder+"/Origin-rad-b1.nav",...
-    cfg.outputfolder+"/Origin-rad-b2.nav",...
-    cfg.outputfolder+"/Origin-rad-b3.nav"
-    };
-[figall,finalExcelDataall] = calc_radial_error_gjb(cfg.truthpath,pathcell{:});
-exportgraphics(figall,cfg.outputfolder+"/threewaysCMP.png", 'Resolution', 600);
-savefig(figall, cfg.outputfolder+"/threewaysCMP.fig");
-writecell(finalExcelDataall, cfg.outputfolder+"/threewaysCMP.xlsx",'sheet', 1);
-%%
 

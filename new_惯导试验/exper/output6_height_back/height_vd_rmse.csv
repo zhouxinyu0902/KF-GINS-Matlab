@@ -1,4 +1,0 @@
-Method,File,StartTime,EndTime,Samples,HeightRMSE_m,VerticalVelocityRMSE_mps,MaxAbsHeightError_m,MaxAbsVerticalVelocityError_mps
-无,D:\Github\KF-GINS-Matlab\new_惯导试验\output\output6_height\Origin-rad-none-normal.nav,122233.57,127272.58,503902,88.5229448478435,0.503030487698185,218.1755,1.0253
-直接赋值,D:\Github\KF-GINS-Matlab\new_惯导试验\output\output6_height\Origin-rad-assign-normal.nav,122233.57,127272.58,503902,0.400708613998368,4.67520859153276,1.9946,8.282
-高度量测更新,D:\Github\KF-GINS-Matlab\new_惯导试验\output\output6_height\Origin-rad-measUpdate-normal.nav,122233.57,127272.58,503902,0.674640975584733,0.0501558319128109,1.1126,0.2297
