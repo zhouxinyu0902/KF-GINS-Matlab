@@ -25,6 +25,9 @@ function cfg = config_DR_RANGE(in_dir)
     cfg.compasspath = fullfile(cfg.inputfolder, 'compass.txt');
     cfg.depthpath   = fullfile(cfg.inputfolder, 'depth.txt');
     cfg.beaconpath  = fullfile(cfg.inputfolder, 'beacon.txt');
+    for i=1:4
+        cfg.beaconpath1{i}  = fullfile(cfg.inputfolder, sprintf('beacon_%d.txt',i));
+    end
     cfg.truthpath   = fullfile(cfg.inputfolder, 'reference.txt');
 
     % 与数据生成脚本保持一致。若你改过生成脚本中的初始经纬度/深度，这里也要同步修改。
@@ -45,21 +48,24 @@ function cfg = config_DR_RANGE(in_dir)
     cfg.range_time_tolerance = 0.25;   % s，若DVL采样0.5 s，取0.25较合适
 
     % 量测噪声
-    cfg.range_std = 1.0;               % m，对应beacon.txt第二列斜距量测
+    cfg.range_std = 5.0;               % m，对应beacon.txt第二列斜距量测
 
     % 滤波器状态维数。第一版建议4维：[dK; dYaw; dLat; dLon]
     cfg.kf.state_dim = 4;
 
     % 初始状态标准差
     cfg.kf.init_dk_std       = 0.02;        % DVL刻度因子误差，无量纲
-    cfg.kf.init_yaw_std      = 5 * deg;     % 航向误差，rad
-    cfg.kf.init_pos_std_m    = 50;          % 水平位置误差，m
+    cfg.kf.init_yaw_std      = 1 * deg;     % 航向误差，rad
+    cfg.kf.init_pos_std_m    = 1;          % 水平位置误差，m
 
     % 连续过程噪声标准差。这里是比较温和的默认值，后续可根据仿真调参。
-    cfg.kf.q_dk      = 1e-5;          % 1/sqrt(s)
-    cfg.kf.q_yaw     = 0.005 * deg;   % rad/sqrt(s)
-    cfg.kf.q_pos_m   = 0.02;          % m/sqrt(s)
+    % cfg.kf.q_dk      = 1e-5;          % 1/sqrt(s)
+    % cfg.kf.q_yaw     = 0.0005 * deg;   % rad/sqrt(s)
+    % cfg.kf.q_pos_m   = 0.02;          % m/sqrt(s)
 
+    cfg.kf.q_dk      = 1e-5;          % 1/sqrt(s)
+    cfg.kf.q_yaw     = 0.05 * deg;   % rad/sqrt(s)
+    cfg.kf.q_pos_m   = 0;          % m/sqrt(s)
     % 是否使用新息门限。第一版默认关闭，便于调试。
     cfg.kf.use_gate = false;
     cfg.kf.gate_sigma = 5;

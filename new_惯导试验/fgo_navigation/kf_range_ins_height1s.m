@@ -1,5 +1,5 @@
 %% KF RANGE/INS 组合导航
-% 高度量测：100 Hz，每个 IMU 历元更新一次垂向。
+% 高度量测：按 1 s 周期更新一次垂向。
 % 距离量测：约 360 s 一次，只更新水平距离。
 
 clear; clc; close all;
@@ -22,6 +22,7 @@ end
 
 rngstd = 6;        % 水平距离噪声，m
 heightstd = 0.4;   % 高度噪声，m
+height_update_interval = 1.0;  % 高度量测更新周期，s。原程序为每个 IMU 历元更新。
 rng(1);
 tic;
 
@@ -53,6 +54,7 @@ rangedata(:, 3) = rangedata(:, 3) + rngstd * randn(size(rangedata, 1), 1);
 fprintf('\n========== KF RANGE/INS Processing ==========\n');
 fprintf('处理时间: %.2f -> %.2f s\n', cfg.starttime, cfg.endtime);
 fprintf('IMU/高度点数: %d, 距离点数: %d\n', size(imudata, 1), size(rangedata, 1));
+fprintf('高度更新周期: %.2f s\n', height_update_interval);
 
 %% 3. 初始化和输出
 [kf, navstate] = myInitialize_15state(cfg);
@@ -100,10 +102,12 @@ lastimu = imudata(1, :)';
 thisimu = imudata(1, :)';
 rangeindex = 1;
 range_update_count = 0;
+height_update_count = 0;
+next_height_time = cfg.starttime + height_update_interval;
 lastpercent = 0;
 
 
-%% 4. 主循环：100 Hz 高度更新 + 360 s 距离更新
+%% 4. 主循环：1 s 高度更新 + 360 s 距离更新
 for imuindex = 2:size(imudata, 1)
     lastimu = thisimu;
     thisimu = imudata(imuindex, :)';
@@ -114,12 +118,17 @@ for imuindex = 2:size(imudata, 1)
 
     navstate = InsMech(navstate, lastimu, thisimu);
 
-    % 高度是 100 Hz：每个 IMU 历元先做垂向量测更新，并立即反馈垂向。
-    kf = heightOnlyUpdate(navstate, heightdata(imuindex, :), kf);
-    navstate.pos(3) = navstate.pos(3) - kf.x(3);
-    navstate.vel(3) = navstate.vel(3) - kf.x(6);
-    kf.x(3) = 0;
-    kf.x(6) = 0;
+    % 高度改为 1 s 周期更新：到达高度更新时刻时，只做垂向量测更新并立即反馈垂向。
+    while next_height_time <= thisimu(1) + 5e-4
+        heightrow = getNearestHeightRow(heightdata, next_height_time);
+        kf = heightOnlyUpdate(navstate, heightrow, kf);
+        navstate.pos(3) = navstate.pos(3) - kf.x(3);
+        navstate.vel(3) = navstate.vel(3) - kf.x(6);
+        kf.x(3) = 0;
+        kf.x(6) = 0;
+        height_update_count = height_update_count + 1;
+        next_height_time = next_height_time + height_update_interval;
+    end
 
     % 距离是 360 s 周期：到达距离时刻时只做水平距离更新。
     while rangeindex <= size(rangedata, 1) && rangedata(rangeindex, 1) <= thisimu(1) + 5e-4
@@ -212,6 +221,7 @@ end
 if navfp2 > 0
     fclose(navfp2);
 end
+fprintf('高度更新次数: %d\n', height_update_count);
 fprintf('距离更新次数: %d\n', range_update_count);
 fprintf('结果文件: %s\n', navpath);
 toc;
@@ -232,6 +242,11 @@ end
 rangedata = rangedata(any(rangedata, 2), :);
 end
 
+function heightrow = getNearestHeightRow(heightdata, query_time)
+[~, idx] = min(abs(heightdata(:, 1) - query_time));
+heightrow = heightdata(idx, :);
+end
+
 function kf = heightOnlyUpdate(navstate, heightrow, kf)
 z = navstate.pos(3) - heightrow(2);
 H = zeros(1, kf.RANK);
@@ -239,7 +254,7 @@ H(3) = 1;
 R = kf.depthstd ^ 2;
 K = kf.P * H' / (H * kf.P * H' + R);
 
-% 高度量测只反馈到天向位置和天向速度，避免 100 Hz 高度牵动水平状态。
+% 高度量测只反馈到天向位置和天向速度，避免高度量测牵动水平状态。
 mask = zeros(kf.RANK, 1);
 mask(3) = 1;
 mask(6) = 1;

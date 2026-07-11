@@ -1,0 +1,12 @@
+path="D:\Github\KF-GINS-Matlab\graduation\DR_INS\input\data_line_N_four_quadrants\output_DR_RANGE";
+pathcell={
+    "D:\Github\KF-GINS-Matlab\graduation\DR_INS\input\data_line_N_four_quadrants\output_DR_RANGE"+"/Origin-DR-1.nav",...
+    cfg.outputfolder+"/DR-RANGE-1.nav",...
+    cfg.outputfolder+"/ES-EKF-Fixed-B3.nav",...
+    cfg.outputfolder+"/ES-EKF-Alternating.nav"
+    };
+[figall,finalExcelDataall] = calc_radial_error_gjb(cfg.truthpath,pathcell{1:2});
+xlabel('Time(s)')
+ylabel("Radial Error(m)")
+exportgraphics(figall,outputfolder+"simu-observ-threewaysCMP.png", 'Resolution', 600);
+writecell(finalExcelDataall, outputfolder+"/simu-threewaysCMP.xlsx",'sheet', 1);

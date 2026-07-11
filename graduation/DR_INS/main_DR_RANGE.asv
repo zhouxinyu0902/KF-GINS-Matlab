@@ -6,7 +6,7 @@ clear;
 clc;
 close all;
 glvs;
-for ii = 1:4
+for ii =1:4
 %% -------------------- 配置与数据读取 --------------------
 % in_dir = 'D:\Github\KF-GINS-Matlab\graduation\DR_INS\input\data_lawnmower_single_side';
 in_dir = 'D:\Github\KF-GINS-Matlab\graduation\DR_INS\input\data_line_N_single_side';
@@ -152,4 +152,3 @@ fprintf('Fused  DR nav saved to: %s\n', fused_nav_path);
 drpath= fullfile(cfg.outputfolder, 'Origin-DR-ned.txt');
 drrangepath = fullfile(cfg.outputfolder, 'DR-RANGE-ned.txt');
 calc_radial_error_gjb(cfg.truthpath,origin_nav_path,fused_nav_path);
-end

@@ -22,7 +22,7 @@ if ~exist(output_dir, 'dir')
 end
 
 opts.node_interval_sec = 1;
-opts.max_iterations = 2;
+opts.max_iterations = 1;
 opts.max_time_sec = inf;              % 调试时可改成 1800
 opts.range_std = 6;
 opts.height_std = 0.4;
@@ -159,13 +159,8 @@ for iter = 1:opts.max_iterations
 end
 
 %% 5. 输出
-navpath = fullfile(output_dir, 'FGO-RANGE-INS-keyframes.nav');
+navpath = fullfile(output_dir, 'FGO-RANGE-INS-keyframes-single.nav');
 writeNavRows(navpath, nav_nodes, param);
-
-result.opts = opts;
-result.history = history;
-result.node_times = node_times;
-save(fullfile(output_dir, 'fgo_range_ins_result.mat'), 'result');
 
 fprintf('\nFGO RANGE/INS 完成，结果文件: %s\n', navpath);
 
