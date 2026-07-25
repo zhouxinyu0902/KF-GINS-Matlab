@@ -33,7 +33,7 @@ for ii = 1:4
     compass = compass(compass(:,1) >= starttime & compass(:,1) <= endtime, :);
     depth   = depth(depth(:,1) >= starttime & depth(:,1) <= endtime, :);
     beacon  = beacon(beacon(:,1) >= starttime & beacon(:,1) <= endtime, :);
-    interval = 8;
+    interval = 2;
     beacon = beacon(interval:interval:end,:);
     if isempty(dvl) || isempty(compass) || isempty(depth) || isempty(beacon)
         error('输入数据为空，请检查路径和时间范围。');

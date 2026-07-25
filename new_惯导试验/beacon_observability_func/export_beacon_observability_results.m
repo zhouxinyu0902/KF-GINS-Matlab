@@ -104,8 +104,10 @@ function export_files = export_beacon_observability_results(results, output_dir,
     % ---------- 导出箱线图 ----------
     if logical(opts.ExportBoxFigure)
         export_files.box_png = fullfile(output_dir, [file_prefix '_boxplots.png']);
+        export_files.box_pdf = fullfile(output_dir, [file_prefix '_boxplots.pdf']);
         fig = plot_box_figure(results);
         exportgraphics(fig, export_files.box_png, 'Resolution', opts.Resolution);
+        exportgraphics(fig, export_files.box_pdf, "ContentType", "vector");
         if logical(opts.CloseFigure)
             close(fig);
         end

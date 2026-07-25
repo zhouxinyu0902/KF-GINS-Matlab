@@ -263,27 +263,27 @@ auv_geo_st2 = trj2.avp(:, 7:9);
 [auv_xyz_st1, ~, ~] = pos2dxyz(auv_geo_st1, pos0_geo);
 [auv_xyz_st2, ~, ~] = pos2dxyz(auv_geo_st2, pos0_geo);
 
-myfigurestartup(7, 3, 'zxy');
+fig=myfigurestartup(7, 3, 'zxy');
 
 % ---------- 全局图 ----------
 subplot(1, 2, 1);
 
 plot(P_surface_xyz(:, 1) / 1000, ...
      P_surface_xyz(:, 2) / 1000, ...
-     'b^', 'MarkerSize', 8, 'LineWidth', 2);
+     'b*', 'MarkerSize', 4);
 hold on;
 
 plot(S_true_xyz(:, 1) / 1000, ...
      S_true_xyz(:, 2) / 1000, ...
-     'ro', 'MarkerSize', 7, 'MarkerFaceColor', 'r');
+     'ro', 'MarkerSize', 4);
 
 plot(auv_xyz_st1(:, 1) / 1000, ...
      auv_xyz_st1(:, 2) / 1000, ...
-     'm-', 'LineWidth', 2);
+     'm-');
 
 plot(auv_xyz_st2(:, 1) / 1000, ...
      auv_xyz_st2(:, 2) / 1000, ...
-     'g--', 'LineWidth', 2);
+     'g--');
 
 grid on;
 axis equal;
@@ -305,12 +305,12 @@ subplot(1, 2, 2);
 
 plot(P_surface_xyz(1, 1), ...
      P_surface_xyz(1, 2), ...
-     'b^', 'MarkerSize', 11, 'LineWidth', 2.5);
+     'b*', 'MarkerSize', 9);
 hold on;
 
 plot(S_true_xyz(1, 1), ...
      S_true_xyz(1, 2), ...
-     'ro', 'MarkerSize', 9, 'MarkerFaceColor', 'r');
+     'ro', 'MarkerSize', 9);
 
 plot(auv_xyz_st1(:, 1), ...
      auv_xyz_st1(:, 2), ...
@@ -328,9 +328,10 @@ ylabel('北向 N (m)');
 title('标定作业区局部放大图');
 
 % 局部显示范围，避免被第二阶段长直航线拉远视野
-xlim([Cx - 2000, Cx + 2000]);
-ylim([Cy - 2000, Cy + 2000]);
+xlim([Cx - 1000, Cx + 1000]);
+ylim([Cy - 1500, Cy + 500]);
 
+exportgraphics(fig, 'D:\Github\KF-GINS-Matlab\潜标位置标定\figure.png', 'Resolution', 600);
 
 %% ==================== 6. 传感器误差注入 ====================
 

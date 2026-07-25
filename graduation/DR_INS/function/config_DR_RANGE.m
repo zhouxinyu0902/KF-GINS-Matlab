@@ -12,7 +12,7 @@ function cfg = config_DR_RANGE(in_dir)
 %   pos = [lat; lon; h]，rad rad m，高度h向上为正
 %   vn  = [VE; VN; VU]，m/s
 %   att = [pitch; roll; yaw]，rad
-
+    glvs
     if nargin < 1 || isempty(in_dir)
         in_dir = 'D:\Github\KF-GINS-Matlab\graduation\DR_INS\input\data_lawnmower_single_side';
     end
@@ -32,9 +32,9 @@ function cfg = config_DR_RANGE(in_dir)
 
     % 与数据生成脚本保持一致。若你改过生成脚本中的初始经纬度/深度，这里也要同步修改。
     deg = pi/180;
-    cfg.lat0 = 30 * deg;
-    cfg.lon0 = 120 * deg;
-    cfg.depth0 = 3893.066;        % m, D向下为正
+    cfg.lat0 = 30 * deg + 1/glv.Re;
+    cfg.lon0 = 120 * deg + 1/glv.Re;
+    cfg.depth0 = 3893.066 + 1;        % m, D向下为正
     cfg.pos0 = [cfg.lat0; cfg.lon0; -cfg.depth0];
 
     % NED输出所用局部原点。这里与数据生成脚本的 cfg.ned_origin = [lat0; lon0; 0] 保持一致。
@@ -54,7 +54,7 @@ function cfg = config_DR_RANGE(in_dir)
     cfg.kf.state_dim = 4;
 
     % 初始状态标准差
-    cfg.kf.init_dk_std       = 0.02;        % DVL刻度因子误差，无量纲
+    cfg.kf.init_dk_std       = 0.01;        % DVL刻度因子误差，无量纲
     cfg.kf.init_yaw_std      = 1 * deg;     % 航向误差，rad
     cfg.kf.init_pos_std_m    = 1;          % 水平位置误差，m
 

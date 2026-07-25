@@ -95,16 +95,16 @@ fprintf('总仿真时长: %.2f 秒，总数据点数: %d 点\n', trj.avp(end,10)
 auv_pos_geo_true = trj.avp(:, 7:9);
 [auv_pos_xyz_true, ~, ~] = pos2dxyz(auv_pos_geo_true, pos0_geo);
 
-figure('Color',[1 1 1], 'Position', [150, 150, 1100, 500]);
-
+% figure('Color',[1 1 1], 'Position', [150, 150, 1100, 500]);
+myfigurestartup(7, 3, 'zxy');
 % 子图1：大洋尺度全景图
 subplot(1,2,1);
-plot(P_surface_xyz(:,1)/1000, P_surface_xyz(:,2)/1000, 'kv', 'MarkerSize', 8, 'LineWidth', 2); hold on;
-plot(S_true_xyz(:,1)/1000, S_true_xyz(:,2)/1000, 'ro', 'MarkerSize', 6, 'MarkerFaceColor', 'r');
+plot(P_surface_xyz(:,1)/1000, P_surface_xyz(:,2)/1000, 'kv'); hold on;
+plot(S_true_xyz(:,1)/1000, S_true_xyz(:,2)/1000, 'ro');
 plot(auv_pos_xyz_true(:,1)/1000, auv_pos_xyz_true(:,2)/1000, 'b-', 'LineWidth', 2);
 grid on; axis equal;
 xlabel('本地东向距离 X (km)'); ylabel('本地北向距离 Y (km)');
-title('深海大图 (青岛中心 20km 潜标阵列全景)');
+title('20km 潜标阵列全景');
 legend('潜标海面锚定点', '潜标发声点(真值)', 'AUV真实方形参考轨迹', 'Location', 'SouthWest');
 
 % 子图2：1号潜标附近的局部高保真轨迹放大图

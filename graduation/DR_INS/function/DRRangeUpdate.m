@@ -6,7 +6,6 @@ function [kf, info] = DRRangeUpdate(kf, dr, beacon_k, cfg)
 % 单位：
 %   s, m, m, rad, rad, m
 %
-% 量测采用第二列斜距。第三列水平距离仅保存，不参与第一版滤波。
 
     z = beacon_k(3);
     beacon_pos = beacon_k(4:6)';
