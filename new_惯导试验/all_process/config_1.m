@@ -34,7 +34,7 @@ function cfg = config_1(in_dir)
     % 选择计算时间段
     id = 1;
     cfg.starttime = pva_830(id,2);
-    cfg.endtime = pva_830(end,2);
+    cfg.endtime = 126856;
     % cfg.endtime = cfg.starttime + 5000;
     % 初始状态
 

@@ -1,0 +1,474 @@
+close all
+clc
+glvs
+rng(1)
+% 用于获取数据
+%% ============================================================
+%  DVL + 罗盘 + 距离 数据生成脚本
+%  坐标系：NED，N/E 单位 m，D 向下为正
+% ============================================================
+
+%% -------------------- 基本参数 --------------------
+cfg.ts = 0.5;              % 采样周期
+cfg.v  = 1;              % AUV速度 m/s
+cfg.depth0 = 3893.066;     % 初始深度，D为正，单位m
+
+% PSINS中的高度h向上为正，因此深海高度为负
+deg = pi/180;
+cfg.lat0 = 30 * deg ;
+cfg.lon0 = 120 * deg ;
+cfg.h0   = -cfg.depth0 ;
+
+% NED原点：水平位置取AUV初始位置，高度取海面h=0
+cfg.ned_origin = [cfg.lat0; cfg.lon0; 0];
+
+% 轨迹类型：
+% 'line_N', 'line_E', 'square', 'lawnmower', 'circle'
+% traj_case = 'lawnmower';
+traj_case = 'line_N';
+% 信标布局：
+% 'single_side', 'single_collinear', 'single_center',
+% 'single_quadrant_NE', 'single_quadrant_NW',
+% 'single_quadrant_SE', 'single_quadrant_SW',
+% 'four_quadrants',
+% 'two_symmetric', 'triangle', 'moving_parallel', 'moving_cross'
+% beacon_case = 'single_side';
+beacon_case = 'four_quadrants';
+% 距离类型：
+% 'slant'      ：斜距，使用 N/E/D
+% 'horizontal' ：水平距离，只使用 N/E
+cfg.range_mode = 'horizontal';
+
+% 距离观测周期
+cfg.range_period = 1;      % s
+cfg.range_std = 5.0;       % m
+
+% 多信标测距方式：
+% 'simultaneous'：每个测距时刻所有信标都有距离
+% 'round_robin' ：每个测距时刻只测一个信标，轮换
+cfg.range_schedule = 'simultaneous';
+
+%% -------------------- 构造轨迹 --------------------
+[avp0, seg] = build_traj_segment(traj_case, cfg);
+
+trj = trjsimu(avp0, seg.wat, cfg.ts, 1);
+avp_ref = trj.avp;
+ts = trj.ts;
+ll = length(avp_ref);
+t = avp_ref(:,end);
+
+%% -------------------- 转换为NED真值 --------------------
+truth_ned = avpENU2NED(avp_ref);
+
+%% -------------------- IMU数据生成 -------------
+imuerr = imuerrset(0.001, 1, 0.01, 10);
+imu_noised = imuadderr(trj.imu, imuerr);
+imu_FRD = imuRFU2FRD(imu_noised);
+
+%% -------------------- DVL数据生成 --------------------
+% DVL误差模型：刻度因子 + 常值误差 + 白噪声
+cfg.dvl_scale = 1.004;              % DVL刻度因子，例如0.4%
+cfg.dvl_noise = 0.001;              % m/s
+cfg.dvl_bias  = [0.001; 0.001; 0.001];  % m/s，可根据需要改
+
+dvl_true = zeros(ll,4);
+vxy = zeros(ll,4);
+
+for k = 1:ll
+    cnb = a2mat(avp_ref(k,1:3));
+    vb = cnb' * avp_ref(k,4:6)';     % 导航系速度转体坐标系
+    dvl_true(k,1:3) = vb';
+end
+
+dvl_true(:,4) = t;
+
+vxy(:,1:3) = dvl_true(:,1:3) * cfg.dvl_scale ...
+    + repmat(cfg.dvl_bias', ll, 1) ...
+    + cfg.dvl_noise * randn(ll,3);
+vxy(:,4) = t;
+myfigurestartup(12,4,'zxy');
+for i = 1:3
+    subplot(1,3,i)
+    hold on
+    plot(avp_ref(:,end),vxy(:,i))
+    plot(avp_ref(:,end),dvl_true(:,i))
+end
+%% -------------------- 罗盘数据生成 --------------------
+% pitch / roll误差较小，yaw误差较大
+cfg.pr_bias_deg = 0.02;
+cfg.pr_noise_deg = 0.02;
+cfg.yaw_noise_deg = 0.05;
+
+cfg.yaw_bias_deg = 0.5;
+const_pitch_roll = cfg.pr_bias_deg * deg;
+const_yaw = cfg.yaw_bias_deg * deg;
+
+compass = zeros(ll,4);
+compass(:,1) = avp_ref(:,1) + const_pitch_roll ...
+    + cfg.pr_noise_deg * deg * randn(ll,1);
+compass(:,2) = avp_ref(:,2) + const_pitch_roll ...
+    + cfg.pr_noise_deg * deg * randn(ll,1);
+compass(:,3) = avp_ref(:,3) + const_yaw ...
+    + cfg.yaw_noise_deg * deg * randn(ll,1);
+compass(:,4) = t;
+%  对比真实罗盘数据和量测数据
+
+myfigurestartup(12,4,'zxy');
+for i = 1:3
+    subplot(1,3,i)
+    hold on
+    plot(avp_ref(:,end),r2d(compass(:,i)))
+    plot(avp_ref(:,end),r2d(avp_ref(:,i)))
+end
+%% -------------------- 深度计数据生成 --------------------
+cfg.depth_std = 0.4;       % m
+ned_ref = lla2ned_local(avp_ref(:,7:9), cfg.ned_origin);
+depth_true = ned_ref(:,3); % NED中D为正，直接作为深度
+depth = depth_true + cfg.depth_std * randn(ll,1);
+
+%% -------------------- 信标布局与距离生成 --------------------
+beacons = build_beacons_ned(beacon_case, ned_ref, t, cfg);
+
+[range_true, range_meas, horiz_true, horiz_meas, beacon_obs, range_idx] = ...
+    simulate_beacon_range_data(ned_ref, t, beacons, cfg);
+
+
+outdir = fullfile('D:\Github\KF-GINS-Matlab\graduation\DR_INS\input', ...
+    ['data_', traj_case, '_', beacon_case]);
+if ~exist(outdir,'dir')
+    mkdir(outdir)
+end
+%% -------------------- 画图检查 --------------------
+fig1 = myfigurestartup(4,4,'zxy');
+plot(ned_ref(:,2), ned_ref(:,1))
+hold on
+plot(ned_ref(1,2), ned_ref(1,1),'diamond','DisplayName','start')
+axis equal
+grid on
+xlabel('East / m')
+ylabel('North / m')
+title(['Trajectory in NED: ', traj_case])
+% 画信标
+M = size(beacons.ned_time,3);
+for m = 1:M
+    bm = squeeze(beacons.ned_time(:,:,m));
+    if beacons.is_moving
+        plot(bm(:,2), bm(:,1), '--', 'LineWidth', 1.0)
+        plot(bm(1,2), bm(1,1), 'o', 'MarkerSize', 8)
+    else
+        plot(bm(1,2), bm(1,1), 'p', 'MarkerSize', 12, 'LineWidth', 1.5)
+        text(bm(1,2)+500, bm(1,1)-100, sprintf("B%d",m)) 
+    end
+end
+legend('AUV trajectory', 'Beacon / beacon trajectory')
+exportgraphics(fig1,outdir + "/trj_bea.png", "Resolution",600)
+
+%% -------------------- 保存为 txt 数据 --------------------
+
+if ~exist(outdir, 'dir')
+    mkdir(outdir);
+end
+
+% 1. 参考真值数据 reference.txt
+writematrix(truth_ned, fullfile(outdir, 'reference.txt'), ...
+    'Delimiter', 'tab');
+
+% 2. IMU数据 imu.txt
+writematrix(imu_FRD, fullfile(outdir, 'imu.txt'), ...
+    'Delimiter', 'tab');
+
+% 3. DVL数据 dvl.txt
+dvl_txt = [ ...
+    vxy(:,4), ...
+    vxy(:,1:3) ...
+    ];
+
+writematrix(dvl_txt, fullfile(outdir, 'dvl.txt'), ...
+    'Delimiter', 'tab');
+
+% 4. 罗盘数据 compass.txt
+compass_txt = [ ...
+    compass(:,4), ...
+    compass(:,1:3) ...
+    ];
+writematrix(compass_txt, fullfile(outdir, 'compass.txt'), ...
+    'Delimiter', 'tab');
+
+% 5. 深度计数据 depth.txt
+depth_txt = [  t, depth ];
+writematrix(depth_txt, fullfile(outdir, 'depth.txt'), ...
+    'Delimiter', 'tab');
+
+% 6. 【修改部分】信标/距离数据分流保存 (如 beacon_1.txt, beacon_2.txt ...)
+% 单个文件内的格式依然保持原样：
+% time  slant_range  horizontal_range  beacon_lat  beacon_lon  beacon_h
+M = size(beacons.ned_time, 3); % 获取实际信标总数
+for m = 1:M
+    % 筛选出属于当前信标 m 的观测行
+    idx = (beacon_obs(:, 2) == m);
+    sub_obs = beacon_obs(idx, :);
+    
+    % 剔除临时引入的第二列 (beacon_id)，恢复原生 6 列纯数据格式
+    sub_obs(:, 2) = []; 
+    
+    % 动态命名并写入对应的文本文件
+    filename = sprintf('beacon_%d.txt', m);
+    writematrix(sub_obs, fullfile(outdir, filename), 'Delimiter', 'tab');
+end
+
+
+
+% 7. 配置说明 config.txt
+fid = fopen(fullfile(outdir, 'config.txt'), 'w');
+
+fprintf(fid, 'Trajectory case: %s\n', traj_case);
+fprintf(fid, 'Beacon case: %s\n', beacon_case);
+fprintf(fid, 'Sampling time ts: %.6f s\n', cfg.ts);
+fprintf(fid, 'AUV velocity: %.6f m/s\n', cfg.v);
+fprintf(fid, 'Range mode: %s\n', cfg.range_mode);
+fprintf(fid, 'Range period: %.6f s\n', cfg.range_period);
+fprintf(fid, 'Range std: %.6f m\n', cfg.range_std);
+fprintf(fid, 'Range schedule: %s\n', cfg.range_schedule);
+fprintf(fid, 'DVL scale factor: %.8f\n', cfg.dvl_scale);
+fprintf(fid, 'DVL noise std: %.8f m/s\n', cfg.dvl_noise);
+fprintf(fid, 'Depth noise std: %.8f m\n', cfg.depth_std);
+
+fprintf(fid, '\nFile format:\n');
+fprintf(fid, 'reference.txt: t N E D pitch roll yaw vN vE vD\n');
+fprintf(fid, 'imu.txt:       t gyro_x gyro_y gyro_z acc_x acc_y acc_z\n');
+fprintf(fid, 'dvl.txt:       t vb_x vb_y vb_z\n');
+fprintf(fid, 'compass.txt:   t pitch roll yaw\n');
+fprintf(fid, 'depth.txt:     t depth\n');
+fprintf(fid, 'beacon_x.txt:  t slant_range horizontal_range beacon_lat beacon_lon beacon_h\n');
+
+fclose(fid);
+
+disp(['TXT data saved to: ', outdir]);
+
+
+%% ============================================================
+%                    Local functions
+% ============================================================
+
+function [avp0, seg] = build_traj_segment(traj_case, cfg)
+xxx = [];
+deg = pi/180;
+v = cfg.v;
+pos0 = [cfg.lat0; cfg.lon0; cfg.h0];
+
+switch traj_case
+    case 'line_N'
+        yaw0 = 0 * deg;
+        avp0 = [[0;0;yaw0]; [0;0;0]; pos0];
+        line_len = 3600;       
+        seg = trjsegment(xxx, 'init', 0);
+        seg = trjsegment(seg, 'accelerate', 10, xxx, v/10);
+        seg = trjsegment(seg, 'uniform', line_len/v);
+    case 'line_E'
+        yaw0 = 90 * deg;
+        avp0 = [[0;0;yaw0]; [0;0;0]; pos0];
+        line_len = 3600;
+        seg = trjsegment(xxx, 'init', 0);
+        seg = trjsegment(seg, 'accelerate', 10, xxx, v/10);
+        seg = trjsegment(seg, 'uniform', line_len/v);
+    case 'square'
+        yaw0 = 90 * deg;
+        avp0 = [[0;0;yaw0]; [0;0;0]; pos0];
+        side = 1000;           
+        seg = trjsegment(xxx, 'init', 0);
+        seg = trjsegment(seg, 'accelerate', 10, xxx, v/10);
+        for k = 1:4
+            seg = trjsegment(seg, 'uniform', side/v);
+            seg = trjsegment(seg, 'turnleft', 90, 1);
+        end
+    case 'lawnmower'
+        yaw0 = 90 * deg;
+        avp0 = [[0;0;yaw0]; [0;0;0]; pos0];
+        track_len = 3600;      
+        spacing   = 200;       
+        n_line    = 6;         
+        seg = trjsegment(xxx, 'init', 0);
+        seg = trjsegment(seg, 'uniform', 20);
+        seg = trjsegment(seg, 'accelerate', 10, xxx, v/10);
+        seg = trjsegment(seg, 'uniform', track_len/v);
+        for k = 1:n_line-1
+            if mod(k,2) == 1
+                seg = trjsegment(seg, 'turnleft', 90, 1);
+                seg = trjsegment(seg, 'uniform', spacing/v);
+                seg = trjsegment(seg, 'turnleft', 90, 1);
+            else
+                seg = trjsegment(seg, 'turnright', 90, 1);
+                seg = trjsegment(seg, 'uniform', spacing/v);
+                seg = trjsegment(seg, 'turnright', 90, 1);
+            end
+            seg = trjsegment(seg, 'uniform', track_len/v);
+        end
+    case 'circle'
+        yaw0 = 90 * deg;
+        avp0 = [[0;0;yaw0]; [0;0;0]; pos0];
+        seg = trjsegment(xxx, 'init', 0);
+        seg = trjsegment(seg, 'accelerate', 10, xxx, v/10);
+        seg = trjsegment(seg, 'uniform', 100);
+        seg = trjsegment(seg, 'turnleft', 360, 0.2);
+    otherwise
+        error('Unknown traj_case.')
+end
+end
+
+
+function ned = lla2ned_local(lla, origin)
+lat = lla(:,1); lon = lla(:,2); h = lla(:,3);
+lat0 = origin(1); lon0 = origin(2); h0 = origin(3);
+a = 6378137.0; f = 1 / 298.257223563; e2 = f * (2 - f);
+sin_lat0 = sin(lat0);
+RM = a * (1 - e2) / (1 - e2 * sin_lat0^2)^(3/2);
+RN = a / sqrt(1 - e2 * sin_lat0^2);
+dLat = lat - lat0; dLon = lon - lon0; dH = h - h0;
+N = dLat * (RM + h0); E = dLon * (RN + h0) * cos(lat0); D = -dH;
+ned = [N, E, D];
+end
+
+
+function beacons = build_beacons_ned(beacon_case, ned_ref, t, cfg)
+ll = length(t);
+Nmin = min(ned_ref(:,1)); Nmax = max(ned_ref(:,1));
+Emin = min(ned_ref(:,2)); Emax = max(ned_ref(:,2));
+Nc = 0.5 * (Nmin + Nmax); Ec = 0.5 * (Emin + Emax); Dc = median(ned_ref(:,3));
+area_scale = max([Nmax-Nmin, Emax-Emin, 500]);
+offset = 0.4 * area_scale;
+D_surface = 10;
+beacons = struct; beacons.case = beacon_case; beacons.is_moving = false;
+
+switch beacon_case
+    case 'single_side'
+        B = [Nc, Emax + offset, D_surface];
+    case 'single_collinear'
+        B = [Nc, Emin - offset, D_surface];
+    case 'single_center'
+        B = [Nc, Ec, D_surface];
+    case 'single_quadrant_NE'
+        B = [Nmax + offset, Emax + offset, D_surface];
+    case 'single_quadrant_NW'
+        B = [Nmax + offset, Emin - offset, D_surface];
+    case 'single_quadrant_SE'
+        B = [Nmin - offset, Emax + offset, D_surface];
+    case 'single_quadrant_SW'
+        B = [Nmin - offset, Emin - offset, D_surface];
+    case 'four_quadrants'
+        offset = 3600;
+        % B = [Nmax + offset, Emax + offset, D_surface;
+        %     Nmax + offset, Emin - offset, D_surface;
+        %     Nmin - offset, Emax + offset, D_surface;
+        %     Nmin - offset, Emin - offset, D_surface];
+        B = [Nmin + offset, Emin + offset, D_surface;
+            Nmin + offset, Emin - offset, D_surface;
+            Nmin - offset, Emin + offset, D_surface;
+            Nmin - offset, Emin - offset, D_surface];
+
+    case 'two_symmetric'
+        B = [Nc, Ec - offset, D_surface; Nc, Ec + offset, D_surface];
+    case 'triangle'
+        B = [Nmin - offset, Emin - offset, D_surface;
+            Nmax + offset, Emin - offset, D_surface;
+            Nc,           Emax + offset, D_surface];
+    case 'moving_parallel'
+        beacons.is_moving = true;
+        Btime = zeros(ll,3,1);
+        Btime(:,1,1) = ned_ref(:,1); Btime(:,2,1) = ned_ref(:,2) + offset; Btime(:,3,1) = D_surface * ones(ll,1);
+        beacons.ned_time = Btime; return
+    case 'moving_cross'
+        beacons.is_moving = true;
+        Btime = zeros(ll,3,1);
+        Btime(:,1,1) = linspace(Nmin - offset, Nmax + offset, ll)';
+        Btime(:,2,1) = linspace(Emax + offset, Emin - offset, ll)';
+        Btime(:,3,1) = D_surface * ones(ll,1);
+        beacons.ned_time = Btime; return
+    otherwise
+        error('Unknown beacon_case.')
+end
+
+M = size(B,1);
+Btime = zeros(ll,3,M);
+for m = 1:M
+    Btime(:,:,m) = repmat(B(m,:), ll, 1);
+end
+beacons.ned = B; beacons.ned_time = Btime;
+end
+
+
+function [range_true, range_meas, horiz_true, horiz_meas, beacon_obs, range_idx] = ...
+    simulate_beacon_range_data(ned_ref, t, beacons, cfg)
+
+ll = length(t);
+M = size(beacons.ned_time, 3);
+
+range_true = zeros(ll, M);   range_meas = nan(ll, M);
+horiz_true = zeros(ll, M);   horiz_meas = nan(ll, M);
+
+step = max(1, round(cfg.range_period / cfg.ts));
+range_idx = 1:step:ll;
+beacon_obs = [];
+
+for m = 1:M
+    Bm_all = squeeze(beacons.ned_time(:,:,m));
+    dN = ned_ref(:,1) - Bm_all(:,1);
+    dE = ned_ref(:,2) - Bm_all(:,2);
+    dD = ned_ref(:,3) - Bm_all(:,3);
+    range_true(:,m) = sqrt(dN.^2 + dE.^2 + dD.^2);
+    horiz_true(:,m) = sqrt(dN.^2 + dE.^2);
+end
+
+for kk = 1:length(range_idx)
+    k = range_idx(kk);
+    switch cfg.range_schedule
+        case 'simultaneous'
+            active_beacons = 1:M;
+        case 'round_robin'
+            active_beacons = mod(kk-1, M) + 1;
+        otherwise
+            error('Unknown range_schedule.')
+    end
+
+    for m = active_beacons
+        Bm = squeeze(beacons.ned_time(k,:,m));
+        dN = ned_ref(k,1) - Bm(1);
+        dE = ned_ref(k,2) - Bm(2);
+        dD = ned_ref(k,3) - Bm(3);
+
+        slant_true_k = sqrt(dN^2 + dE^2 + dD^2);
+        horiz_true_k = sqrt(dN^2 + dE^2);
+        slant_meas_k = slant_true_k + cfg.range_std * randn;
+        horiz_meas_k = horiz_true_k + cfg.range_std * randn;
+
+        range_meas(k,m) = slant_meas_k;
+        horiz_meas(k,m) = horiz_meas_k;
+
+        beacon_lla = ned2lla_local(Bm, cfg.ned_origin);
+        beacon_lat = beacon_lla(1);
+        beacon_lon = beacon_lla(2);
+        beacon_h   = beacon_lla(3);
+
+        % 【修改部分】在第二列插入了信标标识 m，便于外部分流保存
+        beacon_obs = [beacon_obs;
+            t(k), ...
+            m, ...   
+            slant_meas_k, ...
+            horiz_meas_k, ...
+            beacon_lat, ...
+            beacon_lon, ...
+            beacon_h];
+    end
+end
+end
+
+function lla = ned2lla_local(ned, origin)
+N = ned(1); E = ned(2); D = ned(3);
+lat0 = origin(1); lon0 = origin(2); h0 = origin(3);
+a = 6378137.0; f = 1 / 298.257223563; e2 = f * (2 - f);
+sin_lat0 = sin(lat0);
+RM = a * (1 - e2) / (1 - e2 * sin_lat0^2)^(3/2);
+RN = a / sqrt(1 - e2 * sin_lat0^2);
+dLat = N / (RM + h0); dLon = E / ((RN + h0) * cos(lat0)); dH = -D;
+lat = lat0 + dLat; lon = lon0 + dLon; h = h0 + dH;
+lla = [lat, lon, h];
+end

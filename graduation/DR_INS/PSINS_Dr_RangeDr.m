@@ -1,78 +1,163 @@
-clear
+﻿clear;
+clc;
+close all;
 
-% path = "D:\Github\KF-GINS-Matlab\graduation\DR_INS\input\data_lawnmower_single_side";
-path = "D:\Github\KF-GINS-Matlab\graduation\DR_INS\input\data_line_N_single_side";
-pva_ref = importdata(fullfile(path,"reference.txt"));
-avp_ref = pvaNED2ENU(pva_ref);
-compass = importdata(fullfile(path,"compass.txt"));
-Range = importdata(fullfile(path,"beacon.txt"));
-Range = Range(8:8:end,:);
-depther = importdata(fullfile(path,"depth.txt"));
-depther = depther(:,2);
-dvl = importdata(fullfile(path,"dvl.txt"));
-vxy = dvl(:,2:3);
-%
-rngk = 5;
-depthstd = 0.4;
-glvs
-ts=0.5;
-rng(1)
-%% 初始值的设置也会影响距离辅助的效果
-% x0=[0.05;d2r(0.5);0.1/glv.Re;0.1/glv.Re];
-% dx0=[0.01;d2r(1);1/glv.Re;1/glv.Re];
+root_dir = fileparts(mfilename('fullpath'));
+addpath(genpath(root_dir));
+addpath(genpath('D:\Github\PSINS\psins2401\base'));
+addpath('D:\Github\PSINS\psins2401\mytest\00_all_func');
+addpath(genpath('D:\Github\KF-GINS-Matlab\function_zxy\referconvert'));
+glvs;
+rng(1);
 
-x0=[0;0;0;0];% 初始值
-dx0=[0.05;d2r(0.5);1/glv.Re;1/glv.Re];% 初始值不确定性
-
-% 距离辅助
-dr = [];
-range = Range(:,[1,3]);
-beacon = Range(1,4:6);
-dr = mydr('init',avp_ref(1,7:9)',[1;1;0.2],ts);
-kf = myekf('init',0.5, x0, dx0, [0,d2r(0.2),0,0], rngk);
-[avp_range,avp_dr1,kk_1,xkpk] = prealloc(length(avp_ref),10,10,5,9);
-ki=1;
-for i=1:length(compass)
-    t = compass(i,1);
-    dr = mydr('update',dr,-depther(i),compass(i,4),vxy(i,1:2));
-    avp_dr1(i,:)=[dr.avp',t];
-    % 以上为航位推算部分
-    kf = myekf('fk',kf, dr);
-    kf = myekf('algo',kf,'T');
-    if range(ki,1) == t
-        % 使用水平距离
-        dr.beacon = beacon;
-        r = range(ki,2);
-        kf.r_dr = sqrt(RCompu(dr.pos',dr.beacon)^2-(-depther(i)-dr.beacon(3))^2); % 计算值
-        kf.yk =  kf.r_dr - r;
-        kf = myekf('hk',kf,dr,'range');
-        kf = myekf('algo',kf,'M');
-        res(ki)=kf.yk ;
-        kk_1(ki,1:4) = kf.xk;
-        kk_1(ki,5) = t;
-        avp_range(ki,:) = [dr.avp', t];
-        ki=ki+1;
-        if ki >length(range)
-            break;
-        end
-    end
+dataset_name = getenv('DR_INS_DATASET');
+if isempty(dataset_name)
+    dataset_name = 'data_line_N_four_quadrants';
 end
-avp_range(ki:end,:) = [];
-avp_dr1(i:end,:) = [];
-kk_1(ki:end,:) = [];
-xkpk(ki:end,:) = [];
-avp_range(:,7)=avp_range(:,7)-kk_1(:,3);
-avp_range(:,8)=avp_range(:,8)-kk_1(:,4);
-%% 单个信标绘图 径向误差+估计状态
-trjsee(avp_ref,'2d',avp_dr1,avp_range),legend('true trajectory','DR','DR/Range')
+output_case = getenv('DR_INS_OUTPUT_SUFFIX');
+if isempty(output_case)
+    output_case = dataset_name;
+end
+input_dir = fullfile(root_dir, 'input', dataset_name);
+cfg = config_DR_RANGE(input_dir);
+cfg.outputfolder = fullfile(root_dir, 'output_psins', output_case);
+output_dir = cfg.outputfolder;
+if ~exist(output_dir, 'dir')
+    mkdir(output_dir);
+end
 
-% axis equal
-myfigurestartup(5,3,'paper');
-RadialError = RCompu(avp_ref(1:length(avp_dr1),7:9),avp_dr1(:,7:9));
-RadialError_range = RCompu(avp_ref(16:16:end,7:9),avp_range(:,7:9));
-plot(avp_ref(1:length(RadialError),end),RadialError)
-hold on
-plot(avp_ref(16:16:end,end),RadialError_range)
-legend('DR','DR/Range')
-xlim([avp_ref(1,end) avp_ref(end,end)])
-xygo('t/s','Error/m')
+pva_ref = importdata(cfg.truthpath);
+avp_ref = pvaNED2ENU(pva_ref);
+compass = importdata(cfg.compasspath);
+depth_data = importdata(cfg.depthpath);
+dvl = importdata(cfg.dvlpath);
+
+depth = depth_data(:, 2);
+vxy = dvl(:, 2:3);
+ts = cfg.range_time_tolerance * 2;
+range_interval = 2;
+range_tol = cfg.range_time_tolerance;
+
+x0 = zeros(cfg.kf.state_dim, 1);
+vk = zeros(cfg.kf.state_dim, 1);
+vk(1) = cfg.kf.q_dk;
+vk(2) = cfg.kf.q_yaw;
+
+fprintf('Start PSINS DR/Range comparison with four independent beacons.\n');
+for beacon_id = 1:4
+    range_file = cfg.beaconpath1{beacon_id};
+    Range = importdata(range_file);
+    Range = Range(range_interval:range_interval:end, :);
+
+    range = Range(:, [1, 3]);      % [time, horizontal_range]
+    beacon_pos = Range(1, 4:6);    % [lat, lon, h], rad/rad/m
+
+    ref_pos0 = avp_ref(1, 7:9)';
+    eth_ref = earth(ref_pos0, [0; 0; 0]);
+    init_dpos_m = [ ...
+        (cfg.pos0(2) - ref_pos0(2)) * eth_ref.clRNh; ...
+        (cfg.pos0(1) - ref_pos0(1)) * eth_ref.RMh; ...
+        cfg.pos0(3) - ref_pos0(3)];
+    dr = mydr('init', ref_pos0, init_dpos_m, ts);
+    eth0 = earth(dr.pos, [0; 0; 0]);
+    dx0 = [ ...
+        cfg.kf.init_dk_std; ...
+        cfg.kf.init_yaw_std; ...
+        cfg.kf.init_pos_std_m / eth0.RMh; ...
+        cfg.kf.init_pos_std_m / eth0.clRNh];
+    vk(3) = cfg.kf.q_pos_m / eth0.RMh;
+    vk(4) = cfg.kf.q_pos_m / eth0.clRNh;
+    kf = myekf('init', ts, x0, dx0, vk, cfg.range_std);
+
+    avp_dr = zeros(length(compass), 10);
+    avp_range = zeros(size(range, 1), 10);
+    xk_range = zeros(size(range, 1), 5);
+    innovation = zeros(size(range, 1), 2);
+
+    range_idx = 1;
+    last_i = 1;
+
+    for i = 1:length(compass)
+        t = compass(i, 1);
+        dr = mydr('update', dr, -depth(i), compass(i, 2:4), vxy(i, 1:2));
+        avp_dr(i, :) = [dr.avp', t];
+
+        kf = myekf('fk', kf, dr);
+        kf = myekf('algo', kf, 'T');
+
+        while range_idx <= size(range, 1) && range(range_idx, 1) < t - range_tol
+            range_idx = range_idx + 1;
+        end
+
+        if range_idx <= size(range, 1) && abs(range(range_idx, 1) - t) <= range_tol
+            dr.beacon = beacon_pos;
+            r_meas = range(range_idx, 2);
+            vertical_delta = -depth(i) - dr.beacon(3);
+            slant_dr = RCompu(dr.pos', dr.beacon);
+            kf.r_dr = sqrt(max(slant_dr^2 - vertical_delta^2, 0));
+            kf.yk = kf.r_dr - r_meas;
+            kf = myekf('hk', kf, dr, 'range');
+            kf = myekf('algo', kf, 'M');
+
+            corrected_avp = [dr.avp', t];
+            corrected_avp(7) = corrected_avp(7) - kf.xk(3);
+            corrected_avp(8) = corrected_avp(8) - kf.xk(4);
+
+            avp_range(range_idx, :) = corrected_avp;
+            xk_range(range_idx, :) = [kf.xk', t];
+            innovation(range_idx, :) = [t, kf.yk];
+            range_idx = range_idx + 1;
+        end
+
+        last_i = i;
+    end
+
+    avp_dr = avp_dr(1:last_i, :);
+    avp_range = avp_range(any(avp_range, 2), :);
+    xk_range = xk_range(any(xk_range, 2), :);
+    innovation = innovation(any(innovation, 2), :);
+
+    origin_nav_path = fullfile(output_dir, sprintf('PSINS-Origin-DR-%d.nav', beacon_id));
+    range_nav_path = fullfile(output_dir, sprintf('PSINS-DR-RANGE-%d.nav', beacon_id));
+    state_path = fullfile(output_dir, sprintf('PSINS-DR-RANGE-state-%d.txt', beacon_id));
+    innov_path = fullfile(output_dir, sprintf('PSINS-DR-RANGE-innovation-%d.txt', beacon_id));
+
+    write_psins_nav(origin_nav_path, avp_dr);
+    write_psins_nav(range_nav_path, avp_range);
+    writematrix(xk_range, state_path, 'Delimiter', 'tab');
+    writematrix(innovation, innov_path, 'Delimiter', 'tab');
+
+    fprintf('Beacon %d PSINS result saved: %s\n', beacon_id, range_nav_path);
+end
+
+fprintf('PSINS DR/Range comparison finished. Output folder: %s\n', output_dir);
+
+function write_psins_nav(filepath, avp)
+    fp = fopen(filepath, 'wt');
+    if fp < 0
+        error('Cannot open output file: %s', filepath);
+    end
+
+    R2D = 180 / pi;
+    for k = 1:size(avp, 1)
+        nav = [ ...
+            k; ...
+            avp(k, 10); ...
+            avp(k, 7) * R2D; ...
+            avp(k, 8) * R2D; ...
+            avp(k, 9); ...
+            avp(k, 4); ...
+            avp(k, 5); ...
+            avp(k, 6); ...
+            avp(k, 1) * R2D; ...
+            avp(k, 2) * R2D; ...
+            avp(k, 3) * R2D];
+        fprintf(fp, '%8d %12.6f %15.10f %15.10f %12.5f %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f\n', nav);
+    end
+    fclose(fp);
+end
+
+
+
+
+
