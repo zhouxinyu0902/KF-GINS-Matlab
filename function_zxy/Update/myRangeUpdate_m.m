@@ -34,7 +34,10 @@ function kf = myRangeUpdate_m(navstate, Rangedata, depthdata, kf)
     kf.P = (eye(kf.RANK) - K*H) * kf.P * (eye(kf.RANK) - K*H)' + K * R * K';
 
     %% 5. 反馈后残差二次计算
-    pos_new = navstate.pos - kf.x(1:3);
+    % x(1:3)是[N,E,D]米制误差，不能直接与[rad,rad,m]名义位置相减。
+    DR_inv = diag([1 / (rm + h), ...
+        1 / ((rn + h) * cos(navstate.pos(1))), -1]);
+    pos_new = navstate.pos - DR_inv * kf.x(1:3);
     delta_pos_new = (DR * (pos_new - bcn))';
     SlantR = sqrt(sum(delta_pos_new(:,1:3).^2, 2));
     HorizR_new = sqrt(SlantR.^2 - delta_pos_new(:,3).^2);

@@ -1,12 +1,16 @@
 function [kf, navstate] = myErrorFeedback_range_m(kf, navstate)
     
-    %% 1. 【核心修复】将高度轴（第三维）的空间映射系数改为 1，切断天向轴正反馈自激
+    %% 1. 米制NED位置误差转换为名义大地坐标修正量
     DR = diag([navstate.Rm + navstate.pos(3), (navstate.Rn + navstate.pos(3))*cos(navstate.pos(1)), -1]);
-    DR_inv = inv(DR);
+    DR_inv = diag([1 / DR(1, 1), 1 / DR(2, 2), -1]);
     
-    % 米制误差通过 DR_inv 精准转换回绝对大地坐标(rad)，回拨主状态
+    % 第三维为下向误差x_D，故h_new = h - (-x_D) = h + x_D。
     navstate.pos = navstate.pos - DR_inv * kf.x(1:3, 1);
     navstate.vel = navstate.vel - kf.x(4:6, 1);
+
+    % 与rad链保持相同反馈范围，避免两套状态定义比较时引入额外差异。
+    navstate.gyrbias = navstate.gyrbias + kf.x(10:12, 1);
+    navstate.accbias = navstate.accbias + kf.x(13:15, 1);
 
     % 更新地理基础参数
     param = Param();
