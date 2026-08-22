@@ -3,22 +3,15 @@ clc;
 close all;
 
 %% 数据路径
-dataset = 1 ;
-switch dataset
-    case 1
-        rootDir = ...
-            'D:\Github\KF-GINS-Matlab\data\inertial-experiment\data-0817';
-        load(fullfile(rootDir,'raw_data_0817.mat'));
-    case 2
-        rootDir = ...
-            'D:\Github\KF-GINS-Matlab\data\inertial-experiment\data-0818';
-        load(fullfile(rootDir,'raw_data_0818.mat'));
-    case 3
-        rootDir = ...
-            'D:\Github\KF-GINS-Matlab\data\inertial-experiment\data-0818-1';
-        load(fullfile(rootDir,'raw_data_0818_1.mat'));
-end
-inputDir=[rootDir,'\input'];
+% 1=run-0817，2=run-0818，3=run-0818-noon。
+dataset = 2;
+script_dir = fileparts(mfilename('fullpath'));
+topic_dir = fileparts(script_dir);
+addpath(topic_dir, '-begin');
+paths = setup_all_real_data_preprocessing(dataset);
+rootDir = paths.data;
+inputDir = paths.input;
+load(paths.raw_mat_file);
 fprintf("原始数据加载完成\n");
 %% 时间范围
 % tStart = 103951.090;
@@ -44,8 +37,8 @@ nav830 = nav830(:,idx);
 % 转PVA
 close all
 [~,pva830] = visualize_gpchcx_navigation_results(nav830);
-name{1}=[rootDir,'/pva'];
-name{2}=[rootDir,'/error_statics'];
+name{1}=fullfile(paths.output, 'pva');
+name{2}=fullfile(paths.output, 'error_statics');
 all_figs = findobj('Type','figure');  % 获取当前全部打开的figure句柄
 for f = all_figs.'
     f_id = f.Number;

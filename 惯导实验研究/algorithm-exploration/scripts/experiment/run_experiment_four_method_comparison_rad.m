@@ -1,5 +1,4 @@
 ﻿clear;
-close all;
 clc;
 
 %% 实测数据四方法对比入口（rad位置误差状态）
@@ -34,24 +33,25 @@ for file_index = 1:numel(required_inputs)
     end
 end
 
-statistics_path = fullfile(artifact_dir, ...
-    'fixed-lag-four-method-statistics.csv');
 required_results = { ...
     fullfile(result_dir, 'range-ins-forward.nav'), ...
     fullfile(result_dir, 'range-ins-rts-double.nav'), ...
     fullfile(result_dir, 'range-ins-rts-double-bridge-rotation.nav'), ...
     fullfile(result_dir, ...
-    'range-ins-double-rts-position-velocity-fixed-lag-replay.nav'), ...
-    statistics_path};
+    'range-ins-double-rts-position-velocity-fixed-lag-replay.nav')};
 results_ready = all(cellfun(@isfile, required_results));
 
 if overwrite_existing || ~results_ready
-    outputs = run_experiment_rts_core_rad(result_dir);
-    rad_statistics = outputs.fixed_lag_statistics;
+    run_experiment_rts_core_rad(result_dir);
 else
-    fprintf('rad链四方法结果齐全，直接读取已有统计。\n');
-    rad_statistics = readtable(statistics_path, 'TextType', 'string');
+    fprintf('rad链四方法导航结果齐全，跳过核心算法。\n');
 end
+
+% 运行入口只生成导航结果和统计表，不创建图窗。
+evaluation = evaluate_experiment_four_methods(result_dir, ...
+    truth_path=required_inputs{4}, case_name='experiment-rad-state', ...
+    create_figure=false);
+rad_statistics = evaluation.statistics;
 
 fprintf('\nrad链实测四方法统计：\n');
 disp(rad_statistics);
@@ -61,36 +61,12 @@ meter_statistics_path = fullfile(project_root, 'data', ...
     'inertial-experiment', 'algorithm-exploration', 'figures-tables', 'experiment', ...
     'four-method-comparison', 'fixed-lag-four-method-statistics.csv');
 if isfile(meter_statistics_path)
-    meter_statistics = readtable(meter_statistics_path, 'TextType', 'string');
-    unit_comparison = table(rad_statistics.Method, ...
-        meter_statistics.RMSE_m, rad_statistics.RMSE_m, ...
-        rad_statistics.RMSE_m - meter_statistics.RMSE_m, ...
-        'VariableNames', {'Method', 'MeterState_RMSE_m', ...
-        'RadState_RMSE_m', 'RadMinusMeter_m'});
-    writetable(unit_comparison, fullfile(artifact_dir, ...
-        'rad-vs-meter-rmse-comparison.csv'));
-    figure_dir = artifact_dir;
-    if ~exist(figure_dir, 'dir')
-        mkdir(figure_dir);
-    end
-    comparison_figure = figure('Color', 'w', ...
-        'Name', 'rad与m位置误差状态RMSE对比', ...
-        'Position', [120, 120, 1100, 620]);
-    method_axis = categorical(unit_comparison.Method, ...
-        unit_comparison.Method, 'Ordinal', true);
-    bar(method_axis, [unit_comparison.MeterState_RMSE_m, ...
-        unit_comparison.RadState_RMSE_m], 'grouped');
-    grid on;
-    ylabel('水平径向误差RMSE（m）');
-    title('实测数据：m链与rad链四方法RMSE对比');
-    legend('m链', 'rad链', 'Location', 'northwest');
-    xtickangle(15);
-    exportgraphics(comparison_figure, fullfile(figure_dir, ...
-        'rad-vs-meter-rmse-comparison.png'), 'Resolution', 300);
-    savefig(comparison_figure, fullfile(figure_dir, ...
-        'rad-vs-meter-rmse-comparison.fig'));
+    unit_comparison = compare_experiment_state_units( ...
+        meter_statistics_path, evaluation.statistics_path, ...
+        artifact_dir, create_figure=false);
     fprintf('\nrad链与m链RMSE对比：\n');
     disp(unit_comparison);
 end
 
 fprintf('rad链结果目录：%s\n', result_dir);
+fprintf('如需绘图，请运行 scripts/evaluation/evaluate_experiment_results.m。\n');

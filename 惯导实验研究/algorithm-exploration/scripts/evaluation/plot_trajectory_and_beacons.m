@@ -27,7 +27,7 @@ function fig = plot_trajectory_and_beacons(truthpath, beacon_pos)
     % 提取轨迹的 纬度、经度、高程 (真值文件中通常前三列为 Lat(deg), Lon(deg), H(m))
     traj_lat = truth_data(:, 2)*pi/180;
     traj_lon = truth_data(:, 3)*pi/180;
-    traj_h       = truth_data(:, 5);
+    traj_h = truth_data(:, 4);
     glvs 
     trj_xyz = pos2dxyz([traj_lat,traj_lon,traj_h],[traj_lat(1);traj_lon(1);traj_h(1)]);
     bea_trj = pos2dxyz(beacon_pos,[traj_lat(1);traj_lon(1);traj_h(1)]);
@@ -68,4 +68,6 @@ function fig = plot_trajectory_and_beacons(truthpath, beacon_pos)
     ylim([min([traj_north_km; beacon_north_km]) - margin, max([traj_north_km; beacon_north_km]) + margin]);
     
     legend('show', 'Location', 'bestoutside');
+    set(findall(fig, '-property', 'FontName'), ...
+        'FontName', 'TimesSimSun');
 end

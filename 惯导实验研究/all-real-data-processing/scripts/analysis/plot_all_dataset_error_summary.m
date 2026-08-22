@@ -19,8 +19,8 @@ unitType = 'rad'; % 这里假设你只对比 'm' 模式的误差。如果想看 
 % 维度1(指标): 1=Max, 2=RMS, 3=Mean
 % 维度2(算法): 1=Origin, 2=DoubleSmooth, 3=SingleSmooth
 all_data_matrix = NaN(3, 3, 8); 
-
-algorithm_names = {'Origin', 'RTS-DoubleSmooth', 'RTS-SingleSmooth'};
+algorithm_names = {'前向EKF', '一次RTS', '二次RTS'};
+% algorithm_names = {'Origin', 'RTS-DoubleSmooth', 'RTS-SingleSmooth'};
 metric_names = {'最大径向误差 (Max / m)', '均方根误差 (RMS / m)', '均值 (Mean / m)'};
 round_labels = {'Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 5', 'Round 6', 'Round 7', 'Round 8'};
 

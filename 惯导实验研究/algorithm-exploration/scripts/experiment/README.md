@@ -2,16 +2,17 @@
 
 ## 目录职责
 
-- `dataget.m`：从参考轨迹生成高度和三个固定信标的原始距离文件，并绘制轨迹—信标场景；
-- `run_experiment_four_method_comparison.m`：实测数据四方法统一入口；
-- `run_experiment_rts_core.m`：事件驱动EKF、RTS、旋转收缩和历史IMU重放核心；
-- `run_experiment_four_method_comparison_rad.m`：使用rad位置误差状态的独立对比入口；
-- `run_experiment_rts_core_rad.m`：rad链四方法核心；
-- `compare_double_rts_range_delay_rad.m`：分别评价rad链前向EKF和二次RTS的4 s陈旧测距敏感性；
-- `compare_range_delay_compensation_rad.m`：通过回退4 s、量测更新和历史IMU重推进补偿测距延迟，并分别评价前向EKF、二次RTS和2RTS+旋转收缩；
+- `dataget.m`：从参考轨迹生成高度和三个固定信标的原始距离文件，不再创建图窗；
+- `run_experiment_four_method_comparison.m`：实测 m 链四方法运行入口，只生成导航结果与统计表；
+- `run_experiment_rts_core.m`：事件驱动 EKF、RTS、旋转收缩和历史 IMU 重放核心，不含评价绘图；
+- `run_experiment_four_method_comparison_rad.m`：rad 链四方法运行入口，只生成导航结果与统计表；
+- `run_experiment_rts_core_rad.m`：rad 链四方法核心，不含评价绘图；
+- `compare_range_delay_compensation_rad.m`：运行三种测距延迟工况并生成导航结果、统计和绘图上下文，不创建图窗；
 - `STATE-UNITS.md`：两套误差状态、反馈符号和RTS桥接误差说明；
 - `FGO_gnss_ins.m`：GNSS/INS探索与基准脚本，暂时保留；
 - `ins_range_threetoge.m`：早期反向推算探索脚本，归档保留，不参与当前四方法主链。
+
+所有实测绘图集中到 `scripts/evaluation`。四方法统一绘图入口为 `evaluate_experiment_results.m`，输入数据检查入口为 `evaluate_experiment_input_data.m`；测距延迟补偿实验的绘图入口为 `plot_range_delay_compensation_rad.m`。
 
 ## 四种对比方法
 
@@ -61,13 +62,13 @@ data/inertial-experiment/algorithm-exploration/navigation-results/experiment/fou
 data/inertial-experiment/algorithm-exploration/navigation-results/experiment/four-method-comparison-rad
 ```
 
-该入口使用与m链相同的输入、4621 s时段、11个测距点和四种处理方法，只替换误差状态相关的配置、传播、更新、反馈、高度更新及RTS误差应用。若m链统计已经存在，还会生成 `rad-vs-meter-rmse-comparison.csv` 和分组RMSE图片。
+该入口使用与 m 链相同的输入、4621 s 时段、11 个测距点和四种处理方法，只替换误差状态相关的配置、传播、更新、反馈、高度更新及 RTS 误差应用。若 m 链统计已经存在，运行入口只更新 `rad-vs-meter-rmse-comparison.csv`；分组 RMSE 图片由 `scripts/evaluation/evaluate_experiment_results.m` 生成。
 
 当前实测结果显示rad链四方法RMSE依次为188.72、37.76、36.85和38.66 m，均高于对应m链。需要注意，两套现有传播函数并不是严格的相似变换版本，因此该对比反映的是“当前两套完整实现”的差异，不能仅解释为rad与m的浮点数单位差异。
 
 ## 前向EKF与二次RTS测距延迟敏感性
 
-运行 `compare_double_rts_range_delay_rad.m`。脚本固定采用rad位置误差状态、420 s测距间隔和4621 s处理时长，对比：
+运行 `scripts/evaluation/compare_double_rts_range_delay_rad.m`。脚本固定采用rad位置误差状态、420 s测距间隔和4621 s处理时长，对比：
 
 1. 在更新时刻 `t` 使用该时刻的距离；
 2. 更新时刻仍为 `t`，但使用同一信标在 `t-4 s` 的距离。
@@ -86,17 +87,13 @@ data/inertial-experiment/algorithm-exploration/navigation-results/experiment/ekf
 
 ## 固定4 s延迟的回退重推进补偿
 
-运行 `compare_range_delay_compensation_rad.m`。补偿工况不会把量测时间戳直接提前来假装提前获得数据，而是在量测到达时恢复真实采样时刻的导航状态、滤波协方差、RTS区间和状态转移缓存，在该历史时刻执行距离—深度联合更新，然后利用缓存IMU和高度量测重推进到到达时刻。RTS区间端点相应落在量测真实采样时刻。
+先运行 `scripts/experiment/compare_range_delay_compensation_rad.m`。脚本比较无延迟、延迟4 s未处理、延迟4 s固定滞后补偿三种工况，并分别统计前向EKF、二次RTS和2RTS+旋转收缩。
 
-脚本分别比较三种工况：无延迟、延迟4 s未处理、延迟4 s回退重推进；并对前向EKF、二次RTS、2RTS+旋转收缩分别生成图和统计。严格评价结果如下：
+补偿工况把陈旧距离的事件时间从“到达时刻”恢复为“真实采集时刻”，然后按时间顺序重新计算导航与RTS结果。对确定性的离线计算而言，这与量测在到达时回退4 s、更新并用同一段IMU重推进等价；但当前实现不是在线环形缓存回放器，也不能提前使用尚未到达的量测。因而补偿结果的可用时刻仍固定滞后4 s，二次RTS和旋转收缩还要叠加各自原有的固定滞后。
 
-| 算法 | 无延迟RMSE | 未处理延迟RMSE | 回退重推进RMSE | 相对未处理改善 |
-|---|---:|---:|---:|---:|
-| 前向EKF | 195.53 m | 210.24 m | 195.15 m | 15.09 m（7.18%） |
-| 二次RTS | 37.78 m | 56.55 m | 37.41 m | 19.14 m（33.84%） |
-| 2RTS+旋转收缩 | 32.03 m | 48.87 m | 31.81 m | 17.06 m（34.90%） |
+实验脚本只写导航结果、CSV统计和 `range-delay-compensation-evaluation-context.mat`，不包含任何绘图调用。完成实验后运行 `scripts/evaluation/plot_range_delay_compensation_rad.m`，读取上述上下文和已有导航结果生成三组轨迹—水平径向误差图片。
 
-补偿结果与无延迟结果非常接近，剩余小差异来自量测真实采样时刻相差4 s，而不是补偿失败。前向补偿结果具有4 s固定滞后；二次RTS和旋转收缩还需要叠加各自原有的固定滞后。结果保存到：
+原README中的补偿统计来自未被核心函数读取的 `compensate_range_delay` 参数，不能作为有效结论，已删除。修正后的数值应以重新运行脚本生成的CSV为准。结果保存到：
 
 ```text
 data/inertial-experiment/algorithm-exploration/navigation-results/experiment/range-delay-compensation-rad

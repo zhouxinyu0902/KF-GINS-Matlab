@@ -12,6 +12,8 @@ function paths = setup_inertial_experiment()
     addpath(fullfile(topic_dir, 'config', 'simulation'));
     addpath(fullfile(topic_dir, 'functions', 'experiment'));
     addpath(fullfile(topic_dir, 'functions', 'simulation'));
+    addpath(fullfile(topic_dir, 'scripts', 'experiment'));
+    addpath(fullfile(topic_dir, 'scripts', 'evaluation'));
 
     paths.topic = topic_dir;
     paths.project = project_root;

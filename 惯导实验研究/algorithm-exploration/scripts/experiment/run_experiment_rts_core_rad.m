@@ -34,7 +34,6 @@ options.beacon_order = [1, 2, 3];
 options.filter_range_std_m = 6;
 options.filter_depth_std_m = 0.4;
 options.use_adaptive_forward_update = false;
-options.show_input_figure = false;
 % RTS 默认每 1 s 保存一个关键节点；协方差仍在 100 Hz IMU 历元连续传播。
 % 改为 0.01 可执行逐 IMU 历元 RTS，但计算时间和内存占用会显著增加。
 options.rts_node_interval_s = 1;
@@ -112,21 +111,6 @@ rangedata = rangedata(range_mask, :);
 height_values = interp1(height_all(:, 1), height_all(:, 2), imudata(:, 1), ...
     'linear', 'extrap');
 height = [imudata(:, 1), height_values];
-
-if options.show_input_figure
-    figure('Name', 'Simulation input');
-    plot(truth_all(:, 3), truth_all(:, 4), 'LineWidth', 1.2);
-    hold on;
-    plot(rangedata(:, 5) * param.R2D, rangedata(:, 4) * param.R2D, ...
-        'o', 'MarkerSize', 5);
-    axis equal;
-    grid on;
-    xlabel('经度（°）');
-    ylabel('纬度（°）');
-    legend('真实轨迹', '当前使用的信标', 'Location', 'best');
-    title(sprintf('三信标轮换，测距间隔 = %.0f s', ...
-        options.range_interval_s));
-end
 
 %% 初始化前向滤波器和结果缓存
 [kf, navstate] = myInitialize_15state(cfg);
@@ -379,23 +363,16 @@ if enable_rotation
         rts_rotation_diagnostics);
 end
 
-fixed_lag_statistics = table();
 if enable_fixed_lag_replay
     write_nav_file(fixed_lag_replay_path, fixed_lag_replay_nav);
     writetable(struct2table(fixed_lag_update_diagnostics), ...
         fixed_lag_update_path);
-    fixed_lag_statistics = evaluate_fixed_lag_four_methods( ...
-        truth_all, ...
-        {'前向 EKF', '二次 RTS', '2RTS+旋转收缩', ...
-        '2RTS+位置速度约束（固定滞后）'}, ...
-        {forward_nav, rts_double_nav, rts_rotation_nav, ...
-        fixed_lag_replay_nav}, fixed_lag_replay_is_processed, ...
-        artifact_dir, options.case_name, fixed_lag_statistics_path);
 end
 
 outputs = struct( ...
     'case_name', options.case_name, ...
     'input_dir', input_dir, ...
+    'truth_path', cfg.truthpath, ...
     'range_input_path', range_input_path, ...
     'range_data', rangedata, ...
     'result_dir', cfg.outputfolder, ...
@@ -404,7 +381,6 @@ outputs = struct( ...
     'rotation_contraction_path', rts_rotation_path, ...
     'fixed_lag_replay_path', fixed_lag_replay_path, ...
     'fixed_lag_statistics_path', fixed_lag_statistics_path, ...
-    'fixed_lag_statistics', fixed_lag_statistics, ...
     'range_event_count', size(rangedata, 1), ...
     'double_rts_second_pass_mask', rts_double_second_pass_mask, ...
     'double_rts_second_pass_time_s', ...
@@ -838,124 +814,4 @@ function item = empty_fixed_lag_update_diagnostic()
         'innovation_m', nan, 'velocity_innovation_mps', nan, ...
         'normalized_innovation', nan, 'robust_downweighted', false, ...
         'accepted', false);
-end
-
-function statistics = evaluate_fixed_lag_four_methods( ...
-        truth, names, nav_results, effective_mask, output_dir, ...
-        case_name, statistics_path)
-%EVALUATE_FIXED_LAG_FOUR_METHODS 在固定滞后有效区间公平评价四种结果。
-    time = nav_results{1}(:, 2);
-    elapsed_time = time - time(1);
-    truth_position = interp1(truth(:, 2), truth(:, 3:5), time, ...
-        'linear', 'extrap');
-    effective_mask = effective_mask & all(isfinite(nav_results{4}), 2);
-    result_count = numel(nav_results);
-    radial_error = nan(numel(time), result_count);
-    rmse_m = zeros(result_count, 1);
-    mean_m = zeros(result_count, 1);
-    median_m = zeros(result_count, 1);
-    p95_m = zeros(result_count, 1);
-    maximum_m = zeros(result_count, 1);
-    for result_index = 1:result_count
-        [~, ~, radial_error(:, result_index)] = ...
-            calculate_horizontal_error( ...
-            nav_results{result_index}(:, 3:5), truth_position);
-        values = radial_error(effective_mask, result_index);
-        rmse_m(result_index) = sqrt(mean(values .^ 2));
-        mean_m(result_index) = mean(values);
-        median_m(result_index) = median(values);
-        p95_m(result_index) = prctile(values, 95);
-        maximum_m(result_index) = max(values);
-    end
-    method = string(names(:));
-    statistics = table(method, rmse_m, mean_m, median_m, p95_m, ...
-        maximum_m, 'VariableNames', {'Method', 'RMSE_m', 'Mean_m', ...
-        'Median_m', 'P95_m', 'Maximum_m'});
-    writetable(statistics, statistics_path);
-
-    figure_dir = exploration_artifact_dir(output_dir);
-    if ~exist(figure_dir, 'dir')
-        mkdir(figure_dir);
-    end
-    display_indices = find(effective_mask);
-    display_indices = display_indices(unique(round(linspace(1, ...
-        numel(display_indices), min(20000, numel(display_indices))))));
-    origin = truth_position(display_indices(1), :);
-    [truth_east, truth_north] = position_to_local_plane_rts( ...
-        truth_position(display_indices, :), origin);
-    colors = [0.10, 0.35, 0.75; 0.05, 0.55, 0.55; ...
-        0.78, 0.16, 0.52; 0.20, 0.65, 0.35];
-    line_styles = {'-', '--', ':', '-.'};
-    comparison_figure = figure('Color', 'w', ...
-        'Name', '固定滞后四方法对比', 'Position', [80, 120, 1500, 600]);
-    layout = tiledlayout(comparison_figure, 1, 2, ...
-        'TileSpacing', 'compact', 'Padding', 'compact');
-    title(layout, sprintf('%s：事件驱动固定滞后四方法对比', case_name));
-    nexttile;
-    plot(truth_east / 1000, truth_north / 1000, 'k-', ...
-        'LineWidth', 1.7, 'DisplayName', '真值');
-    hold on;
-    for result_index = 1:result_count
-        [east, north] = position_to_local_plane_rts( ...
-            nav_results{result_index}(display_indices, 3:5), origin);
-        plot(east / 1000, north / 1000, ...
-            'Color', colors(result_index, :), ...
-            'LineStyle', line_styles{result_index}, ...
-            'LineWidth', 1.25, 'DisplayName', names{result_index});
-    end
-    grid on; box on; axis tight;
-    xlabel('东向位置（km）'); ylabel('北向位置（km）');
-    title('固定滞后有效区间轨迹');
-    legend('Location', 'best', 'Interpreter', 'none');
-
-    nexttile;
-    hold on;
-    for result_index = 1:result_count
-        plot(elapsed_time(display_indices), ...
-            radial_error(display_indices, result_index), ...
-            'Color', colors(result_index, :), ...
-            'LineStyle', line_styles{result_index}, ...
-            'LineWidth', 1.2, 'DisplayName', names{result_index});
-    end
-    grid on; box on; axis tight;
-    xlabel('时间（s）'); ylabel('水平径向误差（m）');
-    title('固定滞后有效区间水平径向误差');
-    legend('Location', 'best', 'Interpreter', 'none');
-    xlim([0, elapsed_time(end)]);
-    exportgraphics(comparison_figure, fullfile(figure_dir, ...
-        'fixed-lag-four-method-comparison.png'), 'Resolution', 300);
-    savefig(comparison_figure, fullfile(figure_dir, ...
-        'fixed-lag-four-method-comparison.fig'));
-end
-
-function [north_error, east_error, radial_error] = ...
-        calculate_horizontal_error(estimated_position, truth_position)
-%CALCULATE_HORIZONTAL_ERROR 按 WGS-84 逐点曲率半径计算水平误差。
-    latitude = deg2rad(truth_position(:, 1));
-    height = truth_position(:, 3);
-    [rm, rn] = wgs84_radii_rts(latitude);
-    north_error = deg2rad(estimated_position(:, 1) - ...
-        truth_position(:, 1)) .* (rm + height);
-    east_error = deg2rad(estimated_position(:, 2) - ...
-        truth_position(:, 2)) .* (rn + height) .* cos(latitude);
-    radial_error = hypot(north_error, east_error);
-end
-
-function [rm, rn] = wgs84_radii_rts(latitude)
-%WGS84_RADII_RTS 计算 WGS-84 子午圈和卯酉圈曲率半径。
-    semi_major_axis = 6378137.0;
-    flattening = 1 / 298.257223563;
-    eccentricity_squared = flattening * (2 - flattening);
-    denominator = sqrt(1 - eccentricity_squared .* sin(latitude) .^ 2);
-    rn = semi_major_axis ./ denominator;
-    rm = semi_major_axis * (1 - eccentricity_squared) ./ denominator .^ 3;
-end
-
-function [east, north] = position_to_local_plane_rts(position, origin)
-%POSITION_TO_LOCAL_PLANE_RTS 将经纬度转换为相对起点的局部平面坐标。
-    latitude = deg2rad(origin(1));
-    [rm, rn] = wgs84_radii_rts(latitude);
-    north = deg2rad(position(:, 1) - origin(1)) * (rm + origin(3));
-    east = deg2rad(position(:, 2) - origin(2)) * ...
-        (rn + origin(3)) * cos(latitude);
 end

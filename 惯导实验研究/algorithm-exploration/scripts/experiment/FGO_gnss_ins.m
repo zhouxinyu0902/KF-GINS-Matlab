@@ -201,11 +201,5 @@ end
 %%
 fclose all;
 disp("gnss/INS Integration Processing Finished!");
-%%
-calc_radial_error_gjb(cfg.truthpath,navpath,true);
-calc_error(navpath, cfg.truthpath);
-%%
-fig = calc_error(navpath, cfg.pureinsfilepath);
-
-exportgraphics(fig, fullfile(cfg.figurefolder, ...
-    'Radial-error.png'), 'Resolution', 600);
+fprintf('导航结果：%s\n', navpath);
+fprintf('如需误差评价，请运行 scripts/evaluation/evaluate_fgo_gnss_ins.m。\n');

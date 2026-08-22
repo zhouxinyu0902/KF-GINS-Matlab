@@ -143,8 +143,7 @@ line_styles = {'-', '--', ':'};
 display_index = unique(round(linspace(1, numel(reference_time), ...
     min(12000, numel(reference_time)))));
 
-overview_figure = figure('Color', 'w', 'Name', '测距事件驱动算法结果总览', ...
-    'Position', [80, 80, 1450, 900]);
+overview_figure = myfigurestartup(10, 6, 'prese');
 layout = tiledlayout(2, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
 title(layout, sprintf('%s：测距事件驱动算法结果总览', case_name));
 
@@ -221,13 +220,14 @@ xlabel('时间（s）');
 ylabel('东向误差（m）');
 title('东向位置误差');
 
+set(findall(overview_figure, '-property', 'FontName'), ...
+    'FontName', 'TimesSimSun');
 exportgraphics(overview_figure, fullfile(figure_dir, ...
-    'range-results-overview.png'), 'Resolution', 300);
+    'range-results-overview.png'), 'Resolution', 600);
 savefig(overview_figure, fullfile(figure_dir, 'range-results-overview.fig'));
 
 %% 图 2：各测距区间误差与改进率
-segment_figure = figure('Color', 'w', 'Name', '分测距区间性能对比', ...
-    'Position', [100, 100, 1450, 780]);
+segment_figure = myfigurestartup(10, 5, 'prese');
 layout = tiledlayout(2, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
 title(layout, sprintf('%s：相邻测距区间性能对比', case_name));
 
@@ -259,8 +259,10 @@ ylabel('RMSE 改进率（%）');
 title('相对前向 AEKF 的区间改进率（正值表示误差减小）');
 legend('Location', 'best');
 
+set(findall(segment_figure, '-property', 'FontName'), ...
+    'FontName', 'TimesSimSun');
 exportgraphics(segment_figure, fullfile(figure_dir, ...
-    'range-segment-comparison.png'), 'Resolution', 300);
+    'range-segment-comparison.png'), 'Resolution', 600);
 savefig(segment_figure, fullfile(figure_dir, 'range-segment-comparison.fig'));
 
 %% 图 3：延迟修正上一段红色反推轨迹的几何参数
@@ -270,8 +272,7 @@ delayed_angle = segment_diagnostics.('delayed-rotation-angle-deg');
 delayed_scale = segment_diagnostics.('delayed-scale');
 delayed_gap_before = segment_diagnostics.('delayed-gap-before-m');
 delayed_gap_after = segment_diagnostics.('delayed-gap-after-m');
-delayed_figure = figure('Color', 'w', 'Name', '延迟上一段几何修正诊断', ...
-    'Position', [140, 60, 1400, 1000]);
+delayed_figure = myfigurestartup(10, 7, 'prese');
 layout = tiledlayout(3, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
 title(layout, sprintf('%s：延迟修正上一段红色反推轨迹', case_name));
 
@@ -306,8 +307,10 @@ ylabel('t-7 min 节点间距（m）');
 title('上一段红色终点与当前反推终点的变换前后间距');
 legend('变换前', '变换后', 'Location', 'best');
 
+set(findall(delayed_figure, '-property', 'FontName'), ...
+    'FontName', 'TimesSimSun');
 exportgraphics(delayed_figure, fullfile(figure_dir, ...
-    'range-delayed-geometry-diagnostics.png'), 'Resolution', 300);
+    'range-delayed-geometry-diagnostics.png'), 'Resolution', 600);
 savefig(delayed_figure, fullfile(figure_dir, ...
     'range-delayed-geometry-diagnostics.fig'));
 

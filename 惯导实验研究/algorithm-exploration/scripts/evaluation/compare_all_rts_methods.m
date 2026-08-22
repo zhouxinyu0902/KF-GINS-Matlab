@@ -140,13 +140,13 @@ colors = [
     0.45, 0.30, 0.75; ... % 位置约束
     0.20, 0.65, 0.35];    % 位置速度约束
 line_styles = {'-', '--', '-.', ':', '--', '-'};
-
-comparison_figure = figure('Color', 'w', ...
-    'Name', '全部 RTS 方法统一对比', 'Position', [60, 100, 1600, 650]);
+comparison_figure = myfigurestartup(10,5,'prese');
+% comparison_figure = figure('Color', 'w', ...
+%     'Name', '全部 RTS 方法统一对比', 'Position', [60, 100, 1600, 650]);
 layout = tiledlayout(comparison_figure, 1, 2, ...
     'TileSpacing', 'compact', 'Padding', 'compact');
 title(layout, sprintf('%s：截止第11个测距点后1 s（0–%d s）', ...
-    case_name, end_time_s), 'FontWeight', 'bold');
+    case_name, end_time_s), 'FontWeight', 'bold','fontsize',15);
 
 nexttile(layout, 1);
 plot(truth_east / 1000, truth_north / 1000, 'k-', ...
@@ -190,8 +190,8 @@ title('水平径向误差（灰色虚线为测距时刻）');
 legend('Location', 'best', 'Interpreter', 'none');
 
 set(findall(comparison_figure, '-property', 'FontName'), ...
-    'FontName', 'Microsoft YaHei');
-exportgraphics(comparison_figure, figure_path, 'Resolution', 300);
+    'FontName', 'TimesSimSun');
+exportgraphics(comparison_figure, figure_path, 'Resolution', 600);
 savefig(comparison_figure, figure_source_path);
 
 fprintf('\n全部 RTS 相关方法统一误差统计（截止 %.0f s）：\n', end_time_s);

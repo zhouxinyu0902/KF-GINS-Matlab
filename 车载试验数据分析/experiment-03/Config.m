@@ -8,16 +8,26 @@
 %    Date : 2023.3.3
 % -------------------------------------------------------------------------
 
-function cfg = Config()
+function cfg = Config(dataset_id, position_unit)
+    if nargin < 1 || isempty(dataset_id)
+        dataset_id = 'run-0817';
+    end
+    if nargin < 2 || isempty(position_unit)
+        position_unit = "rad";
+    end
+    position_unit = lower(string(position_unit));
+    if ~ismember(position_unit, ["rad", "m"])
+        error('position_unit 只能取 "rad" 或 "m"。');
+    end
     param = Param();
     %% filepath
-    topic_dir = fileparts(mfilename('fullpath'));
-    project_root = fileparts(fileparts(topic_dir));
-    cfg.dataroot = fullfile(project_root, 'data', 'inertial-experiment', ...
-        'data-0817');
-    cfg.inputfolder = fullfile(cfg.dataroot, 'input');
-    cfg.outputfolder = fullfile(cfg.dataroot, 'output');
-    cfg.figurefolder = fullfile(cfg.outputfolder, 'artifacts');
+    data_paths = experiment03_dataset_paths(dataset_id);
+    cfg.datasetname = data_paths.dataset_name;
+    cfg.positionunit = char(position_unit);
+    cfg.dataroot = data_paths.data;
+    cfg.inputfolder = data_paths.input;
+    cfg.outputfolder = data_paths.output;
+    cfg.figurefolder = data_paths.artifacts;
 
     cfg.imufilepath = fullfile(cfg.inputfolder, 'imu_120.txt');
     cfg.gnssfilepath = fullfile(cfg.inputfolder, 'pva_830.txt');
@@ -32,19 +42,31 @@ function cfg = Config()
     cfg.rangefile3path = fullfile(cfg.inputfolder, 'range3.txt');
     cfg.truthpath = fullfile(cfg.inputfolder, 'pva_830.txt');
     cfg.rangefilepath = fullfile(cfg.inputfolder, 'range.txt');
+    data = yaml.ReadYaml(fullfile(cfg.dataroot, 'initial_state.yaml'));
     %% configure
     cfg.usegnssvel = false;
     cfg.useodonhc = false;
     cfg.odoupdaterate = 1; % [Hz]
 
     %% initial information
-    
+    cfg.initpos = cell2mat(data.initpos)';
+    cfg.initvel = cell2mat(data.initvel)';
+    cfg.initatt = cell2mat(data.initatt)';
     % 选择计算时间段
-    cfg.starttime = 103951.095;
-    cfg.endtime = cfg.starttime + 10000;
-    cfg.initpos = [36.40042454, 120.68982814, 6.5900]'; % [deg, deg, m]
-    cfg.initvel = [0; 0; 0]; % [m/s]
-    cfg.initatt = [+0.787000, +1.413000, -42.216000]'; % [deg]
+    cfg.starttime = data.capture_time;
+    switch (dataset_id)
+        case 'run-0817'
+            lastingtime = 10000;
+        case 'run-0818'
+            lastingtime = 12000;
+        case 'run-0818-noon'
+            lastingtime = 17000;
+    end
+    % cfg.starttime = 103951.095;
+    cfg.endtime = cfg.starttime + lastingtime;
+    % cfg.initpos = [36.40042454, 120.68982814, 6.5900]'; % [deg, deg, m]
+    % cfg.initvel = [0; 0; 0]; % [m/s]
+    % cfg.initatt = [+0.787000, +1.413000, -42.216000]'; % [deg]
 
     cfg.initposstd = [0.005; 0.004; 0.008]; %[m]
     cfg.initvelstd = [0.003; 0.004; 0.004]; %[m/s]
@@ -85,9 +107,12 @@ function cfg = Config()
     cfg.initpos(2) = cfg.initpos(2) * param.D2R;
     cfg.initatt = cfg.initatt * param.D2R;
 
-    [rm, rn] = getRmRn(cfg.initpos(1) , param);
-    DR = diag([rm + cfg.initpos(3), (rn + cfg.initpos(3))*cos(cfg.initpos(1)), -1]);
-    cfg.initposstd = DR^-1*cfg.initposstd ;
+    if position_unit == "rad"
+        [rm, rn] = getRmRn(cfg.initpos(1), param);
+        DR = diag([rm + cfg.initpos(3), ...
+            (rn + cfg.initpos(3))*cos(cfg.initpos(1)), -1]);
+        cfg.initposstd = DR^-1*cfg.initposstd;
+    end
     
     cfg.initattstd = cfg.initattstd * param.D2R;
 

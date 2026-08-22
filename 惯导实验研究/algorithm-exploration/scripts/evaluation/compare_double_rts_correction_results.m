@@ -125,14 +125,13 @@ colors = [
     0.05, 0.55, 0.55; ...
     0.80, 0.15, 0.55];
 line_styles = {'-', '--', '-.'};
-
-comparison_figure = figure('Color', 'w', ...
-    'Name', 'EKF、二次 RTS及旋转收缩对比', ...
-    'Position', [80, 120, 1500, 600]);
+comparison_figure = myfigurestartup(10,5,'prese');
+% comparison_figure = figure('Color', 'w', ...
+%     'Name', 'EKF、二次 RTS及旋转收缩对比', ...
+%     'Position', [80, 120, 1500, 600]);
 layout = tiledlayout(comparison_figure, 1, 2, ...
     'TileSpacing', 'compact', 'Padding', 'compact');
-title(layout, sprintf('%s：EKF、二次 RTS及2RTS+旋转收缩对比', case_name), ...
-    'FontWeight', 'bold');
+title(layout,sprintf('%s：EKF、二次 RTS及2RTS+旋转收缩对比', case_name),'fontsize',15);
 
 % 平面轨迹统一转换到以真值起点为原点的东北局部坐标系。
 nexttile(layout, 1);
@@ -160,7 +159,7 @@ xlabel('东向位置 (km)');
 ylabel('北向位置 (km)');
 title('平面轨迹（横纵轴独立缩放）');
 legend('Location', 'best', 'Interpreter', 'none');
-xlim([0, end_time_s / 60]);
+% xlim([0, end_time_s / 60]);
 
 nexttile(layout, 2);
 hold on;
@@ -180,8 +179,8 @@ title('水平径向误差');
 legend('Location', 'best', 'Interpreter', 'none');
 
 set(findall(comparison_figure, '-property', 'FontName'), ...
-    'FontName', 'Microsoft YaHei');
-exportgraphics(comparison_figure, figure_path, 'Resolution', 300);
+    'FontName', 'TimesSimSun');
+exportgraphics(comparison_figure, figure_path, 'Resolution', 600);
 savefig(comparison_figure, figure_source_path);
 
 fprintf('对比图已保存：%s\n', figure_path);

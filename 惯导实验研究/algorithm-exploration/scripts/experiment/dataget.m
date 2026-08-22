@@ -1,49 +1,14 @@
-clear; clc; close all;
+clear; clc;
 % 获取高度、距离数据
 %% ===================== 路径配置 =====================
 cfg = ProcessConfig_exper();
 inputDir = cfg.inputfolder;
 outputDir = cfg.referencefolder;
-figDir = cfg.figurefolder;
-
-if ~exist(figDir, 'dir')
-    mkdir(figDir);
-end
 
 %% ===================== 数据读取 =====================
-pva_830 = importdata(fullfile(inputDir, 'pva_830.txt'));
-pva_430 = importdata(fullfile(inputDir, 'pva_430.txt'));
 std_430 = importdata(fullfile(inputDir, 'std_430.txt'));
 std_830 = importdata(fullfile(inputDir, 'std_830.txt'));
-pva_RS  = importdata(fullfile(inputDir, 'pva_RS.txt'));
-
 pva_truth = importdata(fullfile(outputDir, 'truth.nav'));
-
-%% ===================== 误差对比绘图 =====================
-fig1 = myfigurestartup(4, 5, 'paper');
-
-errNames = {'纬度误差 (m)', '经度误差 (m)', '高度误差 (m)'};
-errCols = 2:4;
-
-for i = 1:3
-    subplot(3, 1, i);
-    plot(std_830(:, 1), std_830(:, errCols(i)), 'r.'); hold on;
-    plot(std_430(:, 1), std_430(:, errCols(i)), 'b.');
-    
-    ylabel(errNames{i});
-    ylim([0 0.08]);
-    grid on;
-    
-    if i == 1
-        title('各维度定位误差对比');
-        legend('pva\_830', 'pva\_430');
-    elseif i == 3
-        xlabel('时间 (s)');
-    end
-end
-
-% 如需导出图片，取消注释
-% exportgraphics(fig1, fullfile(figDir, 'Preview_Figure_1.png'), 'Resolution', 600);
 
 %% ===================== 误差统计分析 =====================
 data_830 = std_830(:, 2:4);
@@ -59,24 +24,6 @@ max_err_830 = max(abs(data_830), [], 1);
 max_err_430 = max(abs(data_430), [], 1);
 
 printErrorStatistics(rmse_830, rmse_430, std_830_val, std_430_val, max_err_830, max_err_430);
-
-%% ===================== 简单数据检查绘图 =====================
-myfigurestartup(5, 5, 'paper');
-plot(pva_830(:, 3));
-title('pva\_830 第3列数据');
-grid on;
-
-myfigurestartup(7, 5, 'paper');
-
-subplot(1, 2, 1);
-plot(diff(pva_830(:, 5)), '.');
-title('pva\_830 第5列差分');
-grid on;
-
-subplot(1, 2, 2);
-plot(pva_830(:, 8));
-title('pva\_830 第8列数据');
-grid on;
 
 %% ===================== 生成高度数据 =====================
 height = pva_truth(:, [2, 5]);
@@ -109,25 +56,12 @@ beacon_xyz = (Rz * dxyz_original')';
 
 % 信标坐标转换
 beacon_rrm = dxyz2pos(beacon_xyz, pos0');
-beacon_ddm = [r2d(beacon_rrm(:, 1:2)), beacon_rrm(:, 3)];
 
 % 轨迹坐标转换
 trj = GNSS_1s(:, 2:4);
 trj(:, 1:2) = d2r(trj(:, 1:2));
 
 trajectory_xyz = pos2dxyz(trj, pos0');
-trajectory_ddm = GNSS_1s(:, 2:4);
-
-%% ===================== 导航场景绘图 =====================
-plot_navigation_scene(trajectory_xyz, 'static', beacon_xyz, 'type', 'xyz');
-exportgraphics(gca, fullfile(figDir, 'plot_navigation_scene.png'), 'Resolution', 600);
-
-plot_navigation_scene( ...
-    trajectory_ddm(:, [2, 1, 3]), ...
-    'static', ...
-    beacon_ddm(:, [2, 1, 3]), ...
-    'type', 'lla' ...
-);
 
 %% ===================== 计算轨迹到各信标距离 =====================
 trajectory_x = trajectory_xyz(:, 1);
@@ -138,23 +72,13 @@ numBeacons = size(beacon_xyz, 1);
 
 distances = zeros(numEpochs, numBeacons);
 
-myfigurestartup(12, 5, 'prese');
-
 for i = 1:numBeacons
     dx = trajectory_x - beacon_xyz(i, 1);
     dy = trajectory_y - beacon_xyz(i, 2);
     
     distances(:, i) = sqrt(dx.^2 + dy.^2);
     
-    subplot(1, numBeacons, i);
-    plot(GNSS_1s(:, 1), distances(:, i), 'LineWidth', 1.5);
-    xlabel('时间 (s)');
-    ylabel('距离 (m)');
-    title(sprintf('信标 %d 距离', i));
-    grid on;
 end
-
-distances_N_by_1_max = max(distances, [], 2);
 
 %% ===================== 生成 range 数据 =====================
 rangeData = cell(numBeacons, 1);

@@ -11,12 +11,12 @@ algorithm-exploration/
 │  ├─ experiment/               实测配置（m,m,m 与 rad,rad,m）
 │  └─ simulation/               仿真配置
 ├─ functions/
-│  ├─ experiment/               实测更新、传播、反馈与评价函数
+│  ├─ experiment/               实测更新、传播与反馈函数
 │  └─ simulation/               仿真、RTS、旋转收缩等函数
 ├─ scripts/
 │  ├─ experiment/               实测探索脚本
 │  ├─ simulation/               仿真与四方法对比脚本
-│  └─ evaluation/               结果评价和可视化
+│  └─ evaluation/               统一结果读取、统计和可视化
 └─ archive/                     历史探索代码
 ```
 
@@ -48,6 +48,6 @@ cd('D:/Github/KF-GINS-Matlab/惯导实验研究/algorithm-exploration')
 paths = setup_inertial_experiment();
 ```
 
-常用入口包括 `scripts/experiment/run_experiment_four_method_comparison.m`、`run_experiment_four_method_comparison_rad.m`、`scripts/simulation/run_four_method_dataset_comparison.m` 和 `run_fixed_lag_four_method_dataset_comparison.m`。脚本产生导航结果后，`exploration_artifact_dir` 会把评估产物自动写到相同相对目录的 `figures-tables`。
+常用计算入口包括 `scripts/experiment/run_experiment_four_method_comparison.m`、`run_experiment_four_method_comparison_rad.m`、`scripts/simulation/run_four_method_dataset_comparison.m` 和 `run_fixed_lag_four_method_dataset_comparison.m`。实测核心入口不再创建图窗；生成导航结果后，运行 `scripts/evaluation/evaluate_experiment_results.m` 统一输出统计与图片。`exploration_artifact_dir` 会把评估产物写到相同相对目录的 `figures-tables`。
 
 `README-legacy.md` 仅保留重构前的完整说明用于追溯，其中旧路径不再作为当前运行依据。

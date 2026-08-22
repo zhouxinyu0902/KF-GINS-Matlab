@@ -1,5 +1,4 @@
 ﻿clear;
-close all;
 clc;
 
 %% 实测数据四方法对比入口
@@ -37,25 +36,27 @@ for file_index = 1:numel(required_inputs)
     end
 end
 
-statistics_path = fullfile(artifact_dir, ...
-    'fixed-lag-four-method-statistics.csv');
 required_results = { ...
     fullfile(result_dir, 'range-ins-forward.nav'), ...
     fullfile(result_dir, 'range-ins-rts-double.nav'), ...
     fullfile(result_dir, 'range-ins-rts-double-bridge-rotation.nav'), ...
     fullfile(result_dir, ...
-    'range-ins-double-rts-position-velocity-fixed-lag-replay.nav'), ...
-    statistics_path};
+    'range-ins-double-rts-position-velocity-fixed-lag-replay.nav')};
 results_ready = all(cellfun(@isfile, required_results));
 
 if overwrite_existing || ~results_ready
-    outputs = run_experiment_rts_core(result_dir);
-    statistics = outputs.fixed_lag_statistics;
+    run_experiment_rts_core(result_dir);
 else
-    fprintf('实测四方法结果齐全，直接读取已有统计。\n');
-    statistics = readtable(statistics_path, 'TextType', 'string');
+    fprintf('实测四方法导航结果齐全，跳过核心算法。\n');
 end
+
+% 运行入口只生成导航结果和统计表，不创建图窗。
+evaluation = evaluate_experiment_four_methods(result_dir, ...
+    truth_path=required_inputs{4}, case_name='experiment-m-state', ...
+    create_figure=false);
+statistics = evaluation.statistics;
 
 fprintf('\n实测四方法统计：\n');
 disp(statistics);
 fprintf('结果目录：%s\n', result_dir);
+fprintf('如需绘图，请运行 scripts/evaluation/evaluate_experiment_results.m。\n');

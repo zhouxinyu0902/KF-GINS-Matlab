@@ -35,13 +35,14 @@ function fig = plot_navigation_scene(trajectory, varargin)
     hold on; grid on; box on;
     
     % 绘制轨迹
-    h_trj = plot3(trj(:,1)/unit_scale, trj(:,2)/unit_scale, trj(:,3)/unit_scale, ...
-                  'b-', 'LineWidth', 2, 'DisplayName', '载体轨迹');
+    plot3(trj(:,1)/unit_scale, trj(:,2)/unit_scale, trj(:,3)/unit_scale, ...
+          'b-', 'LineWidth', 2, 'DisplayName', '载体轨迹');
     
     % 绘制静止信标 (如果是多个，循环绘制)
     if ~isempty(stc)
-        h_stc = plot3(stc(:,1)/unit_scale, stc(:,2)/unit_scale, stc(:,3)/unit_scale, ...
-                      'rp', 'MarkerSize', 10, 'MarkerFaceColor', 'r', 'DisplayName', '静止信标');
+        plot3(stc(:,1)/unit_scale, stc(:,2)/unit_scale, stc(:,3)/unit_scale, ...
+              'rp', 'MarkerSize', 10, 'MarkerFaceColor', 'r', ...
+              'DisplayName', '静止信标');
         % 为每个静止信标添加编号标注
         for i = 1:size(stc, 1)
             text(stc(i,1)/unit_scale, stc(i,2)/unit_scale, stc(i,3)/unit_scale, ...
@@ -51,8 +52,8 @@ function fig = plot_navigation_scene(trajectory, varargin)
     
     % 绘制移动信标
     if ~isempty(mov)
-        h_mov = plot3(mov(:,1)/unit_scale, mov(:,2)/unit_scale, mov(:,3)/unit_scale, ...
-                      'm--', 'LineWidth', 1.5, 'DisplayName', '移动信标');
+        plot3(mov(:,1)/unit_scale, mov(:,2)/unit_scale, mov(:,3)/unit_scale, ...
+              'm--', 'LineWidth', 1.5, 'DisplayName', '移动信标');
         % 标记移动信标的起点
         plot3(mov(1,1)/unit_scale, mov(1,2)/unit_scale, mov(1,3)/unit_scale, ...
               'mo', 'MarkerSize', 8, 'HandleVisibility', 'off');
@@ -75,5 +76,5 @@ function fig = plot_navigation_scene(trajectory, varargin)
     
     legend('Location', 'best');
     axis equal; 
-    set(gca, 'FontSize', 11);
+    set(gca, 'FontSize', 11, 'FontName', 'TimesSimSun');
 end

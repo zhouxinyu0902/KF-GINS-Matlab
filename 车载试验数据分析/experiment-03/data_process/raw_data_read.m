@@ -10,64 +10,45 @@ close all;
 %   3. 保存为统一 MAT 文件供后续处理
 %% =========================================================
 
-%% 路径配置
-rootDir = 'D:\Github\KF-GINS-Matlab\data\inertial-experiment\data-0818-1';
+%% 路径配置：第二批 run-0818
+script_dir = fileparts(mfilename('fullpath'));
+topic_dir = fileparts(script_dir);
+addpath(topic_dir, '-begin');
+paths = setup_all_real_data_preprocessing('run-0818');
+rootDir = paths.raw;
 %% =========================================================
 % 1. 读取 830 数据
 %% =========================================================
-file='081325_4752450';
-filename  = [file,'.dat'];
-filename1 = [file,'_GPCHCX.dat'];
-filename2 = [file,'_GPGGA.dat'];
+
+filename  = fullfile(rootDir, '024014_4752450.dat');
+filename1 = fullfile(rootDir, '024014_4752450_GPCHCX.dat');
+filename2 = fullfile(rootDir, '024014_4752450_GPGGA.dat');
 
 tic
-[IMU_DATA_8301, GPCHCX_8301, GPGGA_8301] = ...
+[IMU_DATA_830, GPCHCX_830, GPGGA_830] = ...
     read_mems_ins(filename, filename1, filename2);
 
-fprintf('830 原始数据第一批读取完成\n');
+fprintf('830 原始数据读取完成\n');
 toc
 disp('-----------------------------');
 
 
-file='121326_4752450';
-filename  = [file,'.dat'];
-filename1 = [file,'_GPCHCX.dat'];
-filename2 = [file,'_GPGGA.dat'];
-
-tic
-[IMU_DATA_8302, GPCHCX_8302, GPGGA_8302] = ...
-    read_mems_ins(filename, filename1, filename2);
-
-fprintf('830 原始数据第二批读取完成\n');
-toc
-disp('-----------------------------');
-
-file='132633_4752450';
-filename  = [file,'.dat'];
-filename1 = [file,'_GPCHCX.dat'];
-filename2 = [file,'_GPGGA.dat'];
-
-tic
-[IMU_DATA_8303, GPCHCX_8303, GPGGA_8303] = ...
-    read_mems_ins(filename, filename1, filename2);
-
-fprintf('830 原始数据第三批读取完成\n');
-toc
-disp('-----------------------------');
-
-IMU_DATA_830 = [IMU_DATA_8301;IMU_DATA_8302;IMU_DATA_8303];
-GPCHCX_830 = [GPCHCX_8301,GPCHCX_8302,GPCHCX_8303];
-GPGGA_830 = [GPGGA_8301,GPGGA_8302,GPGGA_8303];
 %% =========================================================
 % 2. 读取原始 IMU 文件
 %% =========================================================
+
 imuFile = fullfile(rootDir, 'imu_raw_data.txt');
+
 IMU_raw = importdata(imuFile);
+
 % 统一转换成数值矩阵
 if isstruct(IMU_raw)
     IMU_raw = IMU_raw.data;
 end
+
 fprintf('IMU 原始数据读取完成：%d 行\n', size(IMU_raw,1));
+
+
 %% =========================================================
 % 3. 读取测距数据
 %% =========================================================
@@ -171,7 +152,7 @@ filename4302 = '0928_1700~1903_430_SEL_GPGGA.dat';
 % 8. 保存全部原始数据
 %% =========================================================
 
-saveFile = fullfile(rootDir, 'raw_data_0818_1.mat');
+saveFile = paths.raw_mat_file;
 
 save(saveFile, ...
     'IMU_DATA_830', ...
