@@ -19,7 +19,7 @@ unitType = 'rad'; % 这里假设你只对比 'm' 模式的误差。如果想看 
 % 维度1(指标): 1=Max, 2=RMS, 3=Mean
 % 维度2(算法): 1=Origin, 2=DoubleSmooth, 3=SingleSmooth
 all_data_matrix = NaN(3, 3, 8); 
-algorithm_names = {'前向EKF', '一次RTS', '二次RTS'};
+algorithm_names = {'前向EKF', '二次RTS', '一次RTS'};
 % algorithm_names = {'Origin', 'RTS-DoubleSmooth', 'RTS-SingleSmooth'};
 metric_names = {'最大径向误差 (Max / m)', '均方根误差 (RMS / m)', '均值 (Mean / m)'};
 round_labels = {'Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 5', 'Round 6', 'Round 7', 'Round 8'};
@@ -70,7 +70,7 @@ fprintf('✅ 数据读取完毕，开始生成对比图表...\n');
 % ==================== 3. 绘制并精细化标注 ====================
 bar_colors = [0.85 0.33 0.10; 0.00 0.45 0.74; 0.47 0.67 0.19]; 
 % fig = figure('Name', '8组数据误差对比汇总', 'Position', [50, 50, 1600, 900], 'Color', 'w');
-fig = myfigurestartup(10,7,'prese');
+fig = myfigurestartup(7,7,'prese');
 for metric_idx = 1:3
     subplot(3, 1, metric_idx);
     plot_data = squeeze(all_data_matrix(metric_idx, :, :)); 
