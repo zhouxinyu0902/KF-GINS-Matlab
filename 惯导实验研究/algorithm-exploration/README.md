@@ -1,53 +1,97 @@
 # Algorithm Exploration（算法探索专题）
 
-本专题用于验证惯性/距离组合导航算法是否有效，属于初步探索阶段。代码、配置和专题函数封装在本目录；输入和输出统一放在项目总数据目录。论文阶段固定流程位于同级 `paper-study`。
+本专题按“研究问题”组织代码，不再按 experiment/simulation 分割算法脚本。仿真与实测仅作为两种数据适配方式，共用 RTS 研究主循环和状态单位选择。
 
-## 代码目录
+## 目录结构
 
 ```text
 algorithm-exploration/
-├─ setup_inertial_experiment.m  统一路径入口
 ├─ config/
-│  ├─ experiment/               实测配置（m,m,m 与 rad,rad,m）
-│  └─ simulation/               仿真配置
+│  ├─ experiment/                 实测数据与初始状态配置
+│  └─ simulation/                 仿真数据与初始状态配置
 ├─ functions/
-│  ├─ experiment/               实测更新、传播与反馈函数
-│  └─ simulation/               仿真、RTS、旋转收缩等函数
+│  ├─ experiment/                 RTS、坐标和高度更新公共函数
+│  └─ simulation/                 扩展四方法引擎与历史IMU重放
 ├─ scripts/
-│  ├─ experiment/               实测探索脚本
-│  ├─ simulation/               仿真与四方法对比脚本
-│  └─ evaluation/               统一结果读取、统计和可视化
-└─ archive/                     历史探索代码
+│  ├─ rts-algorithm-study/        EKF、一次/二次RTS及其扩展方法
+│  ├─ engineering-problem/        工程问题统一仿真/实测入口
+│  │  ├─ precision-anlysis-beaconpos/ 潜标位置误差
+│  │  ├─ range-error-study/       测距误差
+│  │  ├─ range-delay-study/       测距延迟与补偿
+│  │  └─ acoustic-range-dropout-study/ 声学测距掉帧
+│  ├─ range-azimuth-aided/        距离+方位角辅助专题
+│  ├─ data-generation/            仿真数据生成
+│  ├─ data-preparation/           实测输入预处理
+│  ├─ gnss-ins-baseline/          GNSS/INS基准
+│  └─ evaluation/
+│     ├─ rts/                     RTS与状态单位对比
+│     ├─ input-data/              输入数据、轨迹和信标绘图
+│     ├─ gnss-ins/                GNSS/INS结果评价
+│     └─ engineering-problem/     工程问题统一仿真/实测评价
+└─ archive/legacy/                不加入运行路径的历史代码
 ```
 
-## 数据目录
+## RTS统一入口
 
-```text
-data/inertial-experiment/algorithm-exploration/
-├─ input/
-│  ├─ experiment-raw/
-│  ├─ experiment-preprocessed/
-│  ├─ experiment-reference/
-│  └─ simulation/case-*/
-├─ navigation-results/
-│  ├─ experiment/
-│  └─ simulation/
-└─ figures-tables/
-   ├─ experiment/
-   └─ simulation/
-```
-
-- `navigation-results` 只保存 `.nav`。
-- `figures-tables` 保存图片、表格、MAT 文件和诊断记录。
-- 两类目录保持相同的实验/仿真及方法子目录，因此可按相对路径一一对应。
-
-## 使用
+打开 `scripts/rts-algorithm-study/run_rts_navigation_study.m`，在文件开头选择数据来源和位置误差状态单位：
 
 ```matlab
-cd('D:/Github/KF-GINS-Matlab/惯导实验研究/algorithm-exploration')
-paths = setup_inertial_experiment();
+data_source = "simulation";   % 或 "experiment"
+simulation_case = 'case-00';
+position_error_unit = "rad";  % 或 "m"
 ```
 
-常用计算入口包括 `scripts/experiment/run_experiment_four_method_comparison.m`、`run_experiment_four_method_comparison_rad.m`、`scripts/simulation/run_four_method_dataset_comparison.m` 和 `run_fixed_lag_four_method_dataset_comparison.m`。实测核心入口不再创建图窗；生成导航结果后，运行 `scripts/evaluation/evaluate_experiment_results.m` 统一输出统计与图片。`exploration_artifact_dir` 会把评估产物写到相同相对目录的 `figures-tables`。
+该脚本的前向 EKF、一次 RTS 和二次 RTS 主循环只有一份：
 
-`README-legacy.md` 仅保留重构前的完整说明用于追溯，其中旧路径不再作为当前运行依据。
+- `simulation`：读取 `input/simulation/case-*`，按配置生成带噪距离和高度；
+- `experiment`：读取 `input/experiment/case-06` 中已有距离和高度；
+- `rad/m`：成套切换配置、传播、量测更新、反馈、高度更新和 RTS 误差应用。
+
+扩展四方法、多数据集批处理和完整实测四方法仍位于同一个 `rts-algorithm-study` 目录，避免把最简主循环塞入大量专题分支。
+
+## 测距延迟专题
+
+`scripts/engineering-problem/range-delay-study` 集中保存：
+
+1. 4 s陈旧距离的敏感性对比；
+2. 无延迟、延迟未处理、回退重推进三工况补偿；
+3. 生成供统一工程评价读取的结果和上下文。
+
+延迟脚本复用 `rts-algorithm-study/run_navigation_experiment.m`，不会维护另一份实测核心算法。
+
+## 结果评价
+
+通用评价位于 `scripts/evaluation`：
+
+- `rts/compare_radVSm.m`：仿真 rad/m 状态链的严格共同时间段对比；
+- `rts/evaluate_experiment_results.m`：实测四方法评价；
+- `input-data/`：输入、轨迹与信标场景；
+- `gnss-ins/`：GNSS/INS基准评价。
+- `engineering-problem/`：潜标位置误差、测距误差和测距延迟的统一评价。
+
+工程误差专题采用同一数据契约：运行脚本写导航结果和
+`study-context.mat`，评价脚本自动读取各工况，在共同有效区间内输出
+水平径向误差统计、轨迹图和 RMSE 响应曲线。
+
+## 数据与结果目录
+
+输入、导航结果和图表均采用完全相同的“数据来源/数据集”层级：
+
+```text
+input/
+├─ simulation/case-00 ... case-04/
+└─ experiment/case-06/
+
+navigation-results/
+├─ simulation/case-00 ... case-04/
+└─ experiment/case-06/
+
+figures-tables/
+├─ simulation/case-00 ... case-04/
+└─ experiment/case-06/
+```
+
+IMU、真值、距离和高度等通用文件直接放在 case 根目录。某个专题生成的
+专用输入直接放在该 case 下的同名子目录，例如
+`input/simulation/case-00/range-azimuth-aided`。专题结果也使用相同名称，
+不再额外增加 `engineering-problem` 等中间层。

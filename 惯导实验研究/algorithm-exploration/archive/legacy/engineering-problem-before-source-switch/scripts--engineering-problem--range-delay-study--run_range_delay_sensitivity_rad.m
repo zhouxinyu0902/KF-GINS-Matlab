@@ -1,0 +1,447 @@
+clear;
+close all;
+clc;
+
+%% 前向EKF与二次RTS对4 s陈旧测距值的敏感性分析（rad位置误差状态）
+% 对照组：在测距更新时刻 t 使用真实的 t 时刻距离值；
+% 延迟组：更新仍发生在 t，但输入距离值来自同一信标的 t-4 s。
+%
+% 两组共享完全相同的：IMU、高度、测距时刻、信标次序、距离噪声、
+% 滤波参数和RTS节点。这样可以单独观察“距离值陈旧4 s”的影响。
+
+delay_s = 4;
+expected_range_interval_s = 420;
+duration_s = 4621;
+
+%% 路径与输入
+script_dir = fileparts(mfilename('fullpath'));
+topic_dir = fileparts(fileparts(script_dir));
+project_root = fileparts(fileparts(topic_dir));
+addpath(script_dir);
+addpath(topic_dir);
+paths = setup_inertial_experiment();
+
+preprocessed_dir = paths.experiment_preprocessed;
+raw_dir = paths.experiment_raw;
+result_root = fullfile(paths.experiment_navigation, ...
+    'ekf-double-rts-range-delay-rad');
+artifact_root = exploration_artifact_dir(result_root);
+current_result_dir = fullfile(result_root, 'current-time-range');
+delayed_result_dir = fullfile(result_root, 'delayed-4s-range');
+
+required_files = { ...
+    fullfile(preprocessed_dir, 'rangedata_noised.txt'), ...
+    fullfile(preprocessed_dir, 'height_noised.txt'), ...
+    fullfile(raw_dir, 'range1.txt'), ...
+    fullfile(raw_dir, 'range2.txt'), ...
+    fullfile(raw_dir, 'range3.txt'), ...
+    fullfile(raw_dir, 'IMU_120.txt'), ...
+    fullfile(paths.experiment_reference, 'truth.nav')};
+for file_index = 1:numel(required_files)
+    if ~isfile(required_files{file_index})
+        error('缺少延迟对比所需输入：%s', required_files{file_index});
+    end
+end
+
+if ~isfolder(result_root), mkdir(result_root); end
+if ~isfolder(artifact_root), mkdir(artifact_root); end
+
+%% 构造严格控制变量的两组测距输入
+current_range = readmatrix( ...
+    fullfile(preprocessed_dir, 'rangedata_noised.txt'), ...
+    'FileType', 'text');
+if size(current_range, 2) < 6
+    error('rangedata_noised.txt 至少应包含6列。');
+end
+
+range_interval = diff(current_range(:, 1));
+if any(abs(range_interval - expected_range_interval_s) > 1e-6)
+    error('当前测距序列并非固定%.0f s间隔。', ...
+        expected_range_interval_s);
+end
+
+raw_range = cell(3, 1);
+for beacon_index = 1:3
+    raw_range{beacon_index} = readmatrix(fullfile(raw_dir, ...
+        sprintf('range%d.txt', beacon_index)), 'FileType', 'text');
+end
+
+[delayed_range, measurement_table] = build_delayed_range_input( ...
+    current_range, raw_range, delay_s);
+writematrix(current_range, fullfile(result_root, ...
+    'range-input-current-time.txt'), 'Delimiter', ' ');
+writematrix(delayed_range, fullfile(result_root, ...
+    'range-input-delayed-4s.txt'), 'Delimiter', ' ');
+writetable(measurement_table, fullfile(artifact_root, ...
+    'range-input-comparison.csv'));
+
+%% 分别运行同一套rad链前向EKF与二次RTS
+% 每组运行同时生成forward_path和double_rts_path；关闭旋转收缩和
+% 历史IMU重放，避免与本次两类对比无关的计算。
+common_options = struct( ...
+    'duration_s', duration_s, ...
+    'enable_rotation', false, ...
+    'enable_fixed_lag_replay', false);
+
+fprintf('\n========== 对照组：使用t时刻距离值 ==========\n');
+current_options = common_options;
+current_options.case_name = 'ekf-double-rts-current-time-range-rad';
+current_options.range_data = current_range;
+current_outputs = run_navigation_experiment( ...
+    current_result_dir, current_options);
+
+fprintf('\n========== 延迟组：在t时刻使用t-%.0f s距离值 ==========\n', ...
+    delay_s);
+delayed_options = common_options;
+delayed_options.case_name = 'ekf-double-rts-delayed-4s-range-rad';
+delayed_options.range_data = delayed_range;
+delayed_outputs = run_navigation_experiment( ...
+    delayed_result_dir, delayed_options);
+
+% 将运行结果与严格有效区间保存给统一工程评价脚本。保留本脚本后面的
+% 原评价代码仅用于兼容已有使用方式，新代码应从 evaluation 入口评价。
+valid_masks = { ...
+    true(size(current_outputs.double_rts_second_pass_mask)), ...
+    current_outputs.double_rts_second_pass_mask; ...
+    true(size(delayed_outputs.double_rts_second_pass_mask)), ...
+    delayed_outputs.double_rts_second_pass_mask};
+study_context = struct();
+study_context.version = 1;
+study_context.study_id = "range-delay-sensitivity";
+study_context.study_title = "固定4 s测距延迟敏感性";
+study_context.scenario_ids = ["current"; "delayed-4s"];
+study_context.scenario_names = ["当前时刻距离"; "4 s前陈旧距离"];
+study_context.parameter_values = [0; delay_s];
+study_context.parameter_name = "RangeDelay_s";
+study_context.parameter_label = "测距延迟（s）";
+study_context.plot_response = true;
+study_context.output_dirs = [string(current_result_dir); ...
+    string(delayed_result_dir)];
+study_context.truth_path = fullfile(paths.experiment_reference, 'truth.nav');
+study_context.method_ids = ["ekf"; "double-rts"];
+study_context.method_names = ["前向EKF"; "二次RTS"];
+study_context.method_files = ["range-ins-forward.nav"; ...
+    "range-ins-rts-double.nav"];
+study_context.valid_masks = valid_masks;
+study_context.measurement_table = measurement_table;
+study_context.range_interval_s = expected_range_interval_s;
+study_context.delay_s = delay_s;
+study_context.artifact_root = artifact_root;
+save(fullfile(result_root, 'study-context.mat'), 'study_context');
+fprintf('导航结果已保存：%s\n', result_root);
+fprintf(['统一评价入口：scripts/evaluation/engineering-applications/', ...
+    'range-delay/evaluate_range_delay_sensitivity_rad.m\n']);
+return;
+
+%% 分开评价前向EKF和二次RTS
+current_ekf_nav = readmatrix(current_outputs.forward_path, ...
+    'FileType', 'text');
+delayed_ekf_nav = readmatrix(delayed_outputs.forward_path, ...
+    'FileType', 'text');
+current_double_rts_nav = readmatrix(current_outputs.double_rts_path, ...
+    'FileType', 'text');
+delayed_double_rts_nav = readmatrix(delayed_outputs.double_rts_path, ...
+    'FileType', 'text');
+truth = readmatrix(fullfile(paths.experiment_reference, 'truth.nav'), ...
+    'FileType', 'text');
+
+if size(current_ekf_nav, 1) ~= size(delayed_ekf_nav, 1) || ...
+        size(current_double_rts_nav, 1) ~= size(delayed_double_rts_nav, 1)
+    error('同一算法的两组结果长度不一致。');
+end
+if size(current_ekf_nav, 1) ~= size(current_double_rts_nav, 1) || ...
+        any(abs(current_ekf_nav(:, 2)-delayed_ekf_nav(:, 2)) > 1e-8) || ...
+        any(abs(current_double_rts_nav(:, 2) ...
+        - delayed_double_rts_nav(:, 2)) > 1e-8)
+    error('前向EKF或二次RTS结果的时间轴不一致。');
+end
+
+truth_time_mask = current_ekf_nav(:, 2) >= truth(1, 2) & ...
+    current_ekf_nav(:, 2) <= truth(end, 2);
+ekf_evaluation_mask = truth_time_mask & ...
+    all(isfinite(current_ekf_nav(:, 2:5)), 2) & ...
+    all(isfinite(delayed_ekf_nav(:, 2:5)), 2);
+double_rts_evaluation_mask = truth_time_mask & ...
+    current_outputs.double_rts_second_pass_mask & ...
+    delayed_outputs.double_rts_second_pass_mask & ...
+    all(isfinite(current_double_rts_nav(:, 2:5)), 2) & ...
+    all(isfinite(delayed_double_rts_nav(:, 2:5)), 2);
+if ~any(ekf_evaluation_mask)
+    error('没有找到两组前向EKF共同有效的评价区间。');
+end
+if ~any(double_rts_evaluation_mask)
+    error('没有找到两组真正完成二次RTS的共同评价区间。');
+end
+
+[ekf_statistics, ekf_radial_error] = evaluate_delay_comparison( ...
+    truth, current_ekf_nav, delayed_ekf_nav, ekf_evaluation_mask, ...
+    '前向EKF', delay_s);
+writetable(ekf_statistics, fullfile(artifact_root, ...
+    'ekf-range-delay-statistics.csv'));
+plot_navigation_comparison(truth, current_ekf_nav, delayed_ekf_nav, ...
+    ekf_radial_error, ekf_evaluation_mask, artifact_root, delay_s, ...
+    '前向EKF', 'ekf', '两组共同有效的完整时段');
+
+[double_rts_statistics, double_rts_radial_error] = ...
+    evaluate_delay_comparison(truth, current_double_rts_nav, ...
+    delayed_double_rts_nav, double_rts_evaluation_mask, ...
+    '二次RTS', delay_s);
+writetable(double_rts_statistics, fullfile(artifact_root, ...
+    'double-rts-range-delay-statistics.csv'));
+plot_navigation_comparison(truth, current_double_rts_nav, ...
+    delayed_double_rts_nav, double_rts_radial_error, ...
+    double_rts_evaluation_mask, artifact_root, delay_s, ...
+    '二次RTS', 'double-rts', '真正完成两次RTS的共同区间');
+
+algorithm = ["前向EKF"; "二次RTS"];
+evaluated_sample_count = [nnz(ekf_evaluation_mask); ...
+    nnz(double_rts_evaluation_mask)];
+evaluation_start_time_s = [ ...
+    current_ekf_nav(find(ekf_evaluation_mask, 1), 2); ...
+    current_double_rts_nav(find(double_rts_evaluation_mask, 1), 2)];
+evaluation_end_time_s = [ ...
+    current_ekf_nav(find(ekf_evaluation_mask, 1, 'last'), 2); ...
+    current_double_rts_nav(find(double_rts_evaluation_mask, 1, 'last'), 2)];
+current_range_rmse_m = [ekf_statistics.RMSE_m(1); ...
+    double_rts_statistics.RMSE_m(1)];
+delayed_range_rmse_m = [ekf_statistics.RMSE_m(2); ...
+    double_rts_statistics.RMSE_m(2)];
+rmse_change_m = delayed_range_rmse_m-current_range_rmse_m;
+rmse_change_percent = 100*rmse_change_m./current_range_rmse_m;
+comparison_summary = table(algorithm, ...
+    repmat(delay_s, 2, 1), repmat(expected_range_interval_s, 2, 1), ...
+    evaluated_sample_count, evaluation_start_time_s, ...
+    evaluation_end_time_s, current_range_rmse_m, delayed_range_rmse_m, ...
+    rmse_change_m, rmse_change_percent, ...
+    'VariableNames', {'Algorithm', 'RangeDelay_s', 'RangeInterval_s', ...
+    'EvaluatedSampleCount', 'EvaluationStartTime_s', ...
+    'EvaluationEndTime_s', 'CurrentRangeRMSE_m', ...
+    'DelayedRangeRMSE_m', 'RMSEChange_m', 'RMSEChange_percent'});
+writetable(comparison_summary, fullfile(artifact_root, ...
+    'ekf-double-rts-range-delay-summary.csv'));
+
+fprintf('\n前向EKF测距延迟对比（两组共同有效的完整时段）：\n');
+disp(ekf_statistics);
+fprintf('\n二次RTS测距延迟对比（真正完成两次RTS的共同区间）：\n');
+disp(double_rts_statistics);
+fprintf('\n两类算法的延迟影响汇总：\n');
+disp(comparison_summary);
+fprintf('导航结果：%s\n', result_root);
+fprintf('图表与统计：%s\n', artifact_root);
+fprintf(['统一工程评价入口：scripts/evaluation/engineering-applications/', ...
+    'range-delay/evaluate_range_delay_sensitivity_rad.m\n']);
+
+%% 局部函数
+function [delayed_range, comparison] = build_delayed_range_input( ...
+        current_range, raw_range, delay_s)
+%BUILD_DELAYED_RANGE_INPUT 保持更新时间戳不变，用t-delay_s的距离替换量测值。
+    event_count = size(current_range, 1);
+    delayed_range = current_range;
+    beacon_id = zeros(event_count, 1);
+    delayed_source_time_s = current_range(:, 1) - delay_s;
+    current_true_range_m = current_range(:, 2);
+    delayed_true_range_m = nan(event_count, 1);
+    shared_noise_m = current_range(:, 3) - current_range(:, 2);
+
+    beacon_position = zeros(3, 3);
+    for index = 1:3
+        beacon_position(index, :) = raw_range{index}(1, 4:6);
+    end
+
+    for event_index = 1:event_count
+        position_difference = beacon_position ...
+            - current_range(event_index, 4:6);
+        [minimum_difference, this_beacon] = min( ...
+            vecnorm(position_difference, 2, 2));
+        if minimum_difference > 1e-10
+            error('第%d个测距事件无法匹配到已有信标。', event_index);
+        end
+        beacon_id(event_index) = this_beacon;
+        source = raw_range{this_beacon};
+        delayed_true_range_m(event_index) = interp1( ...
+            source(:, 1), source(:, 2), ...
+            delayed_source_time_s(event_index), 'linear', nan);
+        if ~isfinite(delayed_true_range_m(event_index))
+            error('第%d个事件的t-%.1f s距离超出原始数据范围。', ...
+                event_index, delay_s);
+        end
+    end
+
+    delayed_range(:, 2) = delayed_true_range_m;
+    delayed_range(:, 3) = delayed_true_range_m + shared_noise_m;
+    comparison = table((1:event_count)', current_range(:, 1), ...
+        delayed_source_time_s, beacon_id, current_true_range_m, ...
+        delayed_true_range_m, shared_noise_m, current_range(:, 3), ...
+        delayed_range(:, 3), delayed_true_range_m-current_true_range_m, ...
+        'VariableNames', {'EventIndex', 'UpdateTime_s', ...
+        'DelayedSourceTime_s', 'BeaconID', 'CurrentTrueRange_m', ...
+        'DelayedTrueRange_m', 'SharedNoise_m', 'CurrentInputRange_m', ...
+        'DelayedInputRange_m', 'StaleMinusCurrent_m'});
+end
+
+function plot_range_input_comparison(data, output_dir, interval_s, delay_s)
+%PLOT_RANGE_INPUT_COMPARISON 绘制两组实际送入滤波器的距离值及其差值。
+    elapsed_time = data.UpdateTime_s - data.UpdateTime_s(1);
+    figure_handle = myfigurestartup(10, 6, 'prese');
+    layout = tiledlayout(figure_handle, 2, 1, ...
+        'TileSpacing', 'compact', 'Padding', 'compact');
+    title(layout, sprintf('固定%.0f s测距：当前距离与%.0f s陈旧距离输入', ...
+        interval_s, delay_s));
+
+    nexttile;
+    plot(elapsed_time, data.CurrentInputRange_m, 'o-', ...
+        'LineWidth', 1.2, 'MarkerSize', 5, 'DisplayName', 't时刻距离');
+    hold on;
+    plot(elapsed_time, data.DelayedInputRange_m, 's--', ...
+        'LineWidth', 1.2, 'MarkerSize', 5, ...
+        'DisplayName', sprintf('t-%.0f s距离', delay_s));
+    grid on; box on;
+    ylabel('送入滤波器的距离（m）');
+    legend('Location', 'best');
+
+    nexttile;
+    stem(elapsed_time, data.StaleMinusCurrent_m, 'filled', ...
+        'LineWidth', 1.1, 'MarkerSize', 4);
+    grid on; box on;
+    xlabel('相对首个测距点的时间（s）');
+    ylabel('陈旧值 - 当前值（m）');
+    yline(0, 'k-');
+
+    set(findall(figure_handle, '-property', 'FontName'), ...
+        'FontName', 'TimesSimSun');
+    exportgraphics(figure_handle, fullfile(output_dir, ...
+        'range-input-current-vs-delayed-4s.png'), 'Resolution', 600);
+    savefig(figure_handle, fullfile(output_dir, ...
+        'range-input-current-vs-delayed-4s.fig'));
+end
+
+function [statistics, radial_error] = evaluate_delay_comparison( ...
+        truth, current_nav, delayed_nav, evaluation_mask, ...
+        algorithm_name, delay_s)
+%EVALUATE_DELAY_COMPARISON 计算一种算法在两种距离输入下的水平误差。
+    time = current_nav(:, 2);
+    truth_position = interp1(truth(:, 2), truth(:, 3:5), time, ...
+        'linear', 'extrap');
+    radial_error = [ ...
+        horizontal_radial_error(current_nav(:, 3:5), truth_position), ...
+        horizontal_radial_error(delayed_nav(:, 3:5), truth_position)];
+
+    method = [string(sprintf('%s（t时刻距离）', algorithm_name)); ...
+        string(sprintf('%s（t-%.0f s距离）', algorithm_name, delay_s))];
+    rmse_m = zeros(2, 1);
+    mean_m = zeros(2, 1);
+    median_m = zeros(2, 1);
+    p95_m = zeros(2, 1);
+    maximum_m = zeros(2, 1);
+    for method_index = 1:2
+        value = radial_error(evaluation_mask, method_index);
+        rmse_m(method_index) = sqrt(mean(value .^ 2));
+        mean_m(method_index) = mean(value);
+        median_m(method_index) = median(value);
+        p95_m(method_index) = prctile(value, 95);
+        maximum_m(method_index) = max(value);
+    end
+    statistics = table(method, rmse_m, mean_m, median_m, p95_m, ...
+        maximum_m, 'VariableNames', {'Method', 'RMSE_m', 'Mean_m', ...
+        'Median_m', 'P95_m', 'Maximum_m'});
+end
+
+function plot_navigation_comparison(truth, current_nav, delayed_nav, ...
+        radial_error, evaluation_mask, output_dir, delay_s, ...
+        algorithm_name, file_prefix, evaluation_description)
+%PLOT_NAVIGATION_COMPARISON 为一种算法单独绘制距离延迟对比。
+    time = current_nav(:, 2);
+    elapsed_time = time - time(1);
+    truth_position = interp1(truth(:, 2), truth(:, 3:5), time, ...
+        'linear', 'extrap');
+    display_indices = find(evaluation_mask);
+    display_indices = display_indices(unique(round(linspace(1, ...
+        numel(display_indices), min(20000, numel(display_indices))))));
+    origin = truth_position(display_indices(1), :);
+    [truth_east, truth_north] = position_to_local_plane( ...
+        truth_position(display_indices, :), origin);
+    [current_east, current_north] = position_to_local_plane( ...
+        current_nav(display_indices, 3:5), origin);
+    [delayed_east, delayed_north] = position_to_local_plane( ...
+        delayed_nav(display_indices, 3:5), origin);
+
+    figure_handle = myfigurestartup(10, 5, 'prese');
+    layout = tiledlayout(figure_handle, 1, 2, ...
+        'TileSpacing', 'compact', 'Padding', 'compact');
+    title(layout, sprintf('rad链%s：当前距离与%.0f s陈旧距离对比', ...
+        algorithm_name, delay_s));
+
+    nexttile;
+    plot(truth_east / 1000, truth_north / 1000, 'k-', ...
+        'LineWidth', 1.7, 'DisplayName', '真值');
+    hold on;
+    plot(current_east / 1000, current_north / 1000, ...
+        'Color', [0.10, 0.35, 0.78], 'LineWidth', 1.25, ...
+        'DisplayName', sprintf('%s（t时刻距离）', algorithm_name));
+    plot(delayed_east / 1000, delayed_north / 1000, '--', ...
+        'Color', [0.82, 0.25, 0.18], 'LineWidth', 1.25, ...
+        'DisplayName', sprintf('%s（t-%.0f s距离）', ...
+        algorithm_name, delay_s));
+    grid on; box on; axis equal;
+    xlabel('东向位置（km）');
+    ylabel('北向位置（km）');
+    title(sprintf('%s的轨迹', evaluation_description));
+    legend('Location', 'best');
+
+    nexttile;
+    plot(elapsed_time(display_indices), ...
+        radial_error(display_indices, 1), ...
+        'Color', [0.10, 0.35, 0.78], 'LineWidth', 1.2, ...
+        'DisplayName', sprintf('%s（t时刻距离）', algorithm_name));
+    hold on;
+    plot(elapsed_time(display_indices), ...
+        radial_error(display_indices, 2), '--', ...
+        'Color', [0.82, 0.25, 0.18], 'LineWidth', 1.2, ...
+        'DisplayName', sprintf('%s（t-%.0f s距离）', ...
+        algorithm_name, delay_s));
+    grid on; box on;
+    xlabel('相对导航起点的时间（s）');
+    ylabel('水平径向误差（m）');
+    title('水平径向误差');
+    xlim([elapsed_time(display_indices(1)), ...
+        elapsed_time(display_indices(end))]);
+    legend('Location', 'best');
+
+    set(findall(figure_handle, '-property', 'FontName'), ...
+        'FontName', 'TimesSimSun');
+    exportgraphics(figure_handle, fullfile(output_dir, sprintf( ...
+        '%s-current-vs-delayed-4s.png', file_prefix)), ...
+        'Resolution', 600);
+    savefig(figure_handle, fullfile(output_dir, sprintf( ...
+        '%s-current-vs-delayed-4s.fig', file_prefix)));
+end
+
+function radial_error = horizontal_radial_error(estimate, truth)
+%HORIZONTAL_RADIAL_ERROR 按WGS-84曲率半径计算逐点水平径向误差。
+    latitude = deg2rad(truth(:, 1));
+    height = truth(:, 3);
+    [rm, rn] = wgs84_radii(latitude);
+    north_error = deg2rad(estimate(:, 1)-truth(:, 1)) .* (rm+height);
+    east_error = deg2rad(estimate(:, 2)-truth(:, 2)) .* ...
+        (rn+height) .* cos(latitude);
+    radial_error = hypot(north_error, east_error);
+end
+
+function [east, north] = position_to_local_plane(position, origin)
+%POSITION_TO_LOCAL_PLANE 将经纬度转换为以origin为原点的局部平面坐标。
+    latitude = deg2rad(origin(1));
+    [rm, rn] = wgs84_radii(latitude);
+    north = deg2rad(position(:, 1)-origin(1)) * (rm+origin(3));
+    east = deg2rad(position(:, 2)-origin(2)) * ...
+        (rn+origin(3)) * cos(latitude);
+end
+
+function [rm, rn] = wgs84_radii(latitude)
+%WGS84_RADII 计算WGS-84子午圈和卯酉圈曲率半径。
+    semi_major_axis = 6378137.0;
+    flattening = 1 / 298.257223563;
+    eccentricity_squared = flattening * (2-flattening);
+    denominator = sqrt(1-eccentricity_squared .* sin(latitude).^2);
+    rn = semi_major_axis ./ denominator;
+    rm = semi_major_axis * (1-eccentricity_squared) ./ denominator.^3;
+end

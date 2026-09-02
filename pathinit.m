@@ -1,22 +1,61 @@
-folderPath='D:\Github\KF-GINS-Matlab';
+folderPath = 'D:\Github\KF-GINS-Matlab';
+
+%% 1. 检查工程目录
 if ~exist(folderPath, 'dir')
     warning('文件夹不存在: %s', folderPath);
     return;
 end
 
-% 获取该文件夹及其所有子文件夹的完整路径字符串
-fullPathList = genpath(folderPath);
+%% 2. 清理 MATLAB path 中已经不存在的路径
+pathList = strsplit(path, pathsep);
+pathList = pathList(~cellfun('isempty', pathList));
 
-% 移除旧路径（如果存在）
-% 注意：如果路径非常多，contains 检查是必要的以防报错
-currPath = path;
-if contains(currPath, folderPath)
-    rmpath(fullPathList);
-    disp(['已清理子路径: ', folderPath]);
+invalidMask = false(size(pathList));
+
+for i = 1:numel(pathList)
+    invalidMask(i) = ~exist(pathList{i}, 'dir');
 end
 
-% 重新添加
-addpath(fullPathList);
-savepath; % (可选) 如果你想永久保存这个更改
+invalidPaths = pathList(invalidMask);
 
-disp(['路径已重置并刷新: ', folderPath]);
+if ~isempty(invalidPaths)
+    fprintf('发现 %d 个不存在的路径，开始清理：\n', numel(invalidPaths));
+
+    for i = 1:numel(invalidPaths)
+        fprintf('  删除: %s\n', invalidPaths{i});
+        rmpath(invalidPaths{i});
+    end
+else
+    disp('未发现不存在的 MATLAB 路径。');
+end
+
+%% 3. 清理当前工程已有的旧路径
+pathList = strsplit(path, pathsep);
+
+isProjectPath = startsWith(pathList, folderPath, ...
+    'IgnoreCase', true);
+
+oldProjectPaths = pathList(isProjectPath);
+
+if ~isempty(oldProjectPaths)
+    rmpath(oldProjectPaths{:});
+    fprintf('已清理 KF-GINS-Matlab 旧路径，共 %d 个。\n', ...
+        numel(oldProjectPaths));
+end
+
+%% 4. 重新生成工程路径
+fullPathList = genpath(folderPath);
+
+%% 5. 添加工程及所有子目录
+addpath(fullPathList);
+
+fprintf('已重新添加工程路径：\n%s\n', folderPath);
+
+%% 6. 永久保存 MATLAB 路径
+status = savepath;
+
+if status == 0
+    disp('MATLAB 路径已永久保存。');
+else
+    warning('savepath 保存失败，当前 MATLAB 会话仍然有效。');
+end

@@ -1,18 +1,18 @@
 function getmovingbeacon(path,type)
 glvs
 % MEMS
-% truth = importdata([path,'/input','/pva_830.txt']);
-% % num = floor(1/(truth(2,2)-truth(1,2)));
-% num = 100;
-% truth1 = importdata([path,'/input','/truth.nav']);
-% output_file=[path,'\input','\range_moving.txt',];
+truth = importdata([path,'/input','/pva_830.txt']);
+% num = floor(1/(truth(2,2)-truth(1,2)));
+num = 100;
+truth1 = importdata([path,'/input','/truth.nav']);
+output_file=[path,'\input','\range_moving.txt',];
 
 % 光纤
 
-truth = importdata([path,'/pva_830.txt']);
-num = 100;
-truth11 = importdata([path,'/truth.nav']);
-output_file=[path,'\range_moving.txt',];
+% truth = importdata([path,'/pva_830.txt']);
+% num = 100;
+% truth11 = importdata([path,'/truth.nav']);
+% output_file=[path,'\range_moving.txt',];
 
 
 GNSS_1s = truth(num:num:end,2:5);% 时间间隔
@@ -181,7 +181,7 @@ range1 = [GNSS_1s(:,1),distances',distances',beaconrrm(1:length(trajectory_xyz),
 
 %% 计算方位角
 
-att = truth11(num:num:end,9:11);
+att = truth1(num:num:end,9:11);
 for i=1:length(range1)
     range1(i,7) = pos2azimuth(trajectory_xyz(i,1:2),beaconxyz(i,1:2),att(i,end));
 end

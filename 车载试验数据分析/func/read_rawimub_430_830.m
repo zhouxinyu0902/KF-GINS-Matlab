@@ -7,26 +7,24 @@ function IMU_DATA = read_rawimub_430_830(filename, headerPositions)
     H = 28; % 帧头长度（字节）
     packetSize = H + 45; % 总数据包大小 = 28字节帧头 + 45字节数据 = 73字节
     G_VAL = 9.806; % 重力加速度
-    
-    fprintf('读取RAWIMUB数据文件: %s\n', filename);
-    
+    fprintf('    (1)读取RAWIMUB数据文件,');
     % 读取文件数据
     try
         fid = fopen(filename, 'rb');
         allData = fread(fid, inf, 'uint8=>uint8');
         fclose(fid);
         fileSize = length(allData);
-        fprintf('文件大小: %d 字节\n', fileSize);
+        fprintf('文件大小: %d 字节，', fileSize);
     catch ME
         error('无法读取文件: %s', ME.message);
     end
     
     total_packets = length(headerPositions);
-    fprintf('找到 %d 个有效数据包\n', total_packets);
+    fprintf('找到 %d 个有效数据包，', total_packets);
     
     if total_packets == 0
         IMU_DATA = [];
-        fprintf('未找到有效数据包\n');
+        fprintf('未找到有效数据包，');
         return;
     end
     
@@ -36,7 +34,7 @@ function IMU_DATA = read_rawimub_430_830(filename, headerPositions)
     abnormal_packets = 0;
     
     % 解析数据包
-    fprintf('开始解析数据包...\n');
+    fprintf('开始解析数据包...');
     for i = 1:total_packets
         startIdx = headerPositions(i);
         endIdx = startIdx + packetSize - 1;

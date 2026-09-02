@@ -17,15 +17,15 @@ function cfg = ProcessConfig_exper()
     project_root = fileparts(inertial_research_dir);
     cfg.dataroot = fullfile(project_root, 'data', 'inertial-experiment', ...
         'algorithm-exploration');
-    cfg.inputfolder = fullfile(cfg.dataroot, 'input', 'experiment-raw');
-    cfg.preprocessedfolder = fullfile(cfg.dataroot, 'input', ...
-        'experiment-preprocessed');
-    cfg.referencefolder = fullfile(cfg.dataroot, 'input', ...
-        'experiment-reference');
+    cfg.case_name = 'case-06';
+    cfg.inputfolder = fullfile(cfg.dataroot, 'input', 'experiment', ...
+        cfg.case_name);
+    cfg.preprocessedfolder = cfg.inputfolder;
+    cfg.referencefolder = cfg.inputfolder;
     cfg.outputfolder = fullfile(cfg.dataroot, 'navigation-results', ...
-        'experiment');
+        'experiment', cfg.case_name);
     cfg.figurefolder = fullfile(cfg.dataroot, 'figures-tables', ...
-        'experiment');
+        'experiment', cfg.case_name);
 
     cfg.imufilepath = fullfile(cfg.inputfolder, 'IMU_120.txt');
     cfg.gnssfilepath = fullfile(cfg.inputfolder, 'pva_830.txt');

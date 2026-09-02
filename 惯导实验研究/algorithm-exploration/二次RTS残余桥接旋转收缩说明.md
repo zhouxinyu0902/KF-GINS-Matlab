@@ -2,13 +2,7 @@
 
 ## 1. 新增方法
 
-新增脚本：
-
-```text
-scripts/simulation/simulate_range_ins_rts_rotation_contraction.m
-```
-
-该脚本在 `simulate_range_ins_rts_comparison.m` 已实现的一次、二次 RTS 基础上，增加一种残余桥接误差驱动的旋转收缩方法，记为：
+当前方法位于 `functions/simulation/simulate_navigation_case.m`，由 `scripts/rts-algorithm-study` 下的四方法批处理入口调用。统一最简脚本 `run_rts_navigation_study.m` 不包含旋转收缩。该方法在一次、二次 RTS 基础上增加一种残余桥接误差驱动的旋转收缩方法，记为：
 
 ```text
 RC-2RTS（Residual-Bridge-Constrained Double RTS）

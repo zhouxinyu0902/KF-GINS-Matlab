@@ -1,4 +1,5 @@
 function GPGGA_430=read_gpgga_430_830(filename2)
+fprintf('    (3)读取GPGGA数据')
 % 一次性读取整个文件
 fid = fopen(filename2, 'rt');
 all_text = fread(fid, '*char')';
@@ -24,3 +25,5 @@ end
 
 % 提取有效数据
 GPGGA_430 = GPGGA_data(:, valid_mask);
+% 显示结果信息
+fprintf('成功解析 %d 条有效记录（总共 %d 行）\n', valid_mask(end), length(lines)-1);

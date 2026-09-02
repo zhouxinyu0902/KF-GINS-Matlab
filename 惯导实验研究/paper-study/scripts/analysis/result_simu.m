@@ -13,7 +13,44 @@ tabDir = paper_paths.paper_tables;
 ensureFolder(figDir);
 ensureFolder(tabDir);
 
+%% Fig. 1: 两组轨迹与信标布局合并并共享图例
+simulationInput1 = paper_paths.simulation_dataset1;
+simulationInput2 = paper_paths.simulation_dataset2;
 
+trajectorySpecs(1) = buildExperimentTrajectorySpec( ...
+    simulationInput1, "Dataset 1");
+trajectorySpecs(2) = buildExperimentTrajectorySpec( ...
+    simulationInput2, "Dataset 2");
+
+plot_combined_geo_trajectories_1( ...
+    trajectorySpecs, ...
+    figDir, ...
+    "simu-trajectory-and-beacon-layout-combined", ...
+    "BeaconNames", ["Beacon 1", "Beacon 2", "Beacon 3"], ...
+    "Downsample", 100, ...
+    "GeoMode",false);
+%% ========================================================================
+% Fig. 5: 两组仿真算法径向误差合并为双面板并共享图例
+% ========================================================================
+simulationSpecs(1) = buildSimulationAlgorithmSpec( ...
+    paper_paths.simulation_dataset1, ...
+    paper_paths.output_simulation_dataset1, ...
+    "Scenario 1");
+
+simulationSpecs(2) = buildSimulationAlgorithmSpec( ...
+    paper_paths.simulation_dataset2, ...
+    paper_paths.output_simulation_dataset2, ...
+    "Scenario 2");
+
+plot_combined_radial_comparison( ...
+    simulationSpecs, ...
+    figDir, ...
+    "simu-observ-algoCMP-combined", ...
+    "Labels", [ ...
+        "Forward ES-EKF", ...
+        "Segmented local single-stage RTS", ...
+        "Two-stage cross-window RTS"], ...
+    "YLimits", [0, 500; 0, 500]);
 %% ========================================================================
 % 仿真数据组1
 % ========================================================================
@@ -40,6 +77,9 @@ processSimulationDataset( ...
     tabDir);
 
 
+
+
+
 %% ========================================================================
 % 单组仿真数据处理
 % ========================================================================
@@ -62,31 +102,31 @@ fprintf("============================================================\n");
 
 
 %% ------------------------------------------------------------------------
-% 1. 仿真轨迹与信标布局
-% -------------------------------------------------------------------------
-rangeFiles = {
-    fullfile(inDir, "range1.txt")
-    fullfile(inDir, "range2.txt")
-    fullfile(inDir, "range3.txt")
-    };
-
-if isfile(cfg.truthpath) && allFilesExist(rangeFiles)
-
-    plot_trajectory_from_range_files( ...
-        cfg.truthpath, ...
-        rangeFiles, ...
-        figDir, ...
-        "BeaconNames", ["Beacon 1", "Beacon 2", "Beacon 3"], ...
-        "FilePrefix", prefix + "trajectory-beacon-layout", ...
-        "Downsample", 100, ...
-        "FigureTitle", "", ...
-        "PlotGeo", false);
-
-else
-    warning( ...
-        "Simulation %s缺少truth.nav或range文件，跳过轨迹图。", ...
-        dataTag);
-end
+% % 1. 仿真轨迹与信标布局
+% % -------------------------------------------------------------------------
+% rangeFiles = {
+%     fullfile(inDir, "range1.txt")
+%     fullfile(inDir, "range2.txt")
+%     fullfile(inDir, "range3.txt")
+%     };
+% 
+% if isfile(cfg.truthpath) && allFilesExist(rangeFiles)
+% 
+%     plot_trajectory_from_range_files( ...
+%         cfg.truthpath, ...
+%         rangeFiles, ...
+%         figDir, ...
+%         "BeaconNames", ["Beacon 1", "Beacon 2", "Beacon 3"], ...
+%         "FilePrefix", prefix + "trajectory-beacon-layout", ...
+%         "Downsample", 100, ...
+%         "FigureTitle", "", ...
+%         "PlotGeo", false);
+% 
+% else
+%     warning( ...
+%         "Simulation %s缺少truth.nav或range文件，跳过轨迹图。", ...
+%         dataTag);
+% end
 
 
 %% ------------------------------------------------------------------------
@@ -149,17 +189,23 @@ geometryNavFiles = {
     fullfile(altDir, "ES-EKF-Fixed-B3.nav")
     fullfile(altDir, "ES-EKF-Alternating.nav")
     };
-labels={'PureIns','ES-EKF-Fixed-B1','ES-EKF-Fixed-B2','ES-EKF-Fixed-B3','ES-EKF-Alternating'};
+labels = {'Pure INS', 'Fixed-B1', 'Fixed-B2', 'Fixed-B3', 'Alternating'};
 if allFilesExist(geometryNavFiles)
+
+    geometryYLim = [];
+    if dataTag == "1"
+        % 为Dataset 1中的纯惯导峰值保留上部留白。
+        geometryYLim = [0, 3200];
+    end
 
     runRadialComparison( ...
         cfg.truthpath, ...
         geometryNavFiles, ...
         datasetTitle, ...
-        [], ...
+        geometryYLim, ...
         figDir, ...
         tabDir, ...
-        prefix + "observ-threewaysCMP",labels);
+        prefix + "observ-threewaysCMP", labels, true);
 
 else
     fprintf( ...
@@ -171,20 +217,17 @@ end
 
 
 %% ------------------------------------------------------------------------
-% 4. Pure INS、ES-EKF、单阶段RTS和两阶段RTS对比
+% 4. ES-EKF、单阶段RTS和两阶段RTS对比
 % -------------------------------------------------------------------------
-pureInsFile = pickExistingFile({
-    fullfile(navRootDir, "PureIns.nav")
-    fullfile(altDir, "PureIns.nav")
-    });
-
 algoNavFiles = {
-    pureInsFile
     fullfile(navRootDir, "ES-EKF.nav")
     fullfile(navRootDir, "Single-stage RTS.nav")
     fullfile(navRootDir, "Proposed two-stage RTS.nav")
     };
-labels ={'Pure INS','Forward ES-EKF','Segmented local single-stage RTS','Two-stage cross-window RTS'};
+labels = { ...
+    'Forward ES-EKF', ...
+    'Segmented local single-stage RTS', ...
+    'Two-stage cross-window RTS'};
 if allFilesExist(algoNavFiles)
 
     runRadialComparison( ...
@@ -194,7 +237,7 @@ if allFilesExist(algoNavFiles)
         algoYLim, ...
         figDir, ...
         tabDir, ...
-        prefix + "observ-algoCMP",labels);
+        prefix + "observ-algoCMP", labels, false);
 
 else
     warning( ...
@@ -214,19 +257,37 @@ end
 % ========================================================================
 function runRadialComparison( ...
     truthPath, navFiles, datasetTitle, yLimits, ...
-    figDir, tabDir, baseName,labels)
+    figDir, tabDir, baseName, labels, exportPlot)
+
+if nargin < 9
+    exportPlot = true;
+end
 
 navFiles = cellstr(string(navFiles));
 
 [figHandle, excelData] = calc_radial_error_gjb( ...
     truthPath, navFiles{:});
 
+scaleH = 1.3;
+
+pos = figHandle.Position;   % [left, bottom, W, H]
+pos(4) = pos(4) * scaleH;   % 仅高度放大，宽度不变
+figHandle.Position = pos;
+
+% 锁死，savefig保存住这个窗口尺寸
+figHandle.Position = figHandle.Position;
+
 figure(figHandle);
 
 xlabel("Time (s)");
 ylabel("Radial error (m)");
 title(datasetTitle);
-legend(labels)
+lgd = legend(labels, ...
+    "Location", "northoutside", ...
+    "Orientation", "horizontal", ...
+    "NumColumns", min(3, numel(labels)), ...
+    "Interpreter", "none");
+lgd.AutoUpdate = "off";
 if ~isempty(yLimits)
     ylim(yLimits);
 end
@@ -234,7 +295,7 @@ end
 grid on;
 box on;
 
-% ax = gca;
+ax = gca;
 % set(ax, ...
 %     "FontName", "Times New Roman", ...
 %     "FontSize", 10, ...
@@ -244,10 +305,12 @@ ax.XAxis.Exponent = 0;
 ax.YAxis.Exponent = 0;
 
 %% 图片导出
-exportFigurePair( ...
-    figHandle, ...
-    figDir, ...
-    baseName);
+if exportPlot
+    exportFigurePair( ...
+        figHandle, ...
+        figDir, ...
+        baseName);
+end
 
 %% 表格导出
 excelData = roundNumericCells( ...
@@ -262,8 +325,10 @@ writecell( ...
     excelFile, ...
     "Sheet", "RMSE");
 
-fprintf("Figure saved: %s\n", ...
-    fullfile(figDir, baseName));
+if exportPlot
+    fprintf("Figure saved: %s\n", ...
+        fullfile(figDir, baseName));
+end
 
 fprintf("Table saved:  %s\n", ...
     excelFile);
@@ -305,6 +370,25 @@ catch
         "ContentType", "image", ...
         "Resolution", 600);
 end
+
+end
+
+
+%% ========================================================================
+% 构造合并算法图所需的单组仿真配置
+% ========================================================================
+function spec = buildSimulationAlgorithmSpec(inDir, navRootDir, panelTitle)
+
+cfg = config_simu(inDir);
+
+spec = struct;
+spec.truthPath = cfg.truthpath;
+spec.navFiles = {
+    fullfile(navRootDir, "ES-EKF.nav")
+    fullfile(navRootDir, "Single-stage RTS.nav")
+    fullfile(navRootDir, "Proposed two-stage RTS.nav")
+    };
+spec.panelTitle = panelTitle;
 
 end
 
@@ -450,5 +534,22 @@ exportgraphics( ...
     "Resolution", 600);
 
 close(figHandle);
+
+end
+%% ========================================================================
+%  构造一组实测轨迹与信标配置
+% ========================================================================
+function spec = buildExperimentTrajectorySpec(inDir, panelTitle)
+
+cfg = config_simu(inDir);
+
+spec = struct;
+spec.truthPath = cfg.truthpath;
+spec.rangeFiles = {
+    fullfile(inDir, "range1.txt")
+    fullfile(inDir, "range2.txt")
+    fullfile(inDir, "range3.txt")
+    };
+spec.panelTitle = panelTitle;
 
 end

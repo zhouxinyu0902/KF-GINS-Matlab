@@ -26,6 +26,21 @@ time = (starttime:dt:endtime)';
 
 % 内插
 newresult = interp1(result_all(:, 1), result_all(:, 2:10), time, 'linear', 'extrap');
+% 去除重复时间戳
+[~, unique_idx] = unique(ref(:,1), 'stable');
+ref = ref(unique_idx, :);
+
+% 按时间排序
+ref = sortrows(ref, 1);
+
+% 插值
+newref = interp1( ...
+    ref(:,1), ...
+    ref(:,2:10), ...
+    time, ...
+    'linear', ...
+    'extrap');
+
 newref = interp1(ref(:, 1), ref(:, 2:10), time, 'linear', 'extrap');
 
 % 计算原始误差

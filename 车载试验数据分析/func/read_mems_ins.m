@@ -1,5 +1,5 @@
 function [IMU_DATA_430,GPCHCX_430,GPGGA_430]=read_mems_ins(filename,filename1,filename2)
-tic
+% tic
 
 % % 读取文件
 fid = fopen(filename, 'rb');
@@ -14,21 +14,10 @@ headerPositions = find(allData(1:end-5) == frameHeader(1) & ...
     allData(5:end-1) == frameHeader(5)& ...
     allData(6:end) == frameHeader(6));
 IMU_DATA_430=read_rawimub_430_830(filename,headerPositions);
-disp("读取430的imu数据")
-toc
-disp('-----------------')
+
 %% ----提取GPCHCX
-
-tic
 GPCHCX_430 = read_gpchcx_430_830(filename1);
-disp("读取430的GPCHCX数据")
-toc
-disp('-----------------')
-
 %% ----提取GPGGA
-
-tic
 GPGGA_430=read_gpgga_430_830(filename2);
-disp("读取430的GPGGA数据")
-toc
-disp('-----------------')
+
+

@@ -12,7 +12,7 @@ paper_paths = setup_paper_study();
 param = Param();
 
 % 运行设置
-input_ids = 5:6;                    % 对应论文 Dataset 1/2
+input_ids = 5;                    % 对应论文 Dataset 1/2
 unit_types = "rad";                % 可扩展为 ["rad", "m"]
 solution_modes = ["pure-ins", "range-aided"];
 range_std_m = 6;
@@ -25,7 +25,7 @@ for input_id = input_ids
     fprintf('======================================================\n');
 
     in_dir = fullfile(paper_paths.external_experiment_root, ...
-        ['input', num2str(input_id)]);
+        ['case-0', num2str(input_id)],'input');
     out_dir = fullfile(paper_paths.output_experiment, ...
         ['dataset', num2str(input_id - 4)]);
     if ~exist(out_dir, 'dir'), mkdir(out_dir); end

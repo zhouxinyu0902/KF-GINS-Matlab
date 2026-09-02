@@ -26,7 +26,7 @@ function paths = setup_paper_study()
     paths.root = topic_root;
     paths.project_root = project_root;
     paths.external_experiment_root = ...
-        'F:\2_Data\惯导试验\实验数据\All_data';
+        'D:\Github\KF-GINS-Matlab\data\experiment-data\experiment-01';
     paths.data_root = fullfile(project_root, 'data', ...
         'inertial-experiment', 'paper-study');
 
@@ -53,8 +53,10 @@ function paths = setup_paper_study()
         'experiment');
     paths.simulation_figures_tables = fullfile(paths.figures_tables, ...
         'simulation');
+    % paths.paper_figures = fullfile(paths.figures_tables, ...
+    %     'paper-artifacts', 'figures');
     paths.paper_figures = fullfile(paths.figures_tables, ...
-        'paper-artifacts', 'figures');
+        'paper-artifacts', 'figures-new');
     paths.paper_tables = fullfile(paths.figures_tables, ...
         'paper-artifacts', 'tables');
 

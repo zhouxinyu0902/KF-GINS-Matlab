@@ -3,7 +3,7 @@ function GPCHCX_430 = read_gpchcx_430_830(filename1)
 fid = fopen(filename1, 'rt');
 all_text = fread(fid, '*char')';
 fclose(fid);
-
+fprintf('    (2)读取GPCHCX数据,')
 % 分割成行
 lines = strsplit(all_text, '\n');
 

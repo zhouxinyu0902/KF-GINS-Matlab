@@ -2,7 +2,7 @@
 
 ## 1. 目的
 
-本次新增独立脚本 `scripts/simulation/simulate_range_ins_rts_comparison.m`，在不修改已经验证的 `simulate_range_ins_forward_backward.m` 的前提下，把 `scripts/experiment/FGO_range_ins_rad.m` 中的分段 RTS 思路引入仿真。
+统一主脚本为 `scripts/rts-algorithm-study/run_rts_navigation_study.m`，通过 `data_source` 切换仿真/实测输入，只保留前向EKF、一次RTS和二次RTS。旋转收缩、固定滞后和专题注入位于 `functions/simulation/simulate_navigation_case.m`；早期独立版本已移入 `archive/legacy/simulation`。
 
 新脚本统一生成并比较以下五种结果：
 
@@ -106,9 +106,9 @@ data/inertial-experiment/algorithm-exploration/navigation-results/simulation/for
 在 MATLAB 中执行：
 
 ```matlab
-run('D:\Github\KF-GINS-Matlab\惯导实验研究\setup_inertial_experiment.m');
-run(fullfile('D:\Github\KF-GINS-Matlab', '惯导实验研究', ...
-    'scripts', 'simulation', 'simulate_range_ins_rts_comparison.m'));
+cd('D:\Github\KF-GINS-Matlab\惯导实验研究\algorithm-exploration');
+setup_inertial_experiment();
+run_rts_navigation_study;
 ```
 
 ## 7. 解释结果时的注意事项

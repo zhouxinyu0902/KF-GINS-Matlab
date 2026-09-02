@@ -200,99 +200,122 @@ function value = rmseFinite(errorVector)
 end
 
 function plotErrors(errSeries, methodNames)
-    % figure('Color', 'w', 'Name', 'Height and Vertical Velocity Error');
-    myfigurestartup(7,5,'zxy');
-    
-    % 为了安全获取全局的时间起点和终点
-    t_start = 0; t_end = 100; % 默认 fallback
+    figHandle = myfigurestartup(7, 5, 'zxy');
+    figure(figHandle);
+    clf(figHandle);
+
+    tStart = 0;
+    tEnd = 100;
     for k = 1:numel(errSeries)
         if ~isempty(errSeries{k})
-            time = errSeries{k}.time-errSeries{k}.time(1);
-            t_start = time(1);
-            t_end = time(end);
+            time = errSeries{k}.time - errSeries{k}.time(1);
+            tStart = time(1);
+            tEnd = time(end);
             break;
         end
     end
+
     colors = [
-    0.85, 0.15, 0.15;  % 正酒红：低饱和红色，不会刺眼且辨识度拉满
-    0.10, 0.35, 0.70;  % 深海蓝：顶刊使用频率最高的主色，视觉柔和不发飘
-    0.10, 0.60, 0.20;  % 深墨绿：和蓝、红的色差极大，几乎不会混淆
-    0.60, 0.20, 0.70;  % 暗紫：低饱和紫色，和前四种颜色边界清晰
-    0.95, 0.50, 0.10   % 深橙：替代容易和白色混淆的明黄，对比度充足
-    ];
-    line_styles = {'-', '--', ':', '-.'};
-    %% ======================= 子图 1：高度误差 =======================
-    ax1 = subplot(2, 1, 1);
-    hold on;
-    grid on;
+        0.85, 0.15, 0.15;
+        0.10, 0.35, 0.70;
+        0.10, 0.60, 0.20;
+        0.60, 0.20, 0.70;
+        0.95, 0.50, 0.10
+        ];
+    lineStyles = {'-', '--', ':', '-.'};
+
+    layout = tiledlayout( ...
+        figHandle, 2, 3, ...
+        'Padding', 'compact', ...
+        'TileSpacing', 'compact');
+
+    axHeight = nexttile(layout, [1, 2]);
+    heightHandles = plotErrorFamily( ...
+        axHeight, errSeries, 'heightError', colors, lineStyles);
+    xlabel(axHeight, 'Time (s)');
+    ylabel(axHeight, 'Height error (m)');
+    title(axHeight, '(a) Height error');
+    xlim(axHeight, [tStart, tEnd]);
+
+    axHeightZoom = nexttile(layout);
+    plotErrorFamily( ...
+        axHeightZoom, errSeries, 'heightError', colors, lineStyles);
+    xlabel(axHeightZoom, 'Time (s)');
+    title(axHeightZoom, '(b) Enlarged view');
+    xlim(axHeightZoom, [tStart, min(tStart + 50, tEnd)]);
+    ylim(axHeightZoom, [-1, 1]);
+
+    axVelocity = nexttile(layout, [1, 2]);
+    plotErrorFamily( ...
+        axVelocity, errSeries, 'verticalVelocityError', colors, lineStyles);
+    xlabel(axVelocity, 'Time (s)');
+    ylabel(axVelocity, 'Vertical velocity error (m/s)');
+    title(axVelocity, '(c) Vertical velocity error');
+    xlim(axVelocity, [tStart, tEnd]);
+
+    axVelocityZoom = nexttile(layout);
+    plotErrorFamily( ...
+        axVelocityZoom, errSeries, 'verticalVelocityError', colors, lineStyles);
+    xlabel(axVelocityZoom, 'Time (s)');
+    title(axVelocityZoom, '(d) Enlarged view');
+    [zoomStart, zoomEnd] = chooseVelocityZoomRange(tStart, tEnd);
+    xlim(axVelocityZoom, [zoomStart, zoomEnd]);
+    ylim(axVelocityZoom, [-1, 0.5]);
+
+    lgd = legend( ...
+        axHeight, ...
+        heightHandles, ...
+        cellstr(methodNames), ...
+        'Interpreter', 'none', ...
+        'Orientation', 'horizontal', ...
+        'NumColumns', numel(methodNames), ...
+        'Box', 'off');
+    lgd.Layout.Tile = 'north';
+    lgd.AutoUpdate = 'off';
+end
+
+
+function handles = plotErrorFamily( ...
+    ax, errSeries, fieldName, colors, lineStyles)
+
+    hold(ax, 'on');
+    grid(ax, 'on');
+    box(ax, 'on');
+
+    handles = gobjects(0);
     for k = 1:numel(errSeries)
         if isempty(errSeries{k})
             continue;
         end
-        time = errSeries{k}.time-errSeries{k}.time(1);
-        plot(time, errSeries{k}.heightError, 'LineWidth', 1.0,'Color',colors(k,:),'LineStyle',line_styles{k});
+
+        time = errSeries{k}.time - errSeries{k}.time(1);
+        styleIndex = mod(k - 1, numel(lineStyles)) + 1;
+        handles(end + 1, 1) = plot( ...
+            ax, ...
+            time, ...
+            errSeries{k}.(fieldName), ...
+            'LineWidth', 1.0, ...
+            'Color', colors(k, :), ...
+            'LineStyle', lineStyles{styleIndex}); %#ok<AGROW>
     end
-    xlabel('Time (s)');
-    ylabel('Height error (m)');
-    title('Height Error');
-    legend(methodNames, 'Interpreter', 'none', 'Location', 'best');
-    xlim([t_start t_end]);
-    
-    % --------- 局部放大（高度） ---------
-    ax_inset1 = axes('Position', [0.6 0.65 0.25 0.18]); 
-    hold on; 
-    grid on;
-    box on; 
-    
-    for k = 1:numel(errSeries)
-        if isempty(errSeries{k})
-            continue;
-        end
-        time = errSeries{k}.time-errSeries{k}.time(1);
-        plot(time, errSeries{k}.heightError, 'LineWidth', 1.0,'Color',colors(k,:),'LineStyle',line_styles{k});
+
+    set(ax, ...
+        'FontName', 'Times New Roman', ...
+        'FontSize', 8, ...
+        'LineWidth', 0.8);
+    ax.XAxis.Exponent = 0;
+    ax.YAxis.Exponent = 0;
+end
+
+
+function [zoomStart, zoomEnd] = chooseVelocityZoomRange(tStart, tEnd)
+
+    zoomStart = max(tStart, 1800);
+    zoomEnd = min(tEnd, 2600);
+
+    if zoomEnd <= zoomStart
+        duration = max(tEnd - tStart, eps);
+        zoomStart = tStart + 0.65 * duration;
+        zoomEnd = tStart + 0.85 * duration;
     end
-    
-    xlim(ax_inset1, [t_start, t_start + 50]);
-    ylim(ax_inset1, [-1, 1]);
-    ax_inset1.FontSize = 8;
-    title(ax_inset1, 'Zoom In', 'FontSize', 9, 'FontWeight', 'normal');
-    
-    %% ======================= 子图 2：垂向速度误差 =======================
-    ax2 = subplot(2, 1, 2);
-    hold on;
-    grid on;
-    for k = 1:numel(errSeries)
-        if isempty(errSeries{k})
-            continue;
-        end
-        time = errSeries{k}.time-errSeries{k}.time(1);
-        plot(time, errSeries{k}.verticalVelocityError, 'LineWidth', 1.0,'Color',colors(k,:),'LineStyle',line_styles{k});
-    end
-    xlabel('Time (s)');
-    ylabel('Vertical velocity error (m/s)');
-    title('Vertical Velocity Error');
-    % legend(methodNames, 'Interpreter', 'none', 'Location', 'best');
-    xlim([t_start t_end]);
-    
-    % --------- 局部放大（垂向速度） ---------
-    % Position 的第二个参数(底部距离)从 0.65 改为 0.22，使其落在下方子图的右上角
-    ax_inset2 = axes('Position', [0.6 0.22 0.25 0.18]); 
-    hold on; 
-    grid on;
-    box on; 
-    
-    for k = 1:numel(errSeries)
-        if isempty(errSeries{k})
-            continue;
-        end
-        time = errSeries{k}.time-errSeries{k}.time(1);
-        plot(time, errSeries{k}.verticalVelocityError, 'LineWidth', 1.0,'Color',colors(k,:),'LineStyle',line_styles{k});
-    end
-    
-    xlim(ax_inset2, [1800, 2600]);
-    % 这里的速度误差范围我预设为 ±0.5，你可以根据实际曲线的收敛情况调整
-    ylim(ax_inset2, [-1, 0.5]); 
-    
-    ax_inset2.FontSize = 8;
-    title(ax_inset2, 'Zoom In', 'FontSize', 9, 'FontWeight', 'normal');
 end

@@ -10,7 +10,89 @@ tabDir = paper_paths.paper_tables;
 ensureFolder(figDir);
 ensureFolder(tabDir);
 
-%% 根据生成的距离文件统一绘制轨迹和信标
+%% Fig. 7: 两组轨迹与信标布局合并并共享图例
+experimentInput1 = fullfile( ...
+    paper_paths.external_experiment_root, 'input5');
+experimentInput2 = fullfile( ...
+    paper_paths.external_experiment_root, 'input6');
+
+trajectorySpecs(1) = buildExperimentTrajectorySpec( ...
+    experimentInput1, "Dataset 1");
+trajectorySpecs(2) = buildExperimentTrajectorySpec( ...
+    experimentInput2, "Dataset 2");
+
+plot_combined_geo_trajectories_1( ...
+    trajectorySpecs, ...
+    figDir, ...
+    "exper-trajectory-and-beacon-layout-combined", ...
+    "BeaconNames", ["Beacon 1", "Beacon 2", "Beacon 3"], ...
+    "Downsample", 100, ...
+    "BaseMap", "streets");
+
+
+%% Fig. 11: 两组固定/轮换信标径向误差合并并共享图例
+rangingStrategySpecs(1) = buildExperimentRangingStrategySpec( ...
+    experimentInput1, ...
+    paper_paths.output_experiment_dataset1, ...
+    "Dataset 1");
+rangingStrategySpecs(2) = buildExperimentRangingStrategySpec( ...
+    experimentInput2, ...
+    paper_paths.output_experiment_dataset2, ...
+    "Dataset 2");
+
+plot_combined_radial_comparison( ...
+    rangingStrategySpecs, ...
+    figDir, ...
+    "exper-observ-threewaysCMP-combined", ...
+    "Labels", [ ...
+        "Pure INS", ...
+        "Fixed-B1", ...
+        "Fixed-B2", ...
+        "Fixed-B3", ...
+        "Alternating"], ...
+    "LegendFontSize", 8.5);
+
+
+%% Fig. 8: 两组高度处理结果合并并共享图例
+heightSpecs(1) = buildExperimentHeightSpec( ...
+    experimentInput1, ...
+    paper_paths.output_experiment_dataset1, ...
+    "Dataset 1");
+heightSpecs(2) = buildExperimentHeightSpec( ...
+    experimentInput2, ...
+    paper_paths.output_experiment_dataset2, ...
+    "Dataset 2");
+
+plot_combined_radial_comparison( ...
+    heightSpecs, ...
+    figDir, ...
+    "exper-height-method-CMP-combined", ...
+    "Labels", [ ...
+        "No-height update", ...
+        "Direct assignment", ...
+        "Measurement update"]);
+
+
+%% Fig. 12: 两组试验算法结果合并并共享图例
+algorithmSpecs(1) = buildExperimentAlgorithmSpec( ...
+    experimentInput1, ...
+    paper_paths.output_experiment_dataset1, ...
+    "Dataset 1");
+algorithmSpecs(2) = buildExperimentAlgorithmSpec( ...
+    experimentInput2, ...
+    paper_paths.output_experiment_dataset2, ...
+    "Dataset 2");
+
+plot_combined_radial_comparison( ...
+    algorithmSpecs, ...
+    figDir, ...
+    "exper-observ-algoCMP-combined", ...
+    "Labels", [ ...
+        "Forward ES-EKF", ...
+        "Segmented local single-stage RTS", ...
+        "Two-stage cross-window RTS"], ...
+    "YLimits", [0, 1000; 0, 500]);
+
 
 %% 数据组5，对应论文中的Dataset 1
 processDataset( ...
@@ -22,6 +104,7 @@ processDataset( ...
     figDir, ...
     tabDir);
 
+
 %% 数据组6，对应论文中的Dataset 2
 processDataset( ...
     fullfile(paper_paths.external_experiment_root, 'input6'), ...
@@ -31,6 +114,8 @@ processDataset( ...
     [0, 500], ...
     figDir, ...
     tabDir);
+
+
 
 
 %% ========================================================================
@@ -60,7 +145,7 @@ plot_trajectory_from_range_files( ...
     "BeaconNames", ["Beacon 1", "Beacon 2", "Beacon 3"], ...
     "FilePrefix", "exper-"+ fileTag +"trajectory-and-beacon-layout-" , ...
     "Downsample", 100, ...
-    "PlotGeo", true);
+    "PlotGeo", false);
 %% 1. 可观测性分析
 observFile = fullfile(paper_artifact_dir(altDir), "observ.mat");
 
@@ -99,10 +184,10 @@ navFiles = {
     fullfile(altDir, "ES-EKF-Fixed-B3.nav")
     fullfile(altDir, "ES-EKF-Alternating.nav")
     };
-labels={'PureIns','ES-EKF-Fixed-B1','ES-EKF-Fixed-B2','ES-EKF-Fixed-B3','ES-EKF-Alternating'};
+labels = {'Pure INS', 'Fixed-B1', 'Fixed-B2', 'Fixed-B3', 'Alternating'};
 runRadialComparison( ...
     cfg.truthpath, navFiles, datasetTitle, [], ...
-    figDir, tabDir, prefix + "observ-threewaysCMP",labels);
+    figDir, tabDir, prefix + "observ-threewaysCMP", labels, true);
 
 
 %% 3. 高度处理方式对比
@@ -116,7 +201,7 @@ heightNavFiles = {
 labels={'No-height update','Direct assignment','Measurement update'};
 runRadialComparison( ...
     cfg.truthpath, heightNavFiles, datasetTitle, [], ...
-    figDir, tabDir, prefix + "height-method-CMP",labels);
+    figDir, tabDir, prefix + "height-method-CMP", labels, false);
 
 % 垂向误差和垂向速度误差
 heightCsv = fullfile(tabDir, prefix + "height-vd-rmse.csv");
@@ -159,7 +244,7 @@ algoNavFiles = {
 labels ={'Forward ES-EKF','Segmented local single-stage RTS','Two-stage cross-window RTS'};
 runRadialComparison( ...
     cfg.truthpath, algoNavFiles, datasetTitle, algoYLim, ...
-    figDir, tabDir, prefix + "observ-algoCMP",labels);
+    figDir, tabDir, prefix + "observ-algoCMP", labels, false);
 
 
 % %% 5. 长基线结果对比
@@ -197,7 +282,11 @@ end
 % ========================================================================
 function runRadialComparison( ...
     truthPath, navFiles, datasetTitle, yLimits, ...
-    figDir, tabDir, baseName,labels)
+    figDir, tabDir, baseName, labels, exportPlot)
+
+if nargin < 9
+    exportPlot = true;
+end
 
 [figHandle, excelData] = calc_radial_error_gjb( ...
     truthPath, navFiles{:});
@@ -207,7 +296,12 @@ figure(figHandle);
 xlabel("Time (s)");
 ylabel("Radial error (m)");
 title(datasetTitle);
-legend(labels);
+lgd = legend(labels, ...
+    "Location", "northoutside", ...
+    "Orientation", "horizontal", ...
+    "NumColumns", min(3, numel(labels)), ...
+    "Interpreter", "none");
+lgd.AutoUpdate = "off";
 if ~isempty(yLimits)
     ylim(yLimits);
 end
@@ -216,7 +310,9 @@ grid on;
 box on;
 
 % PNG与PDF均保存至figs
-exportFigurePair(figHandle, figDir, baseName);
+if exportPlot
+    exportFigurePair(figHandle, figDir, baseName);
+end
 
 % 数值统一保留两位小数
 excelData = roundNumericCells(excelData, 2);
@@ -225,7 +321,9 @@ excelData = roundNumericCells(excelData, 2);
 excelFile = fullfile(tabDir, baseName + ".xlsx");
 writecell(excelData, excelFile, "Sheet", "RMSE");
 
-fprintf("Figure saved: %s\n", fullfile(figDir, baseName));
+if exportPlot
+    fprintf("Figure saved: %s\n", fullfile(figDir, baseName));
+end
 fprintf("Table saved:  %s\n", excelFile);
 
 close(figHandle);
@@ -356,5 +454,86 @@ exportgraphics( ...
     "Resolution", 600);
 
 close(figHandle);
+
+end
+
+
+%% ========================================================================
+%  构造一组实测轨迹与信标配置
+% ========================================================================
+function spec = buildExperimentTrajectorySpec(inDir, panelTitle)
+
+cfg = config_1(inDir);
+
+spec = struct;
+spec.truthPath = cfg.truthpath;
+spec.rangeFiles = {
+    fullfile(inDir, "range1.txt")
+    fullfile(inDir, "range2.txt")
+    fullfile(inDir, "range3.txt")
+    };
+spec.panelTitle = panelTitle;
+
+end
+
+
+%% ========================================================================
+%  构造一组固定/轮换信标径向误差对比配置
+% ========================================================================
+function spec = buildExperimentRangingStrategySpec( ...
+    inDir, navOutputDir, panelTitle)
+
+cfg = config_1(inDir);
+alternatingDir = fullfile(navOutputDir, "alt-B1-B2-B3");
+
+spec = struct;
+spec.truthPath = cfg.truthpath;
+spec.navFiles = {
+    fullfile(navOutputDir, "PureIns.nav")
+    fullfile(alternatingDir, "ES-EKF-Fixed-B1.nav")
+    fullfile(alternatingDir, "ES-EKF-Fixed-B2.nav")
+    fullfile(alternatingDir, "ES-EKF-Fixed-B3.nav")
+    fullfile(alternatingDir, "ES-EKF-Alternating.nav")
+    };
+spec.panelTitle = panelTitle;
+
+end
+
+
+%% ========================================================================
+%  构造一组高度处理方式对比配置
+% ========================================================================
+function spec = buildExperimentHeightSpec(inDir, navOutputDir, panelTitle)
+
+cfg = config_1(inDir);
+heightDir = fullfile(navOutputDir, "heightwayCMP");
+
+spec = struct;
+spec.truthPath = cfg.truthpath;
+spec.navFiles = {
+    fullfile(heightDir, "No-height update.nav")
+    fullfile(heightDir, "Direct assignment.nav")
+    fullfile(heightDir, "Measurement update.nav")
+    };
+spec.panelTitle = panelTitle;
+
+end
+
+
+%% ========================================================================
+%  构造一组试验算法对比配置
+% ========================================================================
+function spec = buildExperimentAlgorithmSpec(inDir, navOutputDir, panelTitle)
+
+cfg = config_1(inDir);
+
+spec = struct;
+spec.truthPath = cfg.truthpath;
+spec.navFiles = {
+    fullfile(navOutputDir, "ESKF.nav")
+    fullfile(navOutputDir, "Single-stage RTS.nav")
+    fullfile(navOutputDir, "Proposed two-stage RTS.nav")
+    };
+spec.panelTitle = panelTitle;
 
 end
