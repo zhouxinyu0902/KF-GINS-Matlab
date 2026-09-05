@@ -15,19 +15,24 @@ function cfg = ProcessConfigforSimu_m(filepath)
     topic_dir = fileparts(fileparts(config_dir));
     inertial_research_dir = fileparts(topic_dir);
     project_root = fileparts(inertial_research_dir);
-    cfg.dataroot = fullfile(project_root, 'data', 'inertial-experiment', ...
-        'algorithm-exploration');
-    cfg.simulationroot = fullfile(cfg.dataroot, 'input', 'simulation');
+    cfg.dataroot = fullfile(project_root, 'data', 'inertial-experiment','algorithm-exploration');
     [~, case_name] = fileparts(filepath);
-    cfg.outputfolder = fullfile(cfg.dataroot, 'navigation-results', ...
-        'simulation', case_name);
-    cfg.figurefolder = fullfile(cfg.dataroot, 'figures-tables', ...
-        'simulation', case_name);
     cfg.imufilepath = [filepath,'/IMU_120.txt'];
     cfg.rangefile1path = [filepath,'/range1.txt'];
     cfg.rangefile2path =[filepath,'/range2.txt'] ;
     cfg.rangefile3path =[filepath,'/range3.txt'] ;
-    
+    cfg.outputfolder = fullfile(cfg.dataroot,'simulation', ...
+        case_name,'output', 'navigation-results');
+    cfg.figurefolder = fullfile(cfg.dataroot,'simulation', ...
+        case_name,'output', 'figures-tables');
+
+    required_dirs = {cfg.figurefolder, ...
+        cfg.outputfolder};
+    for index = 1:numel(required_dirs)
+        if ~isfolder(required_dirs{index})
+            mkdir(required_dirs{index});
+        end
+    end
 
     cfg.truthpath=[filepath,'/truth.txt'];
     %% configure

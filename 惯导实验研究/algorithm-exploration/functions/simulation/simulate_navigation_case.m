@@ -189,6 +189,16 @@ height_values = interp1(truth_all(:, 2), truth_all(:, 5), imudata(:, 1), ...
 height = [imudata(:, 1), height_values + ...
     options.depth_noise_std_m * randn(size(height_values))];
 
+% 参考 run_all_real_datasets_rtsfix.m：对夹在两个 IMU 历元之间的
+% 测距时刻守恒拆分 IMU 增量，使距离更新时刻与惯导状态时刻一致。
+% 插入后的测距历元直接进入下方唯一一套 EKF/RTS 主循环。
+[imudata, height, range_epoch_alignment] = ...
+    align_imu_to_range_epochs(imudata, height, rangedata(:, 1));
+if range_epoch_alignment.inserted_count > 0
+    fprintf('已插入 %d 个测距历元并拆分对应 IMU 增量。\n', ...
+        range_epoch_alignment.inserted_count);
+end
+
 if options.show_input_figure
     figure('Name', 'Simulation input');
     plot(truth_all(:, 3), truth_all(:, 4), 'LineWidth', 1.2);

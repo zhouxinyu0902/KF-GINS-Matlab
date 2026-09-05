@@ -18,15 +18,22 @@ function cfg = ProcessConfig_exper()
     cfg.dataroot = fullfile(project_root, 'data', 'inertial-experiment', ...
         'algorithm-exploration');
     cfg.case_name = 'case-06';
-    cfg.inputfolder = fullfile(cfg.dataroot, 'input', 'experiment', ...
-        cfg.case_name);
+    cfg.inputfolder = fullfile(cfg.dataroot,'experiment', ...
+        cfg.case_name, 'input');
     cfg.preprocessedfolder = cfg.inputfolder;
     cfg.referencefolder = cfg.inputfolder;
-    cfg.outputfolder = fullfile(cfg.dataroot, 'navigation-results', ...
-        'experiment', cfg.case_name);
-    cfg.figurefolder = fullfile(cfg.dataroot, 'figures-tables', ...
-        'experiment', cfg.case_name);
+    cfg.outputfolder = fullfile(cfg.dataroot,'experiment', ...
+        cfg.case_name,'output', 'navigation-results');
+    cfg.figurefolder = fullfile(cfg.dataroot,'experiment', ...
+        cfg.case_name,'output', 'figures-tables');
 
+    required_dirs = {cfg.figurefolder, ...
+        cfg.outputfolder};
+    for index = 1:numel(required_dirs)
+        if ~isfolder(required_dirs{index})
+            mkdir(required_dirs{index});
+        end
+    end
     cfg.imufilepath = fullfile(cfg.inputfolder, 'IMU_120.txt');
     cfg.gnssfilepath = fullfile(cfg.inputfolder, 'pva_830.txt');
     cfg.heightfilepath = fullfile(cfg.inputfolder, 'height.txt');

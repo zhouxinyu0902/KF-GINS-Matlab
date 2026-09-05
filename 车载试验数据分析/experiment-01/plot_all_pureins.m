@@ -26,6 +26,7 @@ duration_tolerance=1.0;
 K50=0.8326;
 meter_per_nmile=1852;
 second_per_hour=3600;
+cfg=setup_experiment_01();
 %% ======================== 2. 输出目录 ==========================
 output_dir=fullfile(experiment_root,'summary');
 if ~exist(output_dir,'dir')
@@ -50,17 +51,19 @@ fprintf('经纬度单位：deg\n');
 fprintf('CEP50方法 ：R50=K50*RMS(RER)\n');
 fprintf('K50       ：%.4f\n',K50);
 fprintf('============================================================\n\n');
+%% 画图
+fig=myfigurestartup(15,7,'prese');
 %% ======================== 4. 遍历各组实验 =====================
 for case_id=target_cases
     fprintf('------------------------------------------------------------\n');
     fprintf('Case %02d\n',case_id);
-    case_dir=fullfile(experiment_root,sprintf('case-%02d',case_id));
-    nav_file=fullfile(case_dir,'navigation-results','PureIns-rad.nav');
+    case_dir=cfg.case_navigation(case_id);
+    nav_file=fullfile(cfg.case_navigation(case_id),'PureIns-rad.nav');
     if ~exist(nav_file,'file')
         warning('Case %02d 找不到 PureIns-rad.nav：\n%s',case_id,nav_file);
         continue;
     end
-    truth_file=find_truth_file(case_dir);
+    truth_file=fullfile(cfg.case_input(case_id),'truth.nav');
     if isempty(truth_file)
         warning('Case %02d 找不到 truth.nav。',case_id);
         continue;
@@ -187,6 +190,19 @@ for case_id=target_cases
             CEP50=K50*RER_RMS;
         end
     end
+    %% 画图
+    subplot(2,4,case_id);
+    grid on;
+    hold on;
+    plot(elapsed_time, radial_error, 'b-');
+    yline(CEP50*meter_per_nmile, 'r--');
+    text(100,CEP50*meter_per_nmile,sprintf("%.2f n mile",CEP50))
+    xlabel('Time/s');
+    ylabel('径向误差/m');
+    if case_id==1
+    legend('径向误差','CEP径向误差','Location','best');
+    end
+    hold off;
     %% 保存结果
     case_list(end+1,1)=case_id;
     duration_list(end+1,1)=actual_duration;
@@ -217,6 +233,7 @@ fprintf('\n============================================================\n');
 fprintf('汇总结果\n');
 fprintf('============================================================\n');
 disp(summary_table);
+
 %% ======================== 6. 保存 ==============================
 excel_path=fullfile(output_dir,'PureIns_first3600s_GJB729_statistics.xlsx');
 csv_path=fullfile(output_dir,'PureIns_first3600s_GJB729_statistics.csv');
@@ -227,21 +244,9 @@ fprintf('统计完成\n');
 fprintf('Excel : %s\n',excel_path);
 fprintf('CSV   : %s\n',csv_path);
 fprintf('============================================================\n');
+
+exportgraphics(fig,fullfile(output_dir,'8组数据纯惯导误差汇总对比图.png'),'Resolution',600)
 %% ======================== Local Function =======================
-function truth_file=find_truth_file(case_dir)
-truth_file='';
-candidates={fullfile(case_dir,'input','truth.nav'),fullfile(case_dir,'truth.nav'),fullfile(case_dir,'navigation-results','truth.nav')};
-for i=1:numel(candidates)
-    if exist(candidates{i},'file')
-        truth_file=candidates{i};
-        return;
-    end
-end
-files=dir(fullfile(case_dir,'**','truth.nav'));
-if ~isempty(files)
-    truth_file=fullfile(files(1).folder,files(1).name);
-end
-end
 function [north_error,east_error]=position_error_deg_to_ne(lat_est_deg,lon_est_deg,lat_true_deg,lon_true_deg,h_true)
 a=6378137.0;
 f=1/298.257223563;

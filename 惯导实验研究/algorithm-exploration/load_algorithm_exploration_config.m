@@ -6,7 +6,7 @@ function cfg = load_algorithm_exploration_config( ...
     position_error_unit = lower(string(position_error_unit));
     topic_dir = fileparts(mfilename('fullpath'));
     previous_dir = pwd;
-    restore_dir = onCleanup(@() cd(previous_dir)); %#ok<NASGU>
+    restore_dir = onCleanup(@() cd(previous_dir)); 
     if data_source == "simulation"
         if nargin < 3 || isempty(simulation_input_dir)
             error('加载仿真配置时必须提供 simulation_input_dir。');

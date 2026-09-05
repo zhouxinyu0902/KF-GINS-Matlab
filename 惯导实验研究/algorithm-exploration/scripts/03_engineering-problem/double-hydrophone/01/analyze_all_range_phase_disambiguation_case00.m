@@ -1,0 +1,756 @@
+clear; clc; close all;
+%% ============================================================
+% case-00 全部测距点：导航先验辅助长基线相位周期裁决
+%
+% 每次测距事件执行：
+%   1. INS传播至测距时刻
+%   2. 距离+深度量测更新
+%   3. 误差反馈，得到约束后的导航位置和姿态
+%   4. 导航位置 + 潜标位置 + 航向 -> 导航先验到达角
+%   5. 读取同步相位差，生成全部周期候选角
+%   6. 选择与导航先验角最接近的相位候选角
+%   7. truth计算真实到达角，仅用于评价是否选对
+%
+% 重点输出：
+%   theta_nav      ：导航先验到达角
+%   theta_true     ：真实到达角
+%   theta_selected ：导航先验选出的相位候选角
+%   is_correct     ：是否选对周期
+%
+% 角度定义：
+%   H1 -> H2 为基线轴；
+%   基线右侧法向 = baseline_axis + 90 deg；
+%   theta 为目标方向相对该法向的主值角，范围 [-90,90] deg。
+% ============================================================
+
+%% 1. 用户参数
+simulation_case = 'case-00';
+position_error_unit = "rad";
+
+range_interval_s = 420;              % 测距周期，s
+duration_s = 4621;                   % 总处理时间，s
+beacon_order = [1, 2, 3];            % 信标轮换顺序
+
+simulation_range_noise_std_m = 10;    % 仿真距离噪声，m
+simulation_depth_noise_std_m = 0.4;   % 仿真深度噪声，m
+random_seed = 1;
+
+baseline_m = 3.0;                    % 双水听器基线长度，m
+baseline_install_deg = 0;            % H1->H2相对船首安装角，deg
+carrier_hz = 3e3;                   % 声载频，Hz
+sound_speed_mps = 1500;              % 声速，m/s
+lambda = sound_speed_mps / carrier_hz;
+
+%% 2. 初始化工程
+script_dir = fileparts(mfilename('fullpath'));
+topic_dir = fileparts(fileparts(script_dir));
+addpath(topic_dir);
+
+paths = setup_inertial_experiment();
+param = Param();
+glvs;
+rng(random_seed, 'twister');
+
+case_name = simulation_case;
+input_dir = fullfile(paths.simulation_input, case_name);
+
+cfg = load_algorithm_exploration_config( ...
+    "simulation", position_error_unit, input_dir);
+
+if ~isfolder(input_dir)
+    error('仿真输入目录不存在：%s', input_dir);
+end
+
+cfg.userange = true;
+
+% 当前只使用rad位置误差状态链，与原导航程序保持一致
+range_update_function = @myRangeUpdate;
+feedback_function = @myErrorFeedback_range;
+height_update_function = @update_decoupled_height;
+propagation_function = @myInsPropagate_15state;
+
+%% 3. 读取IMU、truth和三个潜标距离源
+imudata_all = readmatrix(cfg.imufilepath, 'FileType', 'text');
+truth = readmatrix(cfg.truthpath, 'FileType', 'text');
+
+range_sources = { ...
+    readmatrix(cfg.rangefile1path, 'FileType', 'text'), ...
+    readmatrix(cfg.rangefile2path, 'FileType', 'text'), ...
+    readmatrix(cfg.rangefile3path, 'FileType', 'text')};
+
+%% 4. 按420 s间隔构造1->2->3轮换测距事件
+source_interval_s = median(diff(range_sources{1}(:, 1)));
+range_stride = round(range_interval_s / source_interval_s);
+
+if abs(range_stride * source_interval_s - range_interval_s) > 1e-6
+    error('测距间隔 %.3f s 不是源数据间隔 %.3f s 的整数倍。', ...
+        range_interval_s, source_interval_s);
+end
+
+for source_index = 1:numel(range_sources)
+    range_sources{source_index} = range_sources{source_index}( ...
+        range_stride:range_stride:end, :);
+end
+
+event_count = min(cellfun(@(x) size(x, 1), range_sources));
+rangedata = zeros(event_count, size(range_sources{1}, 2));
+range_beacon_id = zeros(event_count, 1);
+
+for event_index = 1:event_count
+    order_index = mod(event_index-1, numel(beacon_order)) + 1;
+    beacon_id = beacon_order(order_index);
+
+    rangedata(event_index, :) = ...
+        range_sources{beacon_id}(event_index, :);
+
+    range_beacon_id(event_index) = beacon_id;
+end
+
+% 与导航程序一致，对第3列距离加入随机噪声
+rangedata(:, 3) = rangedata(:, 3) + ...
+    simulation_range_noise_std_m * randn(size(rangedata, 1), 1);
+
+%% 5. 确定有效处理时间
+start_time = max([cfg.starttime, imudata_all(1, 1), truth(1, 2)]);
+end_time = min([start_time + duration_s, cfg.endtime, ...
+    imudata_all(end, 1), truth(end, 2)]);
+
+cfg.starttime = start_time;
+cfg.endtime = end_time;
+
+imu_mask = imudata_all(:, 1) >= start_time & ...
+    imudata_all(:, 1) <= end_time;
+imudata = imudata_all(imu_mask, :);
+
+range_mask = rangedata(:, 1) >= start_time & ...
+    rangedata(:, 1) <= end_time;
+rangedata = rangedata(range_mask, :);
+range_beacon_id = range_beacon_id(range_mask);
+
+if isempty(rangedata)
+    error('当前时间范围内没有测距事件。');
+end
+
+%% 6. 构造高度量测
+height_value = interp1( ...
+    truth(:, 2), truth(:, 5), imudata(:, 1), ...
+    'linear', 'extrap');
+
+height = [ ...
+    imudata(:, 1), ...
+    height_value + simulation_depth_noise_std_m * ...
+    randn(size(height_value))];
+
+%% 7. 将测距时刻插入IMU时间轴
+[imudata, height, range_epoch_alignment] = ...
+    align_imu_to_range_epochs( ...
+    imudata, height, rangedata(:, 1));
+
+if range_epoch_alignment.inserted_count > 0
+    fprintf('已插入 %d 个测距历元。\n', ...
+        range_epoch_alignment.inserted_count);
+end
+
+%% 8. truth预处理
+% 去掉重复时间，航向先unwrap再插值
+[truth_time, truth_unique_index] = ...
+    unique(truth(:, 2), 'stable');
+
+truth_unique = truth(truth_unique_index, :);
+
+truth_yaw_unwrap_rad = unwrap( ...
+    deg2rad(truth_unique(:, 11)));
+
+%% 9. 初始化导航滤波器
+[kf, navstate] = myInitialize_15state(cfg);
+
+kf.rangstd = simulation_range_noise_std_m;
+kf.depthstd = simulation_depth_noise_std_m;
+
+last_imu = imudata(1, :)';
+this_imu = imudata(1, :)';
+
+range_index = find( ...
+    rangedata(:, 1) >= this_imu(1), ...
+    1, 'first');
+
+%% 10. 预分配测距点分析结果
+maximum_range_count = size(rangedata, 1);
+
+result_time = nan(maximum_range_count, 1);
+result_beacon = nan(maximum_range_count, 1);
+
+bearing_nav_deg = nan(maximum_range_count, 1);
+bearing_true_deg = nan(maximum_range_count, 1);
+
+theta_nav_deg = nan(maximum_range_count, 1);
+theta_true_deg = nan(maximum_range_count, 1);
+theta_selected_deg = nan(maximum_range_count, 1);
+
+phase_meas_deg = nan(maximum_range_count, 1);
+
+selected_k = nan(maximum_range_count, 1);
+true_k = nan(maximum_range_count, 1);
+is_correct = false(maximum_range_count, 1);
+
+nav_theta_error_deg = nan(maximum_range_count, 1);
+selected_theta_error_deg = nan(maximum_range_count, 1);
+candidate_nav_difference_deg = nan(maximum_range_count, 1);
+
+nav_lat_deg = nan(maximum_range_count, 1);
+nav_lon_deg = nan(maximum_range_count, 1);
+truth_lat_deg = nan(maximum_range_count, 1);
+truth_lon_deg = nan(maximum_range_count, 1);
+
+candidate_count = nan(maximum_range_count, 1);
+all_candidate_angles = cell(maximum_range_count, 1);
+
+result_index = 0;
+
+%% 11. 主循环：执行全部测距事件
+fprintf('开始全部测距点相位周期裁决。\n');
+
+for imu_index = 2:size(imudata, 1)
+
+    last_imu = this_imu;
+    this_imu = imudata(imu_index, :)';
+
+    imu_dt = this_imu(1) - last_imu(1);
+    time_tolerance = max(1e-8, abs(imu_dt) * 0.25);
+
+    % 跳过异常未对齐测距点
+    while range_index <= size(rangedata, 1) && ...
+            rangedata(range_index, 1) < ...
+            last_imu(1) - time_tolerance
+
+        warning('测距时刻 %.6f s 未与IMU对齐，已跳过。', ...
+            rangedata(range_index, 1));
+
+        range_index = range_index + 1;
+    end
+
+    is_range_epoch = ...
+        range_index <= size(rangedata, 1) && ...
+        abs(last_imu(1) - rangedata(range_index, 1)) <= ...
+        time_tolerance;
+
+    %% 11.1 测距时刻
+    if is_range_epoch
+
+        result_index = result_index + 1;
+
+        range_time = rangedata(range_index, 1);
+        beacon_id = range_beacon_id(range_index);
+
+        %% 11.2 距离+深度更新
+        kf = range_update_function( ...
+            navstate, ...
+            rangedata(range_index, :), ...
+            height(imu_index-1, :), ...
+            kf);
+
+        %% 11.3 反馈到名义导航状态
+        [kf, navstate] = feedback_function(kf, navstate);
+
+        %% 11.4 当前导航状态
+        current_nav_lat_rad = navstate.pos(1);
+        current_nav_lon_rad = navstate.pos(2);
+
+        current_nav_heading_deg = mod( ...
+            navstate.att(3) * param.R2D, ...
+            360);
+
+        nav_lat_deg(result_index) = ...
+            current_nav_lat_rad * param.R2D;
+
+        nav_lon_deg(result_index) = ...
+            current_nav_lon_rad * param.R2D;
+
+        %% 11.5 当前潜标位置
+        beacon_lat_rad = rangedata(range_index, 4);
+        beacon_lon_rad = rangedata(range_index, 5);
+
+        %% 11.6 导航状态计算潜标绝对方位
+        bearing_nav_deg(result_index) = ...
+            calc_bearing_deg( ...
+            current_nav_lat_rad, ...
+            current_nav_lon_rad, ...
+            beacon_lat_rad, ...
+            beacon_lon_rad);
+
+        %% 11.7 导航状态计算阵列相对到达角
+        baseline_axis_nav_deg = mod( ...
+            current_nav_heading_deg + ...
+            baseline_install_deg, ...
+            360);
+
+        baseline_normal_nav_deg = mod( ...
+            baseline_axis_nav_deg + 90, ...
+            360);
+
+        theta_nav_raw = wrap180( ...
+            bearing_nav_deg(result_index) - ...
+            baseline_normal_nav_deg);
+
+        % 线阵相位的主值角限制到[-90,90]
+        theta_nav_deg(result_index) = ...
+            asind(sind(theta_nav_raw));
+
+        %% 11.8 truth插值到当前测距时刻
+        current_truth_lat_deg = interp1( ...
+            truth_time, ...
+            truth_unique(:, 3), ...
+            range_time, ...
+            'linear');
+
+        current_truth_lon_deg = interp1( ...
+            truth_time, ...
+            truth_unique(:, 4), ...
+            range_time, ...
+            'linear');
+
+        current_truth_heading_deg = mod( ...
+            rad2deg(interp1( ...
+            truth_time, ...
+            truth_yaw_unwrap_rad, ...
+            range_time, ...
+            'linear')), ...
+            360);
+
+        truth_lat_deg(result_index) = ...
+            current_truth_lat_deg;
+
+        truth_lon_deg(result_index) = ...
+            current_truth_lon_deg;
+
+        %% 11.9 truth计算真实绝对方位
+        bearing_true_deg(result_index) = ...
+            calc_bearing_deg( ...
+            deg2rad(current_truth_lat_deg), ...
+            deg2rad(current_truth_lon_deg), ...
+            beacon_lat_rad, ...
+            beacon_lon_rad);
+
+        %% 11.10 truth计算真实阵列相对到达角
+        baseline_axis_true_deg = mod( ...
+            current_truth_heading_deg + ...
+            baseline_install_deg, ...
+            360);
+
+        baseline_normal_true_deg = mod( ...
+            baseline_axis_true_deg + 90, ...
+            360);
+
+        theta_true_raw = wrap180( ...
+            bearing_true_deg(result_index) - ...
+            baseline_normal_true_deg);
+
+        theta_true_deg(result_index) = ...
+            asind(sind(theta_true_raw));
+
+        %% 11.11 读取当前潜标同步相位量测
+        phase_file = fullfile( ...
+            input_dir, ...
+            sprintf('phase%d.txt', beacon_id));
+
+        if ~isfile(phase_file)
+            error('找不到相位文件：%s', phase_file);
+        end
+
+        phase_data = readmatrix( ...
+            phase_file, ...
+            'FileType', 'text');
+
+        [phase_time_error, phase_row] = min( ...
+            abs(phase_data(:, 1) - range_time));
+
+        if phase_time_error > ...
+                max(0.51 * source_interval_s, 1e-6)
+            error(['Beacon %d 在 %.3f s 附近不存在同步' ...
+                '相位量测。'], ...
+                beacon_id, range_time);
+        end
+
+        phase_meas_deg(result_index) = ...
+            phase_data(phase_row, 2);
+
+        %% 11.12 根据包裹相位生成全部候选角
+        k_limit = ceil(baseline_m / lambda) + 1;
+        k_search = -k_limit:k_limit;
+
+        phase_candidates_deg = ...
+            phase_meas_deg(result_index) + ...
+            360 * k_search;
+
+        sin_theta_candidates = ...
+            lambda / (360 * baseline_m) .* ...
+            phase_candidates_deg;
+
+        valid = abs(sin_theta_candidates) <= 1;
+
+        current_k = k_search(valid);
+        current_theta = asind( ...
+            sin_theta_candidates(valid));
+
+        candidate_count(result_index) = ...
+            numel(current_theta);
+
+        all_candidate_angles{result_index} = ...
+            current_theta;
+
+        %% 11.13 导航先验选择最近相位候选
+        [candidate_nav_difference_deg(result_index), ...
+            selected_index] = ...
+            min(abs( ...
+            current_theta - ...
+            theta_nav_deg(result_index)));
+
+        selected_k(result_index) = ...
+            current_k(selected_index);
+
+        theta_selected_deg(result_index) = ...
+            current_theta(selected_index);
+
+        %% 11.14 根据truth确定真正候选，只用于评价
+        [~, truth_candidate_index] = ...
+            min(abs( ...
+            current_theta - ...
+            theta_true_deg(result_index)));
+
+        true_k(result_index) = ...
+            current_k(truth_candidate_index);
+
+        is_correct(result_index) = ...
+            selected_k(result_index) == ...
+            true_k(result_index);
+
+        %% 11.15 计算误差
+        nav_theta_error_deg(result_index) = ...
+            theta_nav_deg(result_index) - ...
+            theta_true_deg(result_index);
+
+        selected_theta_error_deg(result_index) = ...
+            theta_selected_deg(result_index) - ...
+            theta_true_deg(result_index);
+
+        %% 11.16 当前测距点结果
+        fprintf(['Range %2d | t=%9.3f s | B%d | ' ...
+            'Nav=%7.3f° | True=%7.3f° | ' ...
+            'Selected=%7.3f° | k=%3d/%3d | %s\n'], ...
+            result_index, ...
+            range_time, ...
+            beacon_id, ...
+            theta_nav_deg(result_index), ...
+            theta_true_deg(result_index), ...
+            theta_selected_deg(result_index), ...
+            selected_k(result_index), ...
+            true_k(result_index), ...
+            string_result(is_correct(result_index)));
+
+        range_index = range_index + 1;
+    end
+
+    %% 11.17 继续传播到当前IMU历元
+    last_state = navstate;
+
+    navstate = InsMech( ...
+        last_state, ...
+        last_imu, ...
+        this_imu);
+
+    % 非测距历元使用高度更新
+    if ~is_range_epoch
+        [kf, navstate] = ...
+            height_update_function( ...
+            kf, ...
+            navstate, ...
+            height(imu_index, :));
+    end
+
+    % ES-EKF协方差与误差状态传播
+    kf = propagation_function( ...
+        navstate, ...
+        this_imu, ...
+        imu_dt, ...
+        kf);
+end
+
+%% 12. 截取有效结果
+valid = 1:result_index;
+
+result_time = result_time(valid);
+result_beacon = result_beacon(valid);
+
+% 前面为方便预分配，时间和潜标号在此补入
+result_time = rangedata(valid, 1);
+result_beacon = range_beacon_id(valid);
+
+bearing_nav_deg = bearing_nav_deg(valid);
+bearing_true_deg = bearing_true_deg(valid);
+
+theta_nav_deg = theta_nav_deg(valid);
+theta_true_deg = theta_true_deg(valid);
+theta_selected_deg = theta_selected_deg(valid);
+
+phase_meas_deg = phase_meas_deg(valid);
+
+selected_k = selected_k(valid);
+true_k = true_k(valid);
+is_correct = is_correct(valid);
+
+nav_theta_error_deg = nav_theta_error_deg(valid);
+selected_theta_error_deg = selected_theta_error_deg(valid);
+candidate_nav_difference_deg = ...
+    candidate_nav_difference_deg(valid);
+
+nav_lat_deg = nav_lat_deg(valid);
+nav_lon_deg = nav_lon_deg(valid);
+truth_lat_deg = truth_lat_deg(valid);
+truth_lon_deg = truth_lon_deg(valid);
+
+candidate_count = candidate_count(valid);
+all_candidate_angles = all_candidate_angles(valid);
+
+%% 13. 统计周期裁决性能
+correct_count = sum(is_correct);
+total_count = numel(is_correct);
+correct_rate = 100 * correct_count / total_count;
+
+nav_angle_rmse_deg = sqrt(mean( ...
+    nav_theta_error_deg.^2, ...
+    'omitnan'));
+
+selected_angle_rmse_deg = sqrt(mean( ...
+    selected_theta_error_deg.^2, ...
+    'omitnan'));
+
+fprintf('\n====================================================\n');
+fprintf('全部测距点相位周期裁决统计\n');
+fprintf('====================================================\n');
+fprintf('测距事件数量             ：%d\n', total_count);
+fprintf('周期选择正确数量         ：%d\n', correct_count);
+fprintf('周期选择正确率           ：%.2f %%\n', correct_rate);
+fprintf('导航先验角 RMSE          ：%.4f deg\n', ...
+    nav_angle_rmse_deg);
+fprintf('选中相位候选角 RMSE      ：%.4f deg\n', ...
+    selected_angle_rmse_deg);
+fprintf('====================================================\n');
+
+%% 14. 保存全部测距点结果
+result_table = table( ...
+    (1:total_count)', ...
+    result_time, ...
+    result_beacon, ...
+    nav_lat_deg, ...
+    nav_lon_deg, ...
+    truth_lat_deg, ...
+    truth_lon_deg, ...
+    bearing_nav_deg, ...
+    bearing_true_deg, ...
+    theta_nav_deg, ...
+    theta_true_deg, ...
+    phase_meas_deg, ...
+    selected_k, ...
+    true_k, ...
+    theta_selected_deg, ...
+    nav_theta_error_deg, ...
+    selected_theta_error_deg, ...
+    candidate_nav_difference_deg, ...
+    candidate_count, ...
+    is_correct, ...
+    'VariableNames', { ...
+    'EventIndex', ...
+    'Time_s', ...
+    'BeaconID', ...
+    'NavLat_deg', ...
+    'NavLon_deg', ...
+    'TruthLat_deg', ...
+    'TruthLon_deg', ...
+    'NavBearing_deg', ...
+    'TrueBearing_deg', ...
+    'NavArrivalAngle_deg', ...
+    'TrueArrivalAngle_deg', ...
+    'MeasuredPhase_deg', ...
+    'SelectedCycle_k', ...
+    'TrueCycle_k', ...
+    'SelectedArrivalAngle_deg', ...
+    'NavAngleError_deg', ...
+    'SelectedAngleError_deg', ...
+    'SelectedCandidateDiffToNav_deg', ...
+    'CandidateCount', ...
+    'IsCorrect'});
+
+disp(result_table);
+
+result_file = fullfile( ...
+    input_dir, ...
+    'all_range_phase_disambiguation.txt');
+
+writetable( ...
+    result_table, ...
+    result_file, ...
+    'Delimiter', ' ');
+
+fprintf('结果已保存：%s\n', result_file);
+
+%% 15. 导航先验角、真实角、相位候选角对比
+myfigurestartup(15, 10, 'prese');
+
+subplot(3, 1, 1);
+hold on; grid on; box on;
+
+plot(result_time, theta_true_deg, ...
+    'k-o', 'LineWidth', 1.3, 'MarkerSize', 4);
+
+plot(result_time, theta_nav_deg, ...
+    'b-s', 'LineWidth', 1.1, 'MarkerSize', 4);
+
+plot(result_time, theta_selected_deg, ...
+    'r-*', 'LineWidth', 1.1, 'MarkerSize', 5);
+
+ylabel('\theta / deg');
+legend( ...
+    '真实到达角', ...
+    '导航先验到达角', ...
+    '选中相位候选角', ...
+    'Location', 'best');
+
+title('全部测距点到达角对比');
+
+%% 15.2 两类角度误差
+subplot(3, 1, 2);
+hold on; grid on; box on;
+
+plot(result_time, nav_theta_error_deg, ...
+    'b-o', 'LineWidth', 1.0, 'MarkerSize', 4);
+
+plot(result_time, selected_theta_error_deg, ...
+    'r-*', 'LineWidth', 1.0, 'MarkerSize', 5);
+
+yline(0, 'k--');
+
+ylabel('角度误差 / deg');
+
+legend( ...
+    '导航先验角误差', ...
+    '相位候选角误差', ...
+    'Location', 'best');
+
+title(sprintf( ...
+    '导航角RMSE = %.3f°，候选角RMSE = %.3f°', ...
+    nav_angle_rmse_deg, ...
+    selected_angle_rmse_deg));
+
+%% 15.3 周期裁决结果
+subplot(3, 1, 3);
+hold on; grid on; box on;
+
+stem(result_time, double(is_correct), ...
+    'filled', 'LineWidth', 1.0);
+
+ylim([-0.1, 1.1]);
+yticks([0 1]);
+yticklabels({'错误', '正确'});
+
+xlabel('Time / s');
+ylabel('周期裁决');
+
+title(sprintf( ...
+    '周期选择正确率 = %.2f%% (%d/%d)', ...
+    correct_rate, correct_count, total_count));
+
+sgtitle('导航先验辅助长基线相位周期解模糊结果');
+
+%% 16. 每次测距点的全部候选角可视化
+myfigurestartup(15, 8, 'prese');
+hold on; grid on; box on;
+
+for i = 1:total_count
+    current_candidate = all_candidate_angles{i};
+
+    plot( ...
+        result_time(i) * ones(size(current_candidate)), ...
+        current_candidate, ...
+        '.', ...
+        'MarkerSize', 6);
+end
+
+plot(result_time, theta_true_deg, ...
+    'k-', 'LineWidth', 1.5);
+
+plot(result_time, theta_nav_deg, ...
+    'b--', 'LineWidth', 1.2);
+
+plot(result_time, theta_selected_deg, ...
+    'r-o', 'LineWidth', 1.2, 'MarkerSize', 4);
+
+xlabel('Time / s');
+ylabel('\theta / deg');
+
+legend( ...
+    '全部相位候选角', ...
+    '真实到达角', ...
+    '导航先验角', ...
+    '导航选中候选角', ...
+    'Location', 'best');
+
+title('全部测距点：相位多候选角及导航先验裁决');
+
+%% 17. 绝对方位角对比
+myfigurestartup(15, 6, 'prese');
+hold on; grid on; box on;
+
+plot(result_time, bearing_true_deg, ...
+    'k-o', 'LineWidth', 1.3, 'MarkerSize', 4);
+
+plot(result_time, bearing_nav_deg, ...
+    'b-s', 'LineWidth', 1.1, 'MarkerSize', 4);
+
+xlabel('Time / s');
+ylabel('方位角 / deg');
+
+legend( ...
+    '真实潜标方位', ...
+    '导航计算潜标方位', ...
+    'Location', 'best');
+
+title('导航位置计算的潜标绝对方位角误差');
+
+%% ========================================================================
+% 局部函数
+% ========================================================================
+
+function bearing_deg = calc_bearing_deg( ...
+    lat1_rad, lon1_rad, lat2_rad, lon2_rad)
+%CALC_BEARING_DEG 点1指向点2的初始方位角
+% 北=0°，东=90°，顺时针为正。
+
+dlon = lon2_rad - lon1_rad;
+
+east_component = ...
+    cos(lat2_rad) .* sin(dlon);
+
+north_component = ...
+    cos(lat1_rad).*sin(lat2_rad) - ...
+    sin(lat1_rad).*cos(lat2_rad).*cos(dlon);
+
+bearing_deg = mod( ...
+    atan2d(east_component, north_component), ...
+    360);
+end
+
+function angle_deg = wrap180(angle_deg)
+%WRAP180 将角度限制到[-180,180)。
+
+angle_deg = mod(angle_deg + 180, 360) - 180;
+end
+
+function text_result = string_result(is_correct)
+%STRING_RESULT 控制台显示周期裁决结果。
+
+if is_correct
+    text_result = '正确';
+else
+    text_result = '错误';
+end
+end
