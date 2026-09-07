@@ -1,0 +1,14 @@
+a_USBLREAD: 读取超短基线对长基线信标的定位数据以及第一个时间段的轨迹
+a_DatLog2ReadREMSES：读取长基线的定位结果（分时间段）
+a_DatLog1ReadPHINS：读取PHINS的数据
+
+
+
+-----data_2-----
+datalog1: 从软件导出的PHINS的数据
+datalog2: 长基线导出的数据
+ins: 惯导的数据（csv文件，数据不够底层）
+log: 最终导航的结果（不够底层）
+samples: PHINS以及软件教程的数据
+usbl20230504：一些测试数据
+usbl-4beacons：四个信标的标定数据

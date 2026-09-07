@@ -4,8 +4,8 @@ clc;
 %% RTS算法统一研究主程序：纯惯导、前向 ES-EKF 与一次/二次 RTS
 % 输出：truth、pure-ins、forward EKF、single RTS、double RTS
 %% 1. 用户配置
-data_source = "experiment";            % "simulation" 或 "experiment"
-simulation_case = 'case-00';
+data_source = "simulation";            % "simulation" 或 "experiment"
+simulation_case = 'case-05';
 position_error_unit = "rad";           % "rad" 或 "m"
 range_interval_s = 420;                % 测距间隔：7 min
 duration_s = 4621;                     % 从数据起点开始处理的时长

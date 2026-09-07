@@ -1,0 +1,15 @@
+glvs
+load('Leador-A15\data_Leador-A15.mat')
+t1=456300;
+t2=t1+420*8;
+[imuData_chosen, refData_chosen] = alignAndInterpolateData(imu, avpref, t1, t2);
+
+
+att00=d2r([-2, 5, 120]');
+att0=att00;
+vel0=[0.0, 0.0, 0.0]';
+pos0=[30, 120, 20]';
+pos0(1:2)=d2r(pos0(1:2));
+avp0=[att0;vel0;pos0];
+ts=0.005;
+ins = myins('initial',ts,avp0);
