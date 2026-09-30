@@ -81,11 +81,13 @@ if isempty(algorithms)
     error('AlgorithmFilter没有匹配到forward-ekf、rts-single或rts-double。');
 end
 
-mode_ids = ["uncompensated-rad", "compensated-rad", ...
-    "truth-beacon-reference-rad"];
-mode_names = ["未补偿（固定潜标位置）", "位置不确定度补偿", ...
-    "真实潜标位置"];
+mode_ids = ["uncompensated-rad", "compensated-rad", "consider-rad", ...
+    "consider-nis-rad", "truth-beacon-reference-rad"];
+mode_names = ["未补偿（固定潜标位置）", "等效量测噪声补偿", ...
+    "Schmidt/Consider", "真实潜标位置"];
 
+% Insert the robust-NIS label while preserving the existing localized labels.
+mode_names = [mode_names(1:3), "Schmidt/Consider + NIS", mode_names(4)];
 master_summary = empty_summary_table();
 for dataset_index = 1:numel(dataset_key)
     data_source = dataset_source(dataset_index);
