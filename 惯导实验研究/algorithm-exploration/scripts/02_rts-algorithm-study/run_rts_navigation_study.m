@@ -4,11 +4,10 @@ clc;
 %% RTS算法统一研究主程序：纯惯导、前向 ES-EKF 与一次/二次 RTS
 % 输出：truth、pure-ins、forward EKF、single RTS、double RTS
 %% 1. 用户配置
-data_source = "simulation";            % "simulation" 或 "experiment"
-simulation_case = 'case-05';
+data_source = "experiment";            % "simulation" 或 "experiment"
 position_error_unit = "rad";           % "rad" 或 "m"
 range_interval_s = 420;                % 测距间隔：7 min
-duration_s = 4621;                     % 从数据起点开始处理的时长
+duration_s = 8640000;                     % 从数据起点开始处理的时长
 beacon_order = [1, 2, 3];              % 三个信标固定轮换顺序
 simulation_range_noise_std_m = 6;
 simulation_depth_noise_std_m = 0.4;
@@ -35,6 +34,7 @@ if ~ismember(position_error_unit, ["rad", "m"])
     error('position_error_unit只能设置为"rad"或"m"。');
 end
 if data_source == "simulation"
+    simulation_case = 'case-06';
     case_name = char(simulation_case);
     id = str2double(case_name(end));
     input_dir = paths.simulation_input(id);
@@ -43,10 +43,12 @@ if data_source == "simulation"
     filter_range_std_m = simulation_range_noise_std_m;
     filter_depth_std_m = simulation_depth_noise_std_m;
 else
-    case_name = 'case-06';
+    % case_name = paths.default_experiment_case;
+    case_name = 'case-09';
     id = str2double(case_name(end));
-    cfg = load_algorithm_exploration_config("experiment", position_error_unit, []);
     input_dir = paths.experiment_input(id);
+    cfg = load_algorithm_exploration_config( ...
+        "experiment", position_error_unit, input_dir);
     output_dir = fullfile(cfg.outputfolder, sprintf('simple-ekf-rts-%s', position_error_unit));
     filter_range_std_m = experiment_range_std_m;
     filter_depth_std_m = experiment_depth_std_m;
@@ -95,34 +97,12 @@ if data_source == "simulation"
     rangedata(:, 3) = rangedata(:, 3) + simulation_range_noise_std_m * randn(size(rangedata, 1), 1);
     height_source = [];
 else
-    % range_path = fullfile(input_dir, 'rangedata_noised.txt');
-    % height_path = fullfile(input_dir, 'height_noised.txt');
-    % if ~isfile(range_path) || ~isfile(height_path)
-    %     error('实测预处理距离或高度文件缺失：%s', input_dir);
-    % end
-    % rangedata = readmatrix(range_path, 'FileType', 'text');
-    % height_source = readmatrix(height_path, 'FileType', 'text');
-    % if any(abs(diff(rangedata(:, 1)) - range_interval_s) > 1e-6)
-    %     error('实测距离数据不是固定 %.0f s 间隔。', range_interval_s);
-    % end
-    range_sources = {readmatrix(cfg.rangefile1path, 'FileType', 'text'), readmatrix(cfg.rangefile2path, 'FileType', 'text'), readmatrix(cfg.rangefile3path, 'FileType', 'text')};
-    source_interval_s = median(diff(range_sources{1}(:, 1)));
-    range_stride = round(range_interval_s / source_interval_s);
-    if abs(range_stride * source_interval_s - range_interval_s) > 1e-6
-        error('测距间隔 %.3f s 不是原始采样间隔 %.3f s 的整数倍。', range_interval_s, source_interval_s);
+    rangedata = readmatrix(cfg.rangefilepath, 'FileType', 'text');
+    if isempty(rangedata) || size(rangedata, 2) < 6 || ...
+            any(diff(rangedata(:, 1)) <= 0)
+        error('实测 range.txt 必须是时间严格递增的非空 N×6 矩阵。');
     end
-    for source_index = 1:numel(range_sources)
-        range_sources{source_index} = range_sources{source_index}(range_stride:range_stride:end, :);
-    end
-    event_count = min(cellfun(@(data) size(data, 1), range_sources));
-    rangedata = zeros(event_count, size(range_sources{1}, 2));
-    for event_index = 1:event_count
-        order_index = mod(event_index - 1, numel(beacon_order)) + 1;
-        source_index = beacon_order(order_index);
-        rangedata(event_index, :) = range_sources{source_index}(event_index, :);
-    end
-    rangedata(:, 3) = rangedata(:, 3) + experiment_range_std_m * randn(size(rangedata, 1), 1);
-    height_source = [];
+    height_source = readmatrix(cfg.heightfilepath, 'FileType', 'text');
 end
 start_time = max([cfg.starttime, imudata_all(1, 1), truth(1, 2)]);
 end_time = min([start_time + duration_s, cfg.endtime, imudata_all(end, 1), truth(end, 2)]);
@@ -136,10 +116,9 @@ if data_source == "simulation"
     height_value = interp1(truth(:, 2), truth(:, 5), imudata(:, 1), 'linear', 'extrap');
     height = [imudata(:, 1), height_value + simulation_depth_noise_std_m * randn(size(height_value))];
 else
-    height_value = interp1(truth(:, 2), truth(:, 5), imudata(:, 1), 'linear', 'extrap');
-    height = [imudata(:, 1), height_value + experiment_depth_std_m * randn(size(height_value))];
-    % height_value = interp1(height_source(:, 1), height_source(:, 2), imudata(:, 1), 'linear', 'extrap');
-    % height = [imudata(:, 1), height_value];
+    height_value = interp1(height_source(:, 1), height_source(:, 2), ...
+        imudata(:, 1), 'linear', 'extrap');
+    height = [imudata(:, 1), height_value];
 end
 if isempty(rangedata)
     error('当前时间范围内没有测距事件。');
@@ -216,9 +195,10 @@ for imu_index = 2:size(imudata, 1)
     imu_dt = this_imu(1) - last_imu(1);
     time_tolerance = max(1e-8, abs(imu_dt) * 0.25);
 
-    % 纯惯导链独立运行，不接受距离或深度反馈。
+    % 纯惯导链独立运行，不接受距离更新；高度直接由当前观测赋值。
     pure_ins_navstate = InsMech( ...
         pure_ins_navstate, last_imu, this_imu);
+    pure_ins_navstate.pos(3) = height(imu_index, 2);
 
     % 组合导航状态对应 last_imu 时刻。区间内非对齐测距由第二分支处理。
     while range_index <= size(rangedata, 1) && ...

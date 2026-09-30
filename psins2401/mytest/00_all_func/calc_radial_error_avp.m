@@ -23,7 +23,7 @@ function [radial_errors, stats] = calc_radial_error_avp(avp_ref,labels, varargin
     0.890, 0.467, 0.761;   % 14 粉紫色
     0.450, 0.450, 0.450;   % 15 中性灰
 ];
-    line = {'--',':','-'};
+    line = {'--',':','-','--',':','-','--',':','-'};
     ref_color = [0.15 0.15 0.15]; % 深灰色作为参考基准
     
     t_ref = avp_ref(:, 10);

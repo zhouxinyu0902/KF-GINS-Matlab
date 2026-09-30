@@ -8,8 +8,9 @@ clc;
 script_dir = fileparts(mfilename('fullpath'));
 topic_dir = fileparts(fileparts(fileparts(script_dir)));
 addpath(topic_dir);
-setup_inertial_experiment();
-cfg = load_algorithm_exploration_config("experiment", "rad", []);
+paths = setup_inertial_experiment();
+input_dir = paths.experiment_input(paths.default_experiment_id);
+cfg = load_algorithm_exploration_config("experiment", "rad", input_dir);
 
 gnss_ins_path = fullfile(cfg.outputfolder, 'GnssIns.nav');
 if ~isfile(gnss_ins_path)

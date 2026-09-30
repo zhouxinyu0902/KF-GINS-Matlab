@@ -6,18 +6,18 @@ clc;
 close all;
 
 %% 运行设置
-dataset_id = 'run-0818-noon';
-position_unit = "rad";              % "rad" 或 "m"
-selected_methods = ["ekf", "rts1", "rts2"];
-% 第四种备选方法：在 selected_methods 中加入 "rts2-rotation"。
-switch (dataset_id)
-    case 'run-0817'
-        duration_s = 10000;
-    case 'run-0818'
-        duration_s = 12000;
-    case 'run-0818-noon'
-        duration_s = 17000;
+dataset_id = getenv('KF_GINS_EXPERIMENT03_DATASET');
+% case-07 对应第三次车载试验的 0817 批次；批量入口会通过环境变量覆盖。
+if isempty(dataset_id), dataset_id = 'run-0817'; end
+position_unit = string(getenv('KF_GINS_EXPERIMENT03_UNIT'));
+if strlength(position_unit) == 0, position_unit = "rad"; end
+method_override = string(getenv('KF_GINS_EXPERIMENT03_METHODS'));
+if strlength(method_override) == 0
+    selected_methods = ["ekf", "rts1", "rts2"];
+else
+    selected_methods = split(method_override, ',')';
 end
+% 第四种备选方法：在 selected_methods 中加入 "rts2-rotation"。
 range_std_m = 6;
 depth_std_m = 0.4;
 rts_node_interval_s = 1;
@@ -39,6 +39,7 @@ enable_rotation = ismember("rts2-rotation", selected_methods);
 script_dir = fileparts(mfilename('fullpath'));
 addpath(script_dir, '-begin');
 paths = setup_all_real_data_preprocessing(dataset_id);
+duration_s = paths.duration_s;
 input_dir = paths.input;
 result_dir = fullfile(paths.output, char(position_unit));
 artifact_dir = fullfile(result_dir, 'artifacts');

@@ -3,7 +3,7 @@ clear;
 script_dir = fileparts(mfilename('fullpath'));
 topic_dir = fileparts(fileparts(script_dir));
 addpath(topic_dir);
-setup_inertial_experiment();
+paths = setup_inertial_experiment();
 %% 定义全局参数
 rng(1)
 feedback = 1; % 是否反馈，不反馈则可以观察参数
@@ -12,7 +12,8 @@ stdrecord = 0;
 glvs
 %% 定义参数+加载过程配置
 param = Param();
-cfg = load_algorithm_exploration_config("experiment", "rad", []);
+input_dir = paths.experiment_input(paths.default_experiment_id);
+cfg = load_algorithm_exploration_config("experiment", "rad", input_dir);
 if ~exist(cfg.outputfolder, 'dir')
     mkdir(cfg.outputfolder);
 end
@@ -49,6 +50,9 @@ gnssdata = gnssdata(gnssdata(:, 1) >= cfg.starttime, :);
 gnssdata = gnssdata(gnssdata(:, 1) <= cfg.endtime, :);
 heightdata = heightdata(heightdata(:, 1) >= cfg.starttime, :);
 heightdata = heightdata(heightdata(:, 1) <= cfg.endtime, :);
+height_values = interp1(heightdata(:, 1), heightdata(:, 2), ...
+    imudata(:, 1), 'linear', 'extrap');
+heightdata = [imudata(:, 1), height_values];
 %% 设置文件保存路径
 if feedback ==1
     navpath = [cfg.outputfolder, '/GnssIns.nav'];

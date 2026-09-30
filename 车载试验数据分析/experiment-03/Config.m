@@ -40,7 +40,7 @@ function cfg = Config(dataset_id, position_unit)
     cfg.rangefile1path = fullfile(cfg.inputfolder, 'range1.txt');
     cfg.rangefile2path = fullfile(cfg.inputfolder, 'range2.txt');
     cfg.rangefile3path = fullfile(cfg.inputfolder, 'range3.txt');
-    cfg.truthpath = fullfile(cfg.inputfolder, 'pva_830.txt');
+    cfg.truthpath = data_paths.truth_file;
     cfg.rangefilepath = fullfile(cfg.inputfolder, 'range.txt');
     data = yaml.ReadYaml(fullfile(cfg.dataroot, 'initial_state.yaml'));
     %% configure
@@ -54,14 +54,7 @@ function cfg = Config(dataset_id, position_unit)
     cfg.initatt = cell2mat(data.initatt)';
     % 选择计算时间段
     cfg.starttime = data.capture_time;
-    switch (dataset_id)
-        case 'run-0817'
-            lastingtime = 10000;
-        case 'run-0818'
-            lastingtime = 12000;
-        case 'run-0818-noon'
-            lastingtime = 17000;
-    end
+    lastingtime = data_paths.duration_s;
     % cfg.starttime = 103951.095;
     cfg.endtime = cfg.starttime + lastingtime;
     % cfg.initpos = [36.40042454, 120.68982814, 6.5900]'; % [deg, deg, m]

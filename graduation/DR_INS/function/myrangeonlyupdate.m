@@ -1,0 +1,31 @@
+function kf = myrangeonlyupdate(navstate, Rangedata,kf)
+%UNTITLED 此处显示有关此函数的摘要
+%   此处显示详细说明
+    % function kf = myRangeUpdate(navstate, Rangedata, depthdata, kf)
+% Rangedata:4：6是信标的位置，3是水平距离，2是斜距，1是时间
+% depthdata:4：2是深度，1是时间
+param = Param();
+% % 根据惯导和信标位置计算水平距离
+bcn = Rangedata(4:6)';
+%% 使用非线性一步预测量测值
+% 直接计算
+[rm, rn] = getRmRn(bcn(1) , param);
+h = bcn(3);
+DR = diag([rm + h, (rn + h)*cos(bcn(1)), -1]);
+delta_pos = ( DR * (navstate.pos-bcn))';
+HorizR = sqrt(sum(delta_pos(:,1:2).^2,2));
+%%
+Z = HorizR-Rangedata(3);
+kf.Z = Z;
+% 量测矩阵和噪声矩阵
+R = diag(5.^2);
+H = zeros(1, kf.RANK);
+b = (navstate.pos'-bcn')*(diag([rm + h, (rn + h)*cos(bcn(1)), -1])^2)/HorizR;
+H(1, 1:2) = b(1:2);
+kf.Zkk_1 = H * kf.x;
+K = kf.P * H' / (H * kf.P * H' + R);
+%% 更新协方差和状态量
+kf.x = kf.x + K * (Z - kf.Zkk_1 );
+kf.P =(eye(kf.RANK) - K*H) * kf.P * (eye(kf.RANK) - K*H)' + K * R * K';
+end
+

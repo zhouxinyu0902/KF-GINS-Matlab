@@ -12,17 +12,20 @@ script_dir = fileparts(mfilename('fullpath'));
 topic_dir = fileparts(fileparts(fileparts(script_dir)));
 addpath(topic_dir);
 paths = setup_inertial_experiment();
-truth_path = fullfile(paths.experiment_reference, 'truth.nav');
+experiment_id = paths.default_experiment_id;
+input_dir = paths.experiment_input(experiment_id);
+truth_path = fullfile(input_dir, 'truth.nav');
+navigation_root = paths.experiment_navigation(experiment_id);
 
 evaluations = struct();
 for state_mode = state_modes
     if state_mode == "m"
         case_name = 'experiment-m-state';
-        result_dir = fullfile(paths.experiment_navigation, ...
+        result_dir = fullfile(navigation_root, 'navigation-results', ...
             'four-method-comparison');
     elseif state_mode == "rad"
         case_name = 'experiment-rad-state';
-        result_dir = fullfile(paths.experiment_navigation, ...
+        result_dir = fullfile(navigation_root, 'navigation-results', ...
             'four-method-comparison-rad');
     else
         error('不支持的状态模式：%s', state_mode);
@@ -40,7 +43,7 @@ for state_mode = state_modes
 end
 
 if isfield(evaluations, 'm') && isfield(evaluations, 'rad')
-    output_dir = fullfile(paths.experiment_artifacts, ...
+    output_dir = fullfile(paths.experiment_artifacts(experiment_id), ...
         'four-method-comparison-rad');
     unit_comparison = compare_experiment_state_units( ...
         evaluations.m.statistics_path, evaluations.rad.statistics_path, ...

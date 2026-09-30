@@ -59,15 +59,18 @@ topic_dir = fileparts(fileparts(script_dir));
 project_root = fileparts(fileparts(topic_dir));
 addpath(topic_dir);
 paths = setup_inertial_experiment();
-input_dir = paths.experiment_input;
+experiment_id = paths.default_experiment_id;
+input_dir = paths.experiment_input(experiment_id);
+options.case_name = option_value(runtime_options, 'case_name', ...
+    paths.default_experiment_case);
 
 if nargin < 1 || isempty(result_dir)
-    result_dir = fullfile(paths.experiment_navigation, ...
-        'four-method-comparison-rad');
+    result_dir = fullfile(paths.experiment_navigation(experiment_id), ...
+        'navigation-results', 'four-method-comparison-rad');
 end
 result_dir = char(string(result_dir));
 
-cfg = load_algorithm_exploration_config("experiment", "rad", []);
+cfg = load_algorithm_exploration_config("experiment", "rad", input_dir);
 cfg.userange = true;
 cfg.outputfolder = result_dir;
 if ~exist(cfg.outputfolder, 'dir')
@@ -77,7 +80,7 @@ end
 %% 读取并整理观测数据
 imu_all = readmatrix(cfg.imufilepath, 'FileType', 'text');
 truth_all = readmatrix(cfg.truthpath, 'FileType', 'text');
-default_range_file = fullfile(input_dir, 'rangedata_noised.txt');
+default_range_file = cfg.rangefilepath;
 if isfield(runtime_options, 'range_data') && ...
         ~isempty(runtime_options.range_data)
     rangedata = runtime_options.range_data;
@@ -99,7 +102,7 @@ end
 if any(diff(rangedata(:, 1)) <= 0)
     error('测距时刻必须严格递增。');
 end
-height_all = readmatrix(fullfile(input_dir, 'height_noised.txt'), ...
+height_all = readmatrix(cfg.heightfilepath, ...
     'FileType', 'text');
 options.range_boundary_reference_time_s = rangedata(1, 1);
 

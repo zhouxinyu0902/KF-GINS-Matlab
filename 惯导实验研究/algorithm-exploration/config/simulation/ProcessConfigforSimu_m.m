@@ -15,12 +15,17 @@ function cfg = ProcessConfigforSimu_m(filepath)
     topic_dir = fileparts(fileparts(config_dir));
     inertial_research_dir = fileparts(topic_dir);
     project_root = fileparts(inertial_research_dir);
-    cfg.dataroot = fullfile(project_root, 'data', 'inertial-experiment','algorithm-exploration');
-    [~, case_name] = fileparts(filepath);
+    cfg.dataroot = fullfile(project_root, 'data', 'inertial-experiment', ...
+        'algorithm-exploration');
+    cfg.simulationroot = fullfile(cfg.dataroot, 'input', 'simulation');
+    
     cfg.imufilepath = [filepath,'/IMU_120.txt'];
     cfg.rangefile1path = [filepath,'/range1.txt'];
     cfg.rangefile2path =[filepath,'/range2.txt'] ;
     cfg.rangefile3path =[filepath,'/range3.txt'] ;
+    cfg.truthpath=[filepath,'/truth.txt'];
+    filepath = fileparts(filepath);
+    [~, case_name] = fileparts(filepath);
     cfg.outputfolder = fullfile(cfg.dataroot,'simulation', ...
         case_name,'output', 'navigation-results');
     cfg.figurefolder = fullfile(cfg.dataroot,'simulation', ...
@@ -33,8 +38,6 @@ function cfg = ProcessConfigforSimu_m(filepath)
             mkdir(required_dirs{index});
         end
     end
-
-    cfg.truthpath=[filepath,'/truth.txt'];
     %% configure
     cfg.usegnssvel = false;
     cfg.useodonhc = false;
@@ -55,7 +58,9 @@ function cfg = ProcessConfigforSimu_m(filepath)
         cfg.initatt = [0.003; 0.003; 180.03]; % [deg]
     elseif filepath(end)=='4'
         cfg.initatt = [0.003; 0.003; 255.03]; % [deg]
-    else
+    elseif filepath(end)=='5'
+        cfg.initatt = [0.003; 0.003; 36.97]; % [deg]
+    elseif filepath(end)=='6'
         cfg.initatt = [0.003; 0.003; 323.03]; % [deg]
     end
     cfg.initgyrbias = [0; 0; 0]; % [deg/h]

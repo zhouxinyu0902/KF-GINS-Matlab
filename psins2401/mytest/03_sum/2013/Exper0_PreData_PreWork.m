@@ -5,8 +5,9 @@
 clear
 % close all
 glvs
+path = 'D:\Github\KF-GINS-Matlab\data\psins\data_1\output\';
 % load('03_sum\data_1\deep-sea.mat')
-load('03_sum\data_1\deep-sea_optimized.mat')
+load([path,'deep-sea_optimized.mat'])
 t_lbl = avp_m(:,end)';
 t_usbl = LatLonDepHov(end,:);
 LenLBL = length(t_lbl);

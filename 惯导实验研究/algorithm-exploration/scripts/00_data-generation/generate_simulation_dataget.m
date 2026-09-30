@@ -81,7 +81,8 @@ end
 
 function configs = simulation_case_configs(paths)
 %SIMULATION_CASE_CONFIGS 五组仿真场景的轨迹和信标参数。
-reference_truth = fullfile(paths.experiment_input(6), 'truth.nav');
+reference_truth = fullfile(paths.experiment_input( ...
+    paths.default_experiment_id), 'truth.nav');
 if ~isfile(reference_truth)
     error('缺少构造转弯角速度所需的实测真值：%s', reference_truth);
 end

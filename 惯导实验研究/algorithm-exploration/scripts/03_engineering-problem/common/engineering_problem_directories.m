@@ -14,8 +14,7 @@ function directories = engineering_problem_directories( ...
         case_artifact = resolve_case_path( ...
             paths.simulation_artifacts, case_id, case_name);
     elseif data_source == "experiment"
-        % 当前实测配置与 run_rts_navigation_study.m 一致，使用 case-06。
-        case_id = 6;
+        case_id = paths.default_experiment_id;
         case_name = sprintf('case-%02d', case_id);
         case_input = resolve_case_path( ...
             paths.experiment_input, case_id, case_name);
@@ -29,7 +28,7 @@ function directories = engineering_problem_directories( ...
     directories.input_root = fullfile(case_input, study_id);
     output_name = sprintf('%s-%s', study_id, char(position_error_unit));
     directories.result_root = fullfile(case_result,'navigation-results', output_name);
-    directories.artifact_root = fullfile(case_artifact,'figures-tables', output_name);
+    directories.artifact_root = fullfile(case_artifact, output_name);
     required = {directories.input_root, directories.result_root, ...
         directories.artifact_root};
     for index = 1:numel(required)

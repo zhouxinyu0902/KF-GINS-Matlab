@@ -8,8 +8,9 @@ clc;
 script_dir = fileparts(mfilename('fullpath'));
 topic_dir = fileparts(fileparts(fileparts(script_dir)));
 addpath(topic_dir);
-setup_inertial_experiment();
-cfg = load_algorithm_exploration_config("experiment", "rad", []);
+paths = setup_inertial_experiment();
+input_dir = paths.experiment_input(paths.default_experiment_id);
+cfg = load_algorithm_exploration_config("experiment", "rad", input_dir);
 input_dir = cfg.inputfolder;
 figure_dir = cfg.figurefolder;
 if ~isfolder(figure_dir)
@@ -17,8 +18,13 @@ if ~isfolder(figure_dir)
 end
 
 pva_830 = readmatrix(fullfile(input_dir, 'pva_830.txt'));
-std_430 = readmatrix(fullfile(input_dir, 'std_430.txt'));
 std_830 = readmatrix(fullfile(input_dir, 'std_830.txt'));
+std_430_path = fullfile(input_dir, 'std_430.txt');
+if isfile(std_430_path)
+    std_430 = readmatrix(std_430_path);
+else
+    std_430 = [];
+end
 
 %% 定位标准差对比
 error_figure = myfigurestartup(4, 5, 'paper');
@@ -27,13 +33,19 @@ for component_index = 1:3
     subplot(3, 1, component_index);
     plot(std_830(:, 1), std_830(:, component_index + 1), 'r.');
     hold on;
-    plot(std_430(:, 1), std_430(:, component_index + 1), 'b.');
+    if ~isempty(std_430)
+        plot(std_430(:, 1), std_430(:, component_index + 1), 'b.');
+    end
     ylabel(error_names{component_index});
     ylim([0, 0.08]);
     grid on;
     if component_index == 1
         title('各维度定位误差对比');
-        legend('pva\_830', 'pva\_430');
+        if isempty(std_430)
+            legend('pva\_830');
+        else
+            legend('pva\_830', 'pva\_430');
+        end
     elseif component_index == 3
         xlabel('时间（s）');
     end
@@ -66,7 +78,8 @@ range_data = cell(3, 1);
 for beacon_index = 1:3
     range_path = fullfile(input_dir, sprintf('range%d.txt', beacon_index));
     if ~isfile(range_path)
-        error('请先运行 dataget.m 生成距离文件：%s', range_path);
+        error(['请先运行 generate_experiment_legacy_inputs(''', ...
+            paths.default_experiment_case, ''')：%s'], range_path);
     end
     range_data{beacon_index} = readmatrix(range_path, 'FileType', 'text');
     beacon_position(beacon_index, :) = range_data{beacon_index}(1, 4:6);

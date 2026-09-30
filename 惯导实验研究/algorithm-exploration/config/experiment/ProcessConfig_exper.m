@@ -8,7 +8,7 @@
 %    Date : 2023.3.3
 % -------------------------------------------------------------------------
 
-function cfg = ProcessConfig_exper()
+function cfg = ProcessConfig_exper(input_dir)
     param = Param();
     %% filepath
     config_dir = fileparts(mfilename('fullpath'));
@@ -17,15 +17,19 @@ function cfg = ProcessConfig_exper()
     project_root = fileparts(inertial_research_dir);
     cfg.dataroot = fullfile(project_root, 'data', 'inertial-experiment', ...
         'algorithm-exploration');
-    cfg.case_name = 'case-06';
-    cfg.inputfolder = fullfile(cfg.dataroot,'experiment', ...
-        cfg.case_name, 'input');
+    if nargin < 1 || isempty(input_dir)
+        input_dir = fullfile(cfg.dataroot, 'experiment', 'case-07', 'input');
+    end
+    cfg.inputfolder = char(string(input_dir));
+    [case_root, input_name] = fileparts(cfg.inputfolder);
+    if ~strcmpi(input_name, 'input')
+        error('实测输入目录必须以 input 结尾：%s', cfg.inputfolder);
+    end
+    [~, cfg.case_name] = fileparts(case_root);
     cfg.preprocessedfolder = cfg.inputfolder;
     cfg.referencefolder = cfg.inputfolder;
-    cfg.outputfolder = fullfile(cfg.dataroot,'experiment', ...
-        cfg.case_name,'output', 'navigation-results');
-    cfg.figurefolder = fullfile(cfg.dataroot,'experiment', ...
-        cfg.case_name,'output', 'figures-tables');
+    cfg.outputfolder = fullfile(case_root, 'output', 'navigation-results');
+    cfg.figurefolder = fullfile(case_root, 'output', 'figures-tables');
 
     required_dirs = {cfg.figurefolder, ...
         cfg.outputfolder};
@@ -34,10 +38,14 @@ function cfg = ProcessConfig_exper()
             mkdir(required_dirs{index});
         end
     end
-    cfg.imufilepath = fullfile(cfg.inputfolder, 'IMU_120.txt');
+    cfg.imufilepath = first_existing_file(cfg.inputfolder, ...
+        {'imu_120.txt', 'IMU_120.txt'});
     cfg.gnssfilepath = fullfile(cfg.inputfolder, 'pva_830.txt');
-    cfg.heightfilepath = fullfile(cfg.inputfolder, 'height.txt');
+    cfg.heightfilepath = first_existing_file(cfg.inputfolder, ...
+        {'height.txt', 'depth_raw.txt', 'height_noised.txt'});
     cfg.stdfilepath = fullfile(cfg.inputfolder, 'std_830.txt');
+    cfg.rangefilepath = first_existing_file(cfg.inputfolder, ...
+        {'range.txt', 'rangedata_noised.txt'});
 
     cfg.pureinsfilepath = fullfile(cfg.outputfolder, 'PureIns.nav');
     cfg.pureinsfilepath1 = cfg.pureinsfilepath;
@@ -54,11 +62,12 @@ function cfg = ProcessConfig_exper()
     %% initial information
     
     % 选择计算时间段
-    cfg.starttime = 122235;
-    cfg.endtime = cfg.starttime + 5000;
-    cfg.initpos = [36.40042005;120.68981831;15.25]; % [deg, deg, m]
-    cfg.initvel = [0; 0; 0]; % [m/s]
-    cfg.initatt = [1.743;1.516;322.463]; % [deg]
+    initial_truth = read_first_numeric_row(cfg.truthpath, 11);
+    cfg.starttime = initial_truth(2);
+    cfg.endtime = inf;
+    cfg.initpos = initial_truth(3:5)'; % [deg, deg, m]
+    cfg.initvel = initial_truth(6:8)'; % [m/s]
+    cfg.initatt = initial_truth(9:11)'; % [deg]
 
     cfg.initposstd = [0.005; 0.004; 0.008]; %[m]
     cfg.initvelstd = [0.003; 0.004; 0.004]; %[m/s]
@@ -126,5 +135,34 @@ function cfg = ProcessConfig_exper()
     cfg.installangle = cfg.installangle * param.D2R;
     cfg.cbv = euler2dcm(cfg.installangle);
 
+end
+
+function path = first_existing_file(folder, candidates)
+    path = fullfile(folder, candidates{1});
+    for index = 1:numel(candidates)
+        candidate = fullfile(folder, candidates{index});
+        if isfile(candidate)
+            path = candidate;
+            return;
+        end
+    end
+end
+
+function row = read_first_numeric_row(path, minimum_columns)
+    file_id = fopen(path, 'rt');
+    if file_id < 0
+        error('无法读取实测真值文件：%s', path);
+    end
+    cleanup = onCleanup(@() fclose(file_id));
+    row = [];
+    while ~feof(file_id) && isempty(row)
+        line = strtrim(fgetl(file_id));
+        if ~isempty(line)
+            row = sscanf(line, '%f')';
+        end
+    end
+    if numel(row) < minimum_columns
+        error('实测真值首行至少需要 %d 列：%s', minimum_columns, path);
+    end
 end
 

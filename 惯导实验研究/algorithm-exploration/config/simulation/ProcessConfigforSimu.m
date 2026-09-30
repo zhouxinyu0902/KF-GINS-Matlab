@@ -18,12 +18,14 @@ function cfg = ProcessConfigforSimu(filepath)
     cfg.dataroot = fullfile(project_root, 'data', 'inertial-experiment', ...
         'algorithm-exploration');
     cfg.simulationroot = fullfile(cfg.dataroot, 'input', 'simulation');
-    [~, case_name] = fileparts(filepath);
     
     cfg.imufilepath = [filepath,'/IMU_120.txt'];
     cfg.rangefile1path = [filepath,'/range1.txt'];
     cfg.rangefile2path =[filepath,'/range2.txt'] ;
     cfg.rangefile3path =[filepath,'/range3.txt'] ;
+    cfg.truthpath=[filepath,'/truth.txt'];
+    filepath = fileparts(filepath);
+    [~, case_name] = fileparts(filepath);
     cfg.outputfolder = fullfile(cfg.dataroot,'simulation', ...
         case_name,'output', 'navigation-results');
     cfg.figurefolder = fullfile(cfg.dataroot,'simulation', ...
@@ -37,7 +39,7 @@ function cfg = ProcessConfigforSimu(filepath)
         end
     end
 
-    cfg.truthpath=[filepath,'/truth.txt'];
+    
     %% configure
     cfg.usegnssvel = false;
     cfg.useodonhc = false;
@@ -46,7 +48,7 @@ function cfg = ProcessConfigforSimu(filepath)
     %% initial information
     % 选择计算时间段
     cfg.starttime = 0;
-    cfg.endtime = cfg.starttime+5000;
+    cfg.endtime = cfg.starttime+8640000;
     % 初始状态
     cfg.initpos = [36.4004200;120.6898183;15.25]; % [deg, deg, m]
     cfg.initvel = [0; 0; 0]; % [m/s]
@@ -58,7 +60,11 @@ function cfg = ProcessConfigforSimu(filepath)
         cfg.initatt = [0.003; 0.003; 180.03]; % [deg]
     elseif filepath(end)=='4'
         cfg.initatt = [0.003; 0.003; 255.03]; % [deg]
-    else
+    elseif filepath(end)=='5'
+        cfg.initatt = [0.003; 0.003; 36.97]; % [deg]
+    elseif filepath(end)=='6'
+        cfg.initatt = [0.003; 0.003; 323.03]; % [deg]
+    elseif filepath(end)=='0'
         cfg.initatt = [0.003; 0.003; 323.03]; % [deg]
     end
     cfg.initgyrbias = [0; 0; 0]; % [deg/h]

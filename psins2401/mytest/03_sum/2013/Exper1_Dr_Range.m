@@ -5,9 +5,7 @@
 clear
 close all
 glvs
-% load('data_1\DataNeed_1.mat')% 在prework里面重构的一些数据,20260702生成的
-% load('data_1\DataNeed.mat')% 在prework里面重构的一些数据
-load('data_1\DataNeed_optimized.mat')% 在prework里面重构的一些数据
+load('D:\Github\KF-GINS-Matlab\data\psins\data_1\output\DataNeed.mat')% 在prework里面重构的一些数据
 t_lbl = avp_LBL_DR(:,end)';
 t_usbl = avp_ref(:,end)';
 LenLBL = length(t_lbl);
@@ -17,14 +15,14 @@ rng(1)
 % close all
 tt = t_lbl;
 x0=[0;0;0;0];
-dx0=[0.02;d2r(0.5); 1/glv.Re; 1/glv.Re];
+dx0=[0.008; d2r(0.5); 1/glv.Re; 1/glv.Re];
 vk = [0,d2r(0.5),0,0];
 wrng = 6;
-for id = 6
+for id = 1
     pos0=avp_ref(1,7:9)';
     beacon=BCN{id}; range=RNG{id};
     yaw=compass;
-    dr = mydr('init',pos0,[0;0;0],0.5);
+    dr = mydr('init', pos0, [0;0;0], 0.5);
     kf = myekf('init', 0.5, x0, dx0 , vk, wrng);
     [avp_range,avp_dr,xkpk,kk_1]=prealloc(length(avp_ref),10,10,9,5);
     ki=1;
@@ -43,10 +41,10 @@ for id = 6
             % r = range(ki);% 测量值
             
             r = sqrt(RCompu(avp_LBL_DR(i,7:9),dr.beacon)^2-(-depther(i)-dr.beacon(3))^2) + randn*6;
-            kf.r_dr=sqrt(RCompu(dr.pos',dr.beacon)^2-(-depther(i)-dr.beacon(3))^2); % 计算值
-            kf.yk=kf.r_dr-r;
+            kf.r_dr = sqrt(RCompu(dr.pos',dr.beacon)^2-(-depther(i)-dr.beacon(3))^2); % 计算值
+            kf.yk = kf.r_dr-r;
             kf = myekf('hk',kf, dr,'range');
-            kf = myekf('algo',kf,'M','UKF');
+            kf = myekf('algo',kf,'M','EKF');
             kk_1(ki,1:4) = kf.xk;
             kk_1(ki,5) = t;
             avp_range(ki,:) = [dr.avp', t];

@@ -170,5 +170,9 @@ function navstate = InsMech(laststate, lastimu, thisimu)
         navstate.theta_calib = laststate.theta_calib;
         navstate.phi_calib = laststate.phi_calib;
     end
+    if isfield(laststate, 'dvlscale')
+        navstate.dvlscale = laststate.dvlscale;
+        navstate.dvlyaw = laststate.dvlyaw;
+    end
 end
 

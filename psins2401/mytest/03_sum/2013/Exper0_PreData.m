@@ -2,18 +2,18 @@ clear
 glvs
 % 流程见幕布文档笔记，已形成优化版本
 %% 1.舱内的数据导入 --------------------------------------------------
-
+path = 'D:\Github\KF-GINS-Matlab\data\psins\data_1\';
 % COMPASS-OCTANS-DVL-RANGE-DEPTH    
-fid=fopen('1COMPS_2OCTANS_3DVL_4SHIP_5RANGE_6TSD.txt','rt'); 
+fid=fopen([path,'1COMPS_2OCTANS_3DVL_4SHIP_5RANGE_6TSD.txt'],'rt'); 
 fgets(fid);
 DistData_rw=fscanf(fid,'%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d/%d/%d %d:%d:%d\n',[23,inf]);
 fclose(fid);
-fid=fopen('DVLheight_heighter.txt','rt'); 
+fid=fopen([path,'DVLheight_heighter.txt'],'rt'); 
 fgets(fid);
 height=fscanf(fid,'%f,%f,%d/%d/%d %d:%d:%d\n',[8,inf]);
 fclose(fid);
 % LBL的位置信息
-fid=fopen('POS20130628_LBL.txt','rt');
+fid=fopen([path,'POS20130628_LBL.txt'],'rt');
 DistData2=fscanf(fid,'%f,%f,%f,%d/%d/%d %d:%d:%d\n',[9,inf]);
 fclose(fid);
 
@@ -36,15 +36,15 @@ DistData_rw(21:22,:)=height(1:2,:);
 
 clear DistData2 fid ans tmp1 tmp2 height
 %% 2.超短基线的数据导入---------------------------------------------------
-fid = fopen('USBL_BOX-R-20130628-080921_PTXAG.log','rt');
+fid = fopen([path,'USBL_BOX-R-20130628-080921_PTXAG.log'],'rt');
 PTSAG_rw = fscanf(fid,'$PTSAG,#%d,%2d%2d%f,%d,%d,%d,%d,%2d%f,%c,%3d%f,%c,%X,%f,%d,%f*%X\n',[19,inf]);                
 fclose(fid);
 
-fid = fopen('USBL_BOX-R-20130628-080921_PIXOG.log','rt');
+fid = fopen([path,'USBL_BOX-R-20130628-080921_PIXOG.log'],'rt');
 PIXOG_rw = fscanf(fid,'$PIXOG,PPC,DETEC,%2d%2d%f,%d,%d,%d,%d,  %f,%f,%f,  %f,%f,%f,  %f,%f,%f,  %f,%f,%d,%f,   %f,%f,%d,%f,   %f,%f,%d,%f,   %f,%f,%d,     %f*%X\n',[33,inf]);
 fclose(fid);
 
-fid = fopen('USBL_BOX-R-20130628-080921_PTSAX.log','rt');
+fid = fopen([path,'USBL_BOX-R-20130628-080921_PTSAX.log'],'rt');
 PTSAX_rw = fscanf(fid,'$PTSAX,#%d,%2d%2d%f,%d,%d,%d,%d,%f,%f,%X,%f,%d,%f*%X\n',[15,inf]);
 fclose(fid);
 clear fid ans;
@@ -76,8 +76,8 @@ PTSAX_rw(end,:)=round(PTSAX_rw(end,:));
 clear PTSAG_rw
 %% 时间段选取
 % 时间定义以及滞后时间 深度计校正
-ATdelay=38;
-AdepC=15.5;
+ATdelay = 38;
+AdepC = 15.5;
 % AdepC=10;
 TimeUSBL=[41458,50258]; % 11:30:58--13:57:38
 TimeLBL=TimeUSBL+ATdelay; % 11:31:36--13:58:16
@@ -773,8 +773,8 @@ HorizErrPG(1,:)=Est_range(1,:)-HorizRangeUTMPIXOGCABIN1;
 HorizErrPG(2,:)=Est_range(2,:)-HorizRangeUTMPIXOGCABIN1;
 HorizErrPG(3,:)=Est1-HorizRangeUTMPIXOGCABIN1;
 HorizErrPG(4,:)=Est2-HorizRangeUTMPIXOGCABIN1;
-
-save D:\GitHub\PSINS\psins2401\mytest\range_meas.mat HorizRangeUTMPIXOGCABIN1 Est_range TimeH1PIXOG
+rangemeas = [path,'range_meas.mat'];
+save(rangemeas,'HorizRangeUTMPIXOGCABIN1','Est_range','TimeH1PIXOG')
 % myfigurestartup(7,3,'prese'),
 % subplot 121,
 % plot(tt_usbl,HorizErrPG(1,:), ...
@@ -799,11 +799,16 @@ HorizRangePropaTsm=[Est1;Est2];% 平滑后的
 LatLonDepTran=[LatTranPIXOG;LonTranPIXOG;-DepthShipPIXOG;tt_usbl];
 LatLonDepShip=[LatShipPIXOG;LonShipPIXOG;-DepthShipPIXOG;tt_usbl];
 LatLonDepHov=[LatHovPTSAG;LonHovPTSAG;-DepthHovPTSAX;tt_usbl];
-save data_1\deep-sea.mat avp_m compass octans vxy depther BCN RNG RNG_raw RNG1 ...
-...
-LatLonShipCabin HorizRangePropaT HorizRangePropaTsm... 
-HorizRangePTSAXfebck ...
-HorizRangeUTMPIXOGFebck ...
-LatLonDepTran LatLonDepHov LatLonDepShip HorizRangeUTMPIXOGCABIN...
-...
-avp_USBL_DR avp_LBL_DR avp_dr_octans_lbl avp_dr_octans_usbl avp_lbl_raw avp_usbl_raw
+deepsea_data = [path,'output\','deep-sea.mat'];
+save(deepsea_data, ...
+    'avp_m', 'compass', 'octans', 'vxy', 'depther', ...
+    'BCN', 'RNG', 'RNG_raw', 'RNG1', ...
+    'LatLonShipCabin', ...
+    'HorizRangePropaT', 'HorizRangePropaTsm', ...
+    'HorizRangePTSAXfebck', ...
+    'HorizRangeUTMPIXOGFebck', ...
+    'LatLonDepTran', 'LatLonDepHov', 'LatLonDepShip', ...
+    'HorizRangeUTMPIXOGCABIN', ...
+    'avp_USBL_DR', 'avp_LBL_DR', ...
+    'avp_dr_octans_lbl', 'avp_dr_octans_usbl', ...
+    'avp_lbl_raw', 'avp_usbl_raw');

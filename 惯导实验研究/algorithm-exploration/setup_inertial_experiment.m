@@ -24,6 +24,9 @@ function paths = setup_inertial_experiment()
     paths.data = fullfile(project_root, 'data', 'inertial-experiment','algorithm-exploration');
     paths.simulation = fullfile(paths.data, 'simulation');
     paths.experiment = fullfile(paths.data, 'experiment');
+    paths.default_experiment_id = 7;
+    paths.default_experiment_case = sprintf('case-%02d', ...
+        paths.default_experiment_id);
     paths.simulation_input = @(case_id) fullfile(paths.simulation,sprintf('case-%02d', case_id),'input');
     paths.experiment_input = @(case_id) fullfile(paths.experiment,sprintf('case-%02d', case_id),'input');
 

@@ -21,7 +21,8 @@ paths = setup_inertial_experiment();
 simulation_case = char(string(simulation_case));
 raw_range = cell(3, 1);
 if data_source == "simulation"
-    input_dir = fullfile(paths.simulation_input, simulation_case);
+    case_id = parse_case_id(simulation_case);
+    input_dir = paths.simulation_input(case_id);
     cfg = load_algorithm_exploration_config( ...
         "simulation", "rad", input_dir);
     for beacon_index = 1:3
@@ -48,21 +49,18 @@ if data_source == "simulation"
         simulation_base_range_noise_std_m*randn(event_count, 1);
     dataset_id = string(simulation_case);
 else
-    input_dir = paths.experiment_input;
-    cfg = load_algorithm_exploration_config("experiment", "rad", []);
-    current_path = fullfile(input_dir, 'rangedata_noised.txt');
+    case_id = paths.default_experiment_id;
+    input_dir = paths.experiment_input(case_id);
+    cfg = load_algorithm_exploration_config("experiment", "rad", input_dir);
+    current_path = cfg.rangefilepath;
     if ~isfile(current_path), error('缺少实测测距文件：%s', current_path); end
     current_range = readmatrix(current_path, 'FileType', 'text');
-    for beacon_index = 1:3
-        raw_path = fullfile(input_dir, sprintf('range%d.txt', beacon_index));
-        if ~isfile(raw_path), error('缺少实测原始距离文件：%s', raw_path); end
-        raw_range{beacon_index} = readmatrix(raw_path, 'FileType', 'text');
-    end
+    raw_range = split_range_by_beacon(current_range);
     if size(current_range, 1) > 1 && ...
             any(abs(diff(current_range(:, 1))-range_interval_s) > 1e-6)
         error('实测测距数据不是固定 %.0f s 间隔。', range_interval_s);
     end
-    dataset_id = "experiment";
+    dataset_id = string(paths.default_experiment_case);
 end
 
 if isempty(current_range) || size(current_range, 2) < 6 || ...
@@ -79,4 +77,31 @@ dataset.truth_path = cfg.truthpath;
 dataset.current_range = current_range;
 dataset.raw_range = raw_range;
 dataset.range_interval_s = range_interval_s;
+end
+
+function case_id = parse_case_id(case_name)
+token = regexp(char(string(case_name)), '^case-(\d+)$', 'tokens', 'once');
+if isempty(token), error('数据集名称必须采用 case-0x 格式。'); end
+case_id = str2double(token{1});
+end
+
+function separated = split_range_by_beacon(range_data)
+separated = cell(3, 1);
+beacons = zeros(0, 3);
+indices = zeros(size(range_data, 1), 1);
+for row = 1:size(range_data, 1)
+    match = find(vecnorm(beacons-range_data(row, 4:6), 2, 2) < 1e-10, ...
+        1, 'first');
+    if isempty(match)
+        beacons(end+1, :) = range_data(row, 4:6); %#ok<AGROW>
+        match = size(beacons, 1);
+    end
+    indices(row) = match;
+end
+if size(beacons, 1) ~= 3
+    error('实测 range.txt 必须包含 3 个固定信标。');
+end
+for beacon_index = 1:3
+    separated{beacon_index} = range_data(indices == beacon_index, :);
+end
 end

@@ -5,10 +5,10 @@ clear
 for state = [4,5,7]
     clearvars -except state
     glvs
-    exper = 0;
+    exper = 1;
     if exper == 1
-        load('data_1\deep-sea_optimized.mat');
-        load('data_1\deep-sea.mat');
+        load('D:\Github\KF-GINS-Matlab\data\psins\data_1\output\deep-sea_optimized.mat');
+        % load('data_1\deep-sea.mat');
         avp_ref = avp_LBL_DR;
         for i = [2,4]
             BCN{4+i}=dxyz2pos([-1000,0,0],BCN{i}');
@@ -102,6 +102,17 @@ for state = [4,5,7]
 
         dphi_deg_con = compass(:,3)-avp_ref(:,3);
         dphi_deg = dphi_deg_con;
+        % Five-state simulation truth used for reviewer consistency plots.
+        % State order: [deltaK, c1, c2, deltaLat, deltaLon].
+        % The simulated heading error is c1*cos(2*psi)+c2*sin(2*psi).
+        harmonic_basis = [cos(2*avp_ref(:,3)), sin(2*avp_ref(:,3))];
+        if exist('const_yaw', 'var') && numel(const_yaw)==size(harmonic_basis,1)
+            heading_coeff_truth = harmonic_basis \ const_yaw(:);
+        else
+            % Fallback for older simulation data files without const_yaw.
+            heading_coeff_truth = harmonic_basis \ dphi_deg(:);
+        end
+        parameter_truth_5state = [dk; heading_coeff_truth(1:2)];
         % dphi_deg = d2r(0.5)*ones(size(dphi_deg));
     elseif exper == 2
         % 针对横线和竖线轨迹进行批量分析，主要着重于可观测度
@@ -144,28 +155,28 @@ for state = [4,5,7]
     end
     N = length(compass);
     %%
-    close all
-    myfigurestartup(6,6,'prese');
-    subplot 211
-    plot(compass(:,4), r2d(compass(:,3)), avp_ref(:,end), r2d(avp_ref(:,3)))
-    legend('罗盘','OCTANS参考系统')
-    xlabel('time/s')
-    ylabel('heading/deg')
-    grid on
-    subplot 212
-    plot(compass(:,4), r2d(compass(:,3))- r2d(avp_ref(:,3)))
-    grid on 
-    xlabel('time/s')
-    ylabel('error/deg')
-    title('罗盘与参考OCTANS航向角偏差')
-    
-
-    result = analyze_compass_heading_harmonics( ...
-    compass(:,4), r2d(compass(:,3)), avp_ref(:,end), r2d(avp_ref(:,3)));
-        exportgraphics( ...
-        result.ax1, ...
-        'D:\Github\PSINS\psins2401\mytest\03_sum\figures\Compass.pdf', ...
-        "ContentType", "vector");
+    % close all
+    % myfigurestartup(6,6,'prese');
+    % subplot 211
+    % plot(compass(:,4), r2d(compass(:,3)), avp_ref(:,end), r2d(avp_ref(:,3)))
+    % legend('罗盘','OCTANS参考系统')
+    % xlabel('time/s')
+    % ylabel('heading/deg')
+    % grid on
+    % subplot 212
+    % plot(compass(:,4), r2d(compass(:,3))- r2d(avp_ref(:,3)))
+    % grid on 
+    % xlabel('time/s')
+    % ylabel('error/deg')
+    % title('罗盘与参考OCTANS航向角偏差')
+    % 
+    % 
+    % result = analyze_compass_heading_harmonics( ...
+    % compass(:,4), r2d(compass(:,3)), avp_ref(:,end), r2d(avp_ref(:,3)));
+    %     exportgraphics( ...
+    %     result.ax1, ...
+    %     'D:\Github\KF-GINS-Matlab\data\psins\figures\Compass.pdf', ...
+    %     "ContentType", "vector");
     %%
     dr = mydr('init', avp_ref(1,7:9)', [0;0;0], ts);
     avp_dr = prealloc(N, 10);
@@ -199,7 +210,8 @@ for state = [4,5,7]
             kf = [];
             dr = [];
             kf = myekf('init', 0.5, x0, dx0, vk, rngk);
-            [avp_dr1, xk_record, pk_diag, avp_kf_out] = prealloc(N, 10, kf.m+1, 5, 10);
+            [avp_dr1, xk_record, pk_diag, pk_full, avp_kf_out] = ...
+                prealloc(N, 10, kf.m+1, 5, kf.m*kf.m+1, 10);
             ki = 1;
             dr = mydr('init', avp_ref(1,7:9)', [0;0;0], ts);
             %% 2. 组合导航主循环
@@ -238,6 +250,10 @@ for state = [4,5,7]
                     xk_record(ki, :) = [kf.xk', t];
                     P = kf.Pxk(end-1:end,end-1:end);
                     pk_diag(ki, :)   = [P(:)', t];
+                    % Preserve the complete posterior covariance.  The
+                    % column-major vectorization is reshaped by the
+                    % dedicated reviewer plotting script.
+                    pk_full(ki, :) = [kf.Pxk(:)', t];
                     Hk(ki,:) = kf.Hk(end-1:end);
                     avp_kf_out(ki, :) = [dr.avp', t]; % 记录修正时刻的AVP
                     ki = ki + 1;
@@ -247,6 +263,7 @@ for state = [4,5,7]
             % 裁剪未使用的预分配空间
             xk_record(ki:end, :) = [];
             pk_diag(ki:end, :)   = [];
+            pk_full(ki:end, :)   = [];
             Hk(ki:end, :)   = [];
             avp_kf_out(ki:end, :) = [];
 
@@ -258,6 +275,7 @@ for state = [4,5,7]
             avp_range{id} = avp_dr1;
             avp_range_sparse{id} = avp_kf_corrected;
             Pk{id} = pk_diag;
+            PkFull{id} = pk_full;
             HHk{id} = Hk;
             XK{id} = xk_record;
 
@@ -267,19 +285,19 @@ for state = [4,5,7]
     %%
     if exper==1
         if length(x0)==4
-            save datasaved_new/data_exper_4state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK dk dphi_deg dt 
+            save D:\Github\KF-GINS-Matlab\data\psins\datasaved_new/data_exper_4state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK PkFull dk dphi_deg dt vk dx0 rngk
         elseif length(x0)==5
-            save datasaved_new/data_exper_5state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK dk dphi_deg dt
+            save D:\Github\KF-GINS-Matlab\data\psins\datasaved_new/data_exper_5state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK PkFull dk dphi_deg dt vk dx0 rngk
         elseif length(x0)==7
-            save datasaved_new/data_exper_7state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK dk dphi_deg dt 
+            save D:\Github\KF-GINS-Matlab\data\psins\datasaved_new/data_exper_7state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK PkFull dk dphi_deg dt vk dx0 rngk
         end
     elseif exper ==0
         if length(x0)==4
-            save datasaved_new/data_simu_4state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK dk dphi_deg dt moving_beacons1
+            save D:\Github\KF-GINS-Matlab\data\psins\datasaved_new/data_simu_4state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK PkFull dk dphi_deg dt moving_beacons1 parameter_truth_5state vk dx0 rngk
         elseif length(x0)==5
-            save datasaved_new/data_simu_5state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK dk dphi_deg dt moving_beacons1
+            save D:\Github\KF-GINS-Matlab\data\psins\datasaved_new/data_simu_5state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK PkFull dk dphi_deg dt moving_beacons1 parameter_truth_5state vk dx0 rngk
         elseif length(x0)==7
-            save datasaved_new/data_simu_7state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK dk dphi_deg dt moving_beacons1
+            save D:\Github\KF-GINS-Matlab\data\psins\datasaved_new/data_simu_7state.mat avp_ref avp_range avp_dr HHk beacon_data moving_beacons XK PkFull dk dphi_deg dt moving_beacons1 parameter_truth_5state vk dx0 rngk
         end
     end
     %%
