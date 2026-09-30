@@ -1,5 +1,5 @@
 function cfg = create_static_pureins_config(paths)
-%CREATE_STATIC_PUREINS_CONFIG Build the static-003 pure INS configuration.
+%CREATE_STATIC_PUREINS_CONFIG Build a pure INS configuration for one static batch.
 %
 % Initial position, velocity, and attitude all come from pva_initial.txt.
 % Height is held at the initial value by run_static_pureins.
@@ -26,7 +26,10 @@ cfg.inputfolder = paths.input;
 cfg.outputfolder = paths.output;
 cfg.imufilepath = paths.imu_file;
 cfg.attitudefilepath = paths.pva_initial_file;
-cfg.pureinsfilepath = paths.pureins_file;
+cfg.pureinsfilepath = paths.pureins_fixed_height_file;
+cfg.pureins_fixed_height_filepath = paths.pureins_fixed_height_file;
+cfg.pureins_zero_vel_fixed_height_filepath = ...
+    paths.pureins_zero_vel_fixed_height_file;
 
 %% Initial state and processing time
 cfg.starttime = pva_initial(2);

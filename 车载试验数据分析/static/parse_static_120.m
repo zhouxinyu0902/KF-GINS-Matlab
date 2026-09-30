@@ -1,18 +1,20 @@
-function Static120 = parse_static_120(dataset_ids, save_result)
-% PARSE_STATIC_120 Parse the 120-device static data (Disk1 AUXA + Disk2 STDIMU).
+function Static120 = parse_static_120(dataset_ids, save_result, caseNo)
+% PARSE_STATIC_120 Parse either 120-device static data batch.
 % 解析120的原始数据
 %   Static120 = parse_static_120()
 %   Static120 = parse_static_120(dataset_ids)
 %   Static120 = parse_static_120(dataset_ids, save_result)
+%   Static120 = parse_static_120(dataset_ids, save_result, caseNo)
 %
 % The function automatically locates:
-%   <repo>/data/experiment-data/static/Disk1_XXX.dat  (AUXA)
-%   <repo>/data/experiment-data/static/Disk2_XXX.dat  (STDIMU)
+%   <repo>/data/experiment-data/<static|static-x>/Disk1_XXX.dat  (AUXA)
+%   <repo>/data/experiment-data/<static|static-x>/Disk2_XXX.dat  (STDIMU)
 %
 % Each XXX is treated as an independent power-on/acquisition segment. The
-% raw values are retained exactly as returned by read_auax_120 and
-% read_stdimu_120; no UTC construction, coordinate conversion, cropping, or
-% cross-file concatenation is performed here.
+% Values are retained as returned by read_auax_120 and read_stdimu_120 after
+% selecting the longest strictly increasing time segment from each stream.
+% No UTC construction, coordinate conversion, or cross-file concatenation
+% is performed here.
 %
 % Inputs
 %   dataset_ids : IDs to parse, for example 0:3. Empty/omitted selects the
@@ -20,6 +22,7 @@ function Static120 = parse_static_120(dataset_ids, save_result)
 %                 explicitly only when the discarded short runs are needed
 %                 for diagnosis.
 %   save_result : true (default) saves the parsed MAT file and summary CSV.
+%   caseNo      : 0 (default) selects static; 1...5 select static-1...5.
 %
 % Outputs
 %   Static120(k).auxa_raw : 34 x N raw AUXA matrix.
@@ -36,16 +39,26 @@ end
 if nargin < 2 || isempty(save_result)
     save_result = true;
 end
+if nargin < 3 || isempty(caseNo)
+    caseNo = 0;
+end
 
 validateattributes(save_result, {'logical', 'numeric'}, {'scalar'}, ...
     mfilename, 'save_result', 2);
 save_result = logical(save_result);
+validateattributes(caseNo, {'numeric'}, ...
+    {'scalar', 'integer', 'nonnegative', '<=', 5}, mfilename, 'caseNo', 3);
 
 code_dir = fileparts(mfilename('fullpath'));
 analysis_dir = fileparts(code_dir);
 repo_dir = fileparts(analysis_dir);
-% data_dir = fullfile(repo_dir, 'data', 'experiment-data', 'static');
-data_dir = fullfile(repo_dir, 'data', 'experiment-data', 'static-1');
+if caseNo == 0
+    batch_name = 'static';
+else
+    batch_name = sprintf('static-%d', caseNo);
+end
+data_dir = fullfile(repo_dir, 'data', 'experiment-data', ...
+    batch_name);
 func_dir = fullfile(analysis_dir, 'func');
 output_dir = fullfile(data_dir, 'processed');
 
@@ -137,16 +150,37 @@ for k = 1:n_dataset
 
     fprintf('  STDIMU : %s\n', imu_name);
     tic;
-    header_positions = find_stdimu_headers(imu_file, frame_header);
-    if isempty(header_positions)
+    candidate_header_positions = find_stdimu_headers(imu_file, frame_header);
+    if isempty(candidate_header_positions)
         error('parse_static_120:NoSTDIMUHeader', ...
             'No STDIMU frame header was found in %s.', imu_name);
+    end
+    header_positions = keep_dominant_frame_phase( ...
+        candidate_header_positions, 36);
+    rejected_header_count = numel(candidate_header_positions) - ...
+        numel(header_positions);
+    if rejected_header_count > 0
+        fprintf('  Ignored %d embedded false header candidate(s).\n', ...
+            rejected_header_count);
     end
     imu_raw = read_stdimu_120(imu_file, header_positions);
     imu_elapsed = toc;
     if isempty(imu_raw) || size(imu_raw, 2) ~= 9
         error('parse_static_120:InvalidSTDIMU', ...
             '%s did not produce an M-by-9 STDIMU matrix.', imu_name);
+    end
+
+    auxa_decoded_records = size(auxa_raw, 2);
+    imu_decoded_records = size(imu_raw, 1);
+    [auxa_raw, auxa_discarded_records] = ...
+        keep_longest_increasing_segment(auxa_raw, auxa_raw(1, :), 2);
+    [imu_raw, imu_discarded_records] = ...
+        keep_longest_increasing_segment( ...
+        imu_raw, double(imu_raw(:, 7)) / 200, 1);
+    if auxa_discarded_records > 0 || imu_discarded_records > 0
+        fprintf(['  Kept longest increasing segment; discarded ' ...
+            '%d AUXA and %d STDIMU record(s).\n'], ...
+            auxa_discarded_records, imu_discarded_records);
     end
 
     auxa_time = auxa_raw(1, :);
@@ -157,10 +191,16 @@ for k = 1:n_dataset
     checksum_ok = sum(imu_raw(:, 9) == 1);
 
     info = struct();
+    info.auxa_decoded_records = auxa_decoded_records;
     info.auxa_records = size(auxa_raw, 2);
+    info.auxa_discarded_records = auxa_discarded_records;
+    info.stdimu_candidate_headers = numel(candidate_header_positions);
     info.stdimu_headers = numel(header_positions);
+    info.stdimu_rejected_headers = rejected_header_count;
+    info.stdimu_decoded_records = imu_decoded_records;
     info.stdimu_records = size(imu_raw, 1);
-    info.stdimu_skipped_frames = numel(header_positions) - size(imu_raw, 1);
+    info.stdimu_discarded_records = imu_discarded_records;
+    info.stdimu_skipped_frames = numel(header_positions) - imu_decoded_records;
     info.stdimu_checksum_ok = checksum_ok;
     info.stdimu_checksum_failed = size(imu_raw, 1) - checksum_ok;
     info.auxa_time = auxa_time_stats;
@@ -198,13 +238,16 @@ for k = 1:n_dataset
     coverage_tolerance = max(2, 0.02 * max(auxa_time_stats.duration, imu_time_stats.duration));
     if abs(duration_difference) > coverage_tolerance
         warning('parse_static_120:CoverageMismatch', ...
-            ['%s AUXA/STDIMU coverage differs by %.3f s. Raw data is kept ' ...
-             'without automatic cropping.'], dataset_name, duration_difference);
+            ['%s AUXA/STDIMU coverage differs by %.3f s. Selected segments ' ...
+             'are kept without further cropping.'], ...
+            dataset_name, duration_difference);
     end
 end
 
 summary_table = build_summary(Static120);
 parse_config = struct(...
+    'case_no', caseNo, ...
+    'batch_name', batch_name, ...
     'data_dir', data_dir, ...
     'output_dir', output_dir, ...
     'dataset_ids', dataset_ids, ...
@@ -213,9 +256,6 @@ parse_config = struct(...
     'stdimu_parser', 'read_stdimu_120', ...
     'created_at', char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss')));
 
-auxa = Static120.auxa_raw;
-startid = find(auxa(2,:)==0.01);
-Static120.auxa_raw = Static120.auxa_raw(:,startid:end);
 if save_result
     if ~isfolder(output_dir)
         mkdir(output_dir);
@@ -273,6 +313,39 @@ mask = bytes(1:end-2) == header(1) & ...
        bytes(2:end-1) == header(2) & ...
        bytes(3:end) == header(3);
 positions = find(mask);
+end
+
+function positions = keep_dominant_frame_phase(candidate_positions, frame_length)
+% Keep the fixed-length frame phase with the most header candidates. This
+% rejects header-like byte patterns embedded inside the binary payload.
+
+phase = mod(candidate_positions - 1, frame_length);
+phase_count = accumarray(phase(:) + 1, 1, [frame_length, 1]);
+[~, dominant_phase_index] = max(phase_count);
+positions = candidate_positions(phase == dominant_phase_index - 1);
+end
+
+function [data, discarded_records] = keep_longest_increasing_segment( ...
+        data, time, sample_dimension)
+% Keep the longest continuous segment with a strictly increasing time axis.
+% Static recordings can contain a short pre-reset fragment followed by the
+% single effective acquisition beginning near zero.
+
+time = double(time(:));
+break_after = find(~isfinite(time(1:end - 1)) | ...
+    ~isfinite(time(2:end)) | diff(time) <= 0);
+segment_start = [1; break_after + 1];
+segment_end = [break_after; numel(time)];
+segment_length = segment_end - segment_start + 1;
+[~, longest_index] = max(segment_length);
+keep = segment_start(longest_index):segment_end(longest_index);
+discarded_records = numel(time) - numel(keep);
+
+if sample_dimension == 1
+    data = data(keep, :);
+else
+    data = data(:, keep);
+end
 end
 
 function stats = time_stats(time)

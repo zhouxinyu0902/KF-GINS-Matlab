@@ -11,6 +11,8 @@
    时变潜标坐标作为理想参考；
 3. `step2_run_time_varying_beacon_uncertainty_navigation.m`：把潜标位置不确定度
    加入距离量测方差后运行导航。
+4. `analyze_time_varying_beacon_navigation_results.m`：忽略已有分析文件，直接
+   从 truth 和 NAV 重新比较未补偿、真实潜标位置与位置不确定度补偿结果。
 
 辅助文件：
 
@@ -143,6 +145,43 @@ manual_uncertainty_horizon_s = 24*3600;
 潜标不确定度龄期从 step0 的初始潜标测量时刻开始累计，不会因截取导航
 区间而重新归零。每次测距的潜标编号、龄期、潜标标准差和有效距离标准差
 保存在 `beacon-uncertainty-history.mat`。
+
+## 统一误差分析
+
+直接运行：
+
+```matlab
+analyze_time_varying_beacon_navigation_results
+```
+
+默认扫描仿真 `case-00/05/06` 和实测 `case-06/07/08/09` 下已经存在的
+`beacon-position-*` 导航结果，使用 `calc_radial_error_gjb` 按共同时间段
+重新计算前向 EKF、单次 RTS 和双次 RTS 的误差。旧的 CSV、Excel 和图片
+不会作为分析输入。
+
+也可以只运行指定数据集或算法：
+
+```matlab
+analyze_time_varying_beacon_navigation_results( ...
+    'DatasetFilter', "simulation/case-05", ...
+    'AlgorithmFilter', "rts-double");
+```
+
+每个工况的结果写入：
+
+```text
+<dataset>/output/figures-tables/<study_id>/
+├─ navigation-error-forward-ekf.png/.fig
+├─ navigation-error-rts-single.png/.fig
+├─ navigation-error-rts-double.png/.fig
+├─ navigation-error-<algorithm>-statistics.csv/.xlsx
+├─ navigation-error-summary.csv/.xlsx
+└─ navigation-error-analysis-report.txt
+```
+
+汇总表同时给出 RMSE、均值、中位数、P95、最大误差、CEP50、GJB 位置误差率、
+相对未补偿的 RMSE 改善率以及相对真实潜标位置的 RMSE 差距。某种处理方式
+缺少 NAV 文件时，脚本分析其余已完成结果，并在报告中记录缺失项。
 
 ## experiment/case-07 当前数据范围
 
