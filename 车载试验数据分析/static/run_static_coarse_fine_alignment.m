@@ -19,11 +19,26 @@ clc;
 % ========================================================================
 
 %% 1. 用户参数
-caseNo = 2;                 % 0: static；1~5: static-1 ~ static-5
+caseNo = 1;                 % 0: static；1~5: static-1 ~ static-5
 imuRateHz = 100;            % []: 保持现有频率；也可设置为100或200
 
-% 已知装订位置，输入顺序为经度、纬度、高度。
+% 批量运行时可用环境变量临时覆盖上述参数，无需反复改脚本：
+%   KF_STATIC_CASE_NO = 0~5
+%   KF_STATIC_IMU_RATE_HZ = 100或200
+caseNoOverride = getenv('KF_STATIC_CASE_NO');
+if ~isempty(caseNoOverride)
+    caseNo = str2double(caseNoOverride);
+end
+imuRateOverride = getenv('KF_STATIC_IMU_RATE_HZ');
+if ~isempty(imuRateOverride)
+    imuRateHz = str2double(imuRateOverride);
+end
+validateattributes(caseNo, {'numeric'}, ...
+    {'scalar', 'integer', '>=', 0, '<=', 5}, mfilename, 'caseNo');
+validateattributes(imuRateHz, {'numeric'}, ...
+    {'scalar', 'positive'}, mfilename, 'imuRateHz');
 
+% 已知装订位置，输入顺序为经度、纬度、高度。
 bindingLongitudeDeg = 120.68946110621751;
 bindingLatitudeDeg = 36.36533670805072;
 bindingHeightM = 5;

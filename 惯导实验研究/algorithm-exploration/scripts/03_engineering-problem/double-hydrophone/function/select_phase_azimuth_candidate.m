@@ -1,5 +1,6 @@
 function selection = select_phase_azimuth_candidate( ...
-        wrapped_phase_deg, navstate, beacon_position, options)
+        wrapped_phase_deg, navstate, beacon_position, options, ...
+        attitude_error_rad)
 %SELECT_PHASE_AZIMUTH_CANDIDATE 用导航先验消除相位周期及线阵前后模糊。
 %   beacon_position = [lat(rad), lon(rad), h(m)]。
 %   输出 selected_relative_azimuth_deg 与 update_range_azimuth_filter_rad
@@ -16,6 +17,12 @@ function selection = select_phase_azimuth_candidate( ...
     if numel(beacon_position) < 2 || any(~isfinite(beacon_position(1:2)))
         error('beacon_position 至少应包含有限的 [lat(rad), lon(rad)]。');
     end
+    if nargin < 5 || isempty(attitude_error_rad)
+        attitude_error_rad = 0;
+    end
+    if ~isscalar(attitude_error_rad) || ~isfinite(attitude_error_rad)
+        error('attitude_error_rad 必须为有限标量。');
+    end
 
     phase_candidates = phase_difference_to_angle_candidates( ...
         wrapped_phase_deg, options.baseline_m, options.carrier_hz, ...
@@ -23,7 +30,8 @@ function selection = select_phase_azimuth_candidate( ...
 
     bearing_deg = initial_bearing_deg(navstate.pos(1), navstate.pos(2), ...
         beacon_position(1), beacon_position(2));
-    heading_deg = rad2deg(navstate.att(3));
+    % 名义姿态保持为 INS 输出，未反馈的航向误差仍用于候选角裁决。
+    heading_deg = rad2deg(navstate.att(3) + attitude_error_rad);
     predicted_relative_azimuth_deg = wrap180( ...
         bearing_deg - heading_deg - options.baseline_install_deg - 90);
     predicted_principal_angle_deg = ...
@@ -76,4 +84,3 @@ end
 function angle_deg = wrap180(angle_deg)
     angle_deg = mod(angle_deg + 180, 360) - 180;
 end
-

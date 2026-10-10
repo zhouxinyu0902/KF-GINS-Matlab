@@ -60,6 +60,26 @@ generate_simulation_dataget(["case-00", "case-01"], true);
 
 `generate_experiment_dataget.m` 用于生成实测高度和三路距离辅助数据。
 
+## case-07：约5 km单信标圆周仿真
+
+`generate_simulation_case07_single_beacon_5km.m` 生成5000 s、100 Hz的
+IMU和真值，以及1 Hz的单信标理想水平距离。信标位于圆周中心，载体以
+约5 km半径绕行，因此全程距离保持在5 km附近。输出仅包含
+`range1.txt`，不会伪造`range2.txt`和`range3.txt`。
+
+```matlab
+generate_simulation_case07_single_beacon_5km();            % 生成或跳过完整数据
+generate_simulation_case07_single_beacon_5km(true);        % 验证后覆盖
+generate_simulation_case07_single_beacon_5km(false, true); % 只检查，不写入
+```
+
+输出位置：
+
+```text
+data/inertial-experiment/algorithm-exploration/
+  simulation/case-07/input/
+```
+
 ## case-05：24小时仿真
 
 `generate_simulation_24h_case05.m` 单独生成24小时、100 Hz的IMU和真值，

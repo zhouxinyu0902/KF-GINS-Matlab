@@ -11,17 +11,13 @@
    时变潜标坐标作为理想参考；
 3. `step2_run_time_varying_beacon_uncertainty_navigation.m`：把潜标位置不确定度
    等效加入距离量测方差后运行导航；
-4. `step3_run_time_varying_beacon_consider_navigation.m`：使用三潜标统一堆叠的
-   Schmidt/Consider 方法保留潜标误差与 INS 的交叉协方差；
-5. `analyze_time_varying_beacon_navigation_results.m`：忽略已有分析文件，直接
+4. `analyze_time_varying_beacon_navigation_results.m`：忽略已有分析文件，直接
    从 truth 和 NAV 重新比较未补偿、真实潜标位置与位置不确定度补偿结果。
 
 辅助文件：
 
 - `resolve_beacon_position_dataset.m`：统一解析仿真/实测数据集、真值文件和
   导航配置；
-- `function/`：Schmidt/Consider 初始化、时间传播、距离更新、深度更新和
-  T0/T5 回归检查函数；
 - `prework/beacon_anlysis.m`：系泊绳长、深度和倾角误差向水平圆环约束传播；
 - `prework/beacon_drift.m`：Release–Beacon 三维几何与漂移示意。
 
@@ -150,56 +146,6 @@ manual_uncertainty_horizon_s = 24*3600;
 区间而重新归零。每次测距的潜标编号、龄期、潜标标准差和有效距离标准差
 保存在 `beacon-uncertainty-history.mat`。
 
-## step3：Schmidt/Consider 不确定度融合
-
-step3 不改变 INS 机械编排和 15 维误差状态，也不在线估计潜标坐标。三个
-潜标的水平位置误差统一作为 6 维 consider 参数：
-
-```text
-Pxx : 15×15  INS 主动状态协方差
-Pxb : 15×6   INS 与三个潜标水平位置误差的交叉协方差
-Pbb : 6×6    三个潜标水平位置误差协方差
-```
-
-`Pxb` 在每个 IMU 协方差传播步同步左乘状态转移矩阵；`Pbb` 按 step0 的
-不确定度增长模型随绝对龄期增加并设置上限。距离更新只修正 INS 主动状态，
-不收缩 `Pbb`。潜标位置协方差已经显式进入创新协方差，因此测距噪声 `R`
-中不会再次加入同一项，避免双重计数。
-
-仿真示例：
-
-```matlab
-step3_run_time_varying_beacon_consider_navigation( ...
-    'DataSource', 'simulation', ...
-    'DatasetId', 'case-00', ...
-    'ActivityRadiusM', 61, ...
-    'DurationS', []);
-```
-
-实测示例：
-
-```matlab
-step3_run_time_varying_beacon_consider_navigation( ...
-    'DataSource', 'experiment', ...
-    'DatasetId', 'case-06', ...
-    'ActivityRadiusM', 61, ...
-    'DurationS', []);
-```
-
-结果写入 `<study_id>/consider-rad/`，包括三种 NAV、
-`schmidt-consider-history.csv/.mat` 和 `navigation-context.mat`。日志记录
-创新、创新方差、潜标 LOS 方差、交叉协方差项、NIS、`Pxb` 范数以及量测
-前后 `Pbb` 变化量。
-
-每次运行默认执行两项回归检查：
-
-- T0：`Pbb=0`、`Pxb=0` 时严格退化为原普通 ES-EKF；
-- T5：`Pxb=0` 时第一次更新与原 `R_eff` 方法一致，随后 `Pxb` 应变为非零，
-  而 `Pbb` 在量测更新前后保持不变。
-
-当前 RTS 继续使用已包含 Consider 影响的 `Pxx`，尚未把潜标参数块扩展进
-平滑器。因此前向 EKF 是第一阶段最严格的验证对象，RTS 结果作为工程对照。
-
 ## 统一误差分析
 
 直接运行：
@@ -210,8 +156,8 @@ analyze_time_varying_beacon_navigation_results
 
 默认扫描仿真 `case-00/05/06` 和实测 `case-06/07/08/09` 下已经存在的
 `beacon-position-*` 导航结果，使用 `calc_radial_error_gjb` 按共同时间段
-重新计算前向 EKF、单次 RTS 和双次 RTS 的误差，并自动纳入已有的
-`consider-rad`。旧的 CSV、Excel 和图片不会作为分析输入。
+重新计算前向 EKF、单次 RTS 和双次 RTS 的误差。旧的 CSV、Excel 和图片
+不会作为分析输入。
 
 也可以只运行指定数据集或算法：
 
@@ -249,29 +195,5 @@ analyze_time_varying_beacon_navigation_results( ...
 
 1. 将 step1、step2 重复的 EKF/RTS 主循环提取为公共函数；
 2. 加入真实长时实测数据及独立 `navigation-config.mat`；
-3. 将 step3 的各向同性水平 `Pbb` 扩展为具有方向性的 2×2 协方差；
-4. 为仿真增加 NEES 与 3σ 覆盖率，为实测增加 NIS 门限和异常距离统计；
-5. 将潜标参数块纳入严格的 Schmidt/Consider RTS 平滑；
-6. 建立短小回归数据，自动检查初始化时刻、测距轮换、时间裁剪和丢包。
-
-## Step3 NIS robust range update
-
-`step3_run_time_varying_beacon_consider_navigation` now supports an optional
-scalar-NIS gate for the acoustic range row:
-
-- `EnableNisRobust=false` keeps the original Schmidt/Consider result in
-  `consider-rad`.
-- `EnableNisRobust=true` writes an independent result to `consider-nis-rad`.
-- `NisSoftThreshold` defaults to `3.841` (chi-square, 1 DoF, 95%). Values
-  above it inflate only the independent range-noise variance.
-- `NisRejectThreshold` defaults to `10.828` (chi-square, 1 DoF, 99.9%).
-  With `EnableNisRejection=true`, values above it reject the range row while
-  retaining the depth update. Rejection is disabled by default for sparse
-  acoustic updates.
-- `NisMinimumWeight` defaults to `0.10`, so soft downweighting cannot remove
-  more than 90% of the independent range information.
-
-The history CSV records raw/effective NIS, information weight, and action
-code (`0=accepted`, `1=downweighted`, `2=range rejected`). The unified
-analysis script compares `compensated-rad`, `consider-rad`, and
-`consider-nis-rad` without overwriting earlier navigation files.
+3. 为仿真增加 NEES 与 3σ 覆盖率，为实测增加异常距离统计；
+4. 建立短小回归数据，自动检查初始化时刻、测距轮换、时间裁剪和丢包。

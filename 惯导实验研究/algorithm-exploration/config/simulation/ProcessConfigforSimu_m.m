@@ -48,7 +48,16 @@ function cfg = ProcessConfigforSimu_m(filepath)
     cfg.starttime = 0;
     cfg.endtime = cfg.starttime+5000;
     % 初始状态
-    cfg.initpos = [36.4004200;120.6898183;15.25]; % [deg, deg, m]
+    is_case07 = filepath(end)=='7';
+    if is_case07
+        case07_truth = readmatrix(cfg.truthpath, 'FileType', 'text');
+        if size(case07_truth, 2) < 11 || isempty(case07_truth)
+            error('case-07 truth.txt 至少需要11列有效数据。');
+        end
+        cfg.initpos = case07_truth(1, 3:5)'; % [deg, deg, m]
+    else
+        cfg.initpos = [36.4004200;120.6898183;15.25]; % [deg, deg, m]
+    end
     cfg.initvel = [0; 0; 0]; % [m/s]
     if filepath(end)=='1'
         cfg.initatt = [0.003; 0.003; 270.03]; % [deg]
@@ -62,6 +71,11 @@ function cfg = ProcessConfigforSimu_m(filepath)
         cfg.initatt = [0.003; 0.003; 36.97]; % [deg]
     elseif filepath(end)=='6'
         cfg.initatt = [0.003; 0.003; 323.03]; % [deg]
+    elseif is_case07
+        % case-07降低初始对准精度：真值姿态叠加可控初始误差。
+        cfg.initatt = case07_truth(1, 9:11)' + [0.05; 0.05; 0.50]; % [deg]
+    else
+        error('未配置仿真案例的初始姿态：%s', filepath);
     end
     cfg.initgyrbias = [0; 0; 0]; % [deg/h]
     cfg.initaccbias = [0; 0; 0]; % [mGal]
@@ -71,12 +85,23 @@ function cfg = ProcessConfigforSimu_m(filepath)
     % 初始协方差
     cfg.initposstd = [0.005; 0.004; 0.008]; %[m]
     cfg.initvelstd = [0.003; 0.004; 0.004]; %[m/s]
-    cfg.initattstd = [0.008; 0.008; 0.075]; %[deg]
+    if is_case07
+        cfg.initattstd = [0.05; 0.05; 0.50]; %[deg]
+    else
+        cfg.initattstd = [0.008; 0.008; 0.075]; %[deg]
+    end
     % 参数设置
-    eb=0.01;
-    db=7;
-    web=0.0005;
-    wdb=10e-6;
+    if is_case07
+        eb=0.05;
+        db=10;
+        web=0.003;
+        wdb=100e-6;
+    else
+        eb=0.01;
+        db=7;
+        web=0.0005;
+        wdb=10e-6;
+    end
 
     % eb=0.003;
     % db=7;

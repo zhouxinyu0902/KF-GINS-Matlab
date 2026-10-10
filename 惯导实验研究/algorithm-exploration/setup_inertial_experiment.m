@@ -7,7 +7,6 @@ function paths = setup_inertial_experiment()
     addpath(project_root);
     addpath(fullfile(project_root, 'function'));
     addpath(fullfile(project_root, 'function_zxy'));
-    addpath(fullfile(project_root, 'GINS-KF'));
     addpath(fullfile(topic_dir, 'config', 'experiment'));
     addpath(fullfile(topic_dir, 'config', 'simulation'));
     addpath(fullfile(topic_dir, 'functions', 'experiment'));

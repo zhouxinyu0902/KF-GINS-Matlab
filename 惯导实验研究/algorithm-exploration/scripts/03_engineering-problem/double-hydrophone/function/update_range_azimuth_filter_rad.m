@@ -1,5 +1,6 @@
 function kf = update_range_azimuth_filter_rad( ...
-        navstate, range_data, depth_data, kf, default_azimuth_std_deg)
+        navstate, range_data, depth_data, kf, default_azimuth_std_deg, ...
+        estimate_attitude_error, estimate_imu_bias_error)
 %UPDATE_RANGE_AZIMUTH_FILTER_RAD 距离、深度和相对方位角联合量测更新。
 %   状态位置误差采用 [rad, rad, m]，方位角残差在滤波内部采用 rad。
 %
@@ -11,13 +12,27 @@ function kf = update_range_azimuth_filter_rad( ...
 %   方位角定义与 mems-range-navigation/pos2azimuth.m 一致：
 %   正北为 0°、正东为 90°，先减航向角，再减去右舷基线法线偏置 90°。
 %
-%   相对方位角同时与水平位置、航向有关，因此 H 的第 9 列包含航向误差。
-%   调用本函数时应同时使用 feedback_range_azimuth_state，把姿态误差反馈
-%   到名义导航状态；否则会出现“估计航向但反馈时丢弃”的不一致。
+%   相对方位角同时与水平位置、航向有关，因此 H 的第 9 列保留航向误差。
+%   estimate_attitude_error=true 时允许估计姿态误差；是否写回名义姿态由
+%   feedback_range_azimuth_state 单独控制。可冻结弱可观的 IMU 零偏状态。
 
     if nargin < 5 || isempty(default_azimuth_std_deg)
         default_azimuth_std_deg = 0.30;
     end
+    if nargin < 6 || isempty(estimate_attitude_error)
+        estimate_attitude_error = true;
+    end
+    if ~isscalar(estimate_attitude_error)
+        error('estimate_attitude_error 必须为逻辑标量。');
+    end
+    estimate_attitude_error = logical(estimate_attitude_error);
+    if nargin < 7 || isempty(estimate_imu_bias_error)
+        estimate_imu_bias_error = true;
+    end
+    if ~isscalar(estimate_imu_bias_error)
+        error('estimate_imu_bias_error 必须为逻辑标量。');
+    end
+    estimate_imu_bias_error = logical(estimate_imu_bias_error);
     if numel(range_data) < 7 || ~isfinite(range_data(7))
         error('距离+方位角更新要求 range_data 第 7 列为方位角（deg）。');
     end
@@ -68,8 +83,15 @@ function kf = update_range_azimuth_filter_rad( ...
     innovation(3) = wrap_to_pi_local(innovation(3));
     innovation_covariance = H * kf.P * H' + measurement_covariance;
     gain = (kf.P * H') / innovation_covariance;
+    if ~estimate_attitude_error
+        gain(7:9, :) = 0;
+    end
+    if ~estimate_imu_bias_error
+        gain(10:15, :) = 0;
+    end
 
-    kf.x = kf.x + gain * innovation;
+    measurement_state_correction = gain * innovation;
+    kf.x = kf.x + measurement_state_correction;
     identity = eye(kf.RANK);
     kf.P = (identity - gain * H) * kf.P * (identity - gain * H)' + ...
         gain * measurement_covariance * gain';
@@ -78,6 +100,9 @@ function kf = update_range_azimuth_filter_rad( ...
     kf.Z = residual;
     kf.Zkk_1 = predicted_residual;
     kf.range_azimuth_innovation = innovation;
+    kf.last_measurement_state_correction = measurement_state_correction;
+    kf.estimate_attitude_error = estimate_attitude_error;
+    kf.estimate_imu_bias_error = estimate_imu_bias_error;
 end
 
 function angle = wrap_to_pi_local(angle)

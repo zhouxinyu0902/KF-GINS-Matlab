@@ -44,7 +44,7 @@ if data_source == "simulation"
     filter_depth_std_m = simulation_depth_noise_std_m;
 else
     % case_name = paths.default_experiment_case;
-    case_name = 'case-09';
+    case_name = 'case-06';
     id = str2double(case_name(end));
     input_dir = paths.experiment_input(id);
     cfg = load_algorithm_exploration_config( ...
@@ -53,6 +53,8 @@ else
     filter_range_std_m = experiment_range_std_m;
     filter_depth_std_m = experiment_depth_std_m;
 end
+uses_simulated_measurements = data_source == "simulation" || ...
+    (data_source == "experiment" && strcmp(case_name, 'case-06'));
 if ~isfolder(input_dir)
     error('%s输入目录不存在：%s', data_source, input_dir);
 end
@@ -77,7 +79,7 @@ end
 %% 3. 导入并整理 IMU、真值、距离和高度数据
 imudata_all = readmatrix(cfg.imufilepath, 'FileType', 'text');
 truth = readmatrix(cfg.truthpath, 'FileType', 'text');
-if data_source == "simulation"
+if uses_simulated_measurements
     range_sources = {readmatrix(cfg.rangefile1path, 'FileType', 'text'), readmatrix(cfg.rangefile2path, 'FileType', 'text'), readmatrix(cfg.rangefile3path, 'FileType', 'text')};
     source_interval_s = median(diff(range_sources{1}(:, 1)));
     range_stride = round(range_interval_s / source_interval_s);
@@ -112,7 +114,7 @@ imu_mask = imudata_all(:, 1) >= start_time & imudata_all(:, 1) <= end_time;
 imudata = imudata_all(imu_mask, :);
 range_mask = rangedata(:, 1) >= start_time & rangedata(:, 1) <= end_time;
 rangedata = rangedata(range_mask, :);
-if data_source == "simulation"
+if uses_simulated_measurements
     height_value = interp1(truth(:, 2), truth(:, 5), imudata(:, 1), 'linear', 'extrap');
     height = [imudata(:, 1), height_value + simulation_depth_noise_std_m * randn(size(height_value))];
 else

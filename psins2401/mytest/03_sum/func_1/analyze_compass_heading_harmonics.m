@@ -394,11 +394,13 @@ errorbar(ax1, headingBinDeg, errorBinDeg, lowerErr, upperErr, ...
 
 lineStyles = {'--', '-.', '-', ':'};
 lineWidths = [1.2, 1.2, 1.8, 1.4];
+fitHeadingDeg = linspace(0, 360, 721).';
 for i = 1:numModels
-    if isempty(predictedBins{i}) || all(~isfinite(predictedBins{i}))
+    if isempty(coefficients{i}) || any(~isfinite(coefficients{i}))
         continue;
     end
-    plot(ax1, headingBinDeg, predictedBins{i}, ...
+    Xfit = localDesignMatrix(fitHeadingDeg, modelTypes(i));
+    plot(ax1, fitHeadingDeg, Xfit * coefficients{i}, ...
         'LineStyle', lineStyles{i}, 'LineWidth', lineWidths(i), ...
         'Marker', 'none', 'DisplayName', modelNames(i));
 end
@@ -409,7 +411,7 @@ xticks(ax1, 0:60:360);
 grid(ax1, 'on');
 box(ax1, 'on');
 % title(ax1, '(a) Harmonic-order comparison');
-legend(ax1, 'Location', 'best', 'FontSize', Msize);
+legend(ax1, 'Location', 'southeast', 'FontSize', Msize);
 
 % (b) 180 deg折叠
 ax2 = nexttile(tl, 2);

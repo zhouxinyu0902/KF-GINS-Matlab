@@ -3,8 +3,8 @@ clear; clc; close all;
 project_root = 'D:\Github\KF-GINS-Matlab';
 % dataset_mode = 'simulation';              % 'simulation' 或 'experiment'
 % case_name = 'case-00';                    
-dataset_mode = 'experiment';              
-case_name = 'case-06';   
+% dataset_mode = 'experiment';              
+% case_name = 'case-06';   
 phasestd = 15;
 beacon_count = 3;
 switch lower(dataset_mode)

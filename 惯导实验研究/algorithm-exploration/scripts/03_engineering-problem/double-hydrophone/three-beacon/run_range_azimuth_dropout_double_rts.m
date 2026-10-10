@@ -1,12 +1,13 @@
-clear;
+% clear;
 close all;
 clc;
 %% 仿真/实测：测距+测向导航的指定丢帧二次 RTS 批处理
 % 依次丢弃合并后的第 1、3、5、7、9、11 帧联合量测。
 % 每帧同时删除测距和同步相位差，磁盘仅保存二次 RTS 导航结果。
-
-data_source = "experiment";             % "simulation" 或 "experiment"
-case_name = 'case-06';
+% data_source = "simulation";             % "simulation" 或 "experiment"
+% case_name = 'case-00';
+% data_source = "experiment";             % "simulation" 或 "experiment"
+% case_name = 'case-06';
 drop_measurement_indices = [1, 3, 5, 7, 9, 11];
 range_interval_s = 420;
 end_time_s = 4621;
@@ -20,8 +21,8 @@ filter_depth_std_m = 0.4;
 % azistd = 0.4;
 % phasestd = 10;
 % azistd = 0.8;
-phasestd = 15;
-azistd = 1.2;
+% phasestd = 15;
+% azistd = 1.2;
 name = sprintf('double-hydrophone-phasestd%ddeg',phasestd);
 name1 = sprintf('phase-%ddeg',phasestd);
 
@@ -30,7 +31,11 @@ phase_options = struct( ...
     'baseline_install_deg', 0, ...
     'carrier_hz', 2e3, ...
     'sound_speed_mps', 1500, ...
-    'filter_azimuth_std_deg', azistd);
+    'filter_azimuth_std_deg', azistd, ...
+    'estimate_attitude_error', true, ...
+    'feedback_attitude', false, ...
+    'estimate_imu_bias_error', false, ...
+    'feedback_imu_bias', false);
 
 %% 路径与输入
 script_dir = fileparts(mfilename('fullpath'));
@@ -246,8 +251,14 @@ for drop_case_index = 1:numel(drop_measurement_indices)
                 phase_measurement_deg(range_index), phase_options);
             kf = update_range_azimuth_filter_rad( ...
                 navstate, joint_range, current_depth, kf, ...
-                phase_options.filter_azimuth_std_deg);
+                phase_options.filter_azimuth_std_deg, ...
+                phase_options.estimate_attitude_error, ...
+                phase_options.estimate_imu_bias_error);
             terminal_error = kf.x;
+            if ~phase_options.feedback_attitude
+                terminal_error = kf.last_measurement_state_correction;
+                terminal_error(7:end) = 0;
+            end
 
             if buffer_index > 1
                 valid_length = buffer_index - 1;
@@ -264,6 +275,9 @@ for drop_case_index = 1:numel(drop_measurement_indices)
                     current_state, terminal_error, param, range_index, ...
                     'RTS', 'rad', current_corrected_covariance, ...
                     current_predicted_covariance, current_transition);
+                if ~phase_options.feedback_attitude
+                    bridge_error(7:end) = 0;
+                end
 
                 if isempty(previous_single_state)
                     previous_single_state = single_state;
@@ -300,7 +314,9 @@ for drop_case_index = 1:numel(drop_measurement_indices)
                 transition_buffer(:) = 0;
             end
 
-            [kf, navstate] = feedback_range_azimuth_state(kf, navstate);
+            [kf, navstate] = feedback_range_azimuth_state( ...
+                kf, navstate, phase_options.feedback_attitude, ...
+                phase_options.feedback_imu_bias);
             range_index = range_index + 1;
         end
 
