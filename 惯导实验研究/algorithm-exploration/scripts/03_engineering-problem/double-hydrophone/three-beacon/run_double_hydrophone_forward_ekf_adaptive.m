@@ -41,8 +41,7 @@ options = struct( ...
     ... % filter 字段供量测构造函数兼容，自适应更新读取 default 字段。
     'filter_azimuth_std_deg', default_azimuth_std_deg, ...
     'default_azimuth_std_deg', default_azimuth_std_deg, ...
-    'estimate_attitude_error', true, ... % 姿态误差作为保留状态参与估计
-    'feedback_attitude', false, ... % 但不写回名义 INS 姿态
+    'estimate_attitude_error', true, ... % 估计并完整反馈姿态误差
     'estimate_imu_bias_error', false, ... % 稀疏声学量测不估计 IMU 零偏
     'feedback_imu_bias', false, ...
     'phase_time_tolerance_s', [], ...
@@ -301,10 +300,6 @@ for imu_index = 2:sample_count
 
         %% 对刚结束的测距区间执行一次、二次 RTS
         terminal_error = kf.x;
-        if use_azimuth && ~options.feedback_attitude
-            terminal_error = kf.last_measurement_state_correction;
-            terminal_error(7:end) = 0;
-        end
         if options.enable_smoothing && buffer_index > 1
             valid_length = buffer_index - 1;
             current_state = state_buffer(1:valid_length, :);
@@ -319,9 +314,6 @@ for imu_index = 2:sample_count
                 current_state, terminal_error, param, range_index, ...
                 'RTS', 'rad', current_corrected_covariance, ...
                 current_predicted_covariance, current_transition);
-            if use_azimuth && ~options.feedback_attitude
-                bridge_error(7:end) = 0;
-            end
             single_rts_nav = [single_rts_nav, single_nav]; %#ok<AGROW>
 
             if options.enable_second_rts
@@ -363,8 +355,7 @@ for imu_index = 2:sample_count
 
         if use_azimuth
             [kf, navstate] = feedback_range_azimuth_state( ...
-                kf, navstate, options.feedback_attitude, ...
-                options.feedback_imu_bias);
+                kf, navstate, options.feedback_imu_bias);
         else
             [kf, navstate] = myErrorFeedback_range(kf, navstate);
         end

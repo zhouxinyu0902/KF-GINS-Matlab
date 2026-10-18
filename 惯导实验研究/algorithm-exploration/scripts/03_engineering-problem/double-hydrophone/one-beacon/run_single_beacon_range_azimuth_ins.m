@@ -298,7 +298,7 @@ for imu_index = 2:sample_count
         end
 
         if use_azimuth
-            [kf, navstate] = feedback_range_azimuth_state(kf, navstate, true, false);
+            [kf, navstate] = feedback_range_azimuth_state(kf, navstate, false);
         else
             [kf, navstate] = myErrorFeedback_range(kf, navstate);
         end

@@ -71,6 +71,8 @@ function cfg = ProcessConfigforSimu_m(filepath)
         cfg.initatt = [0.003; 0.003; 36.97]; % [deg]
     elseif filepath(end)=='6'
         cfg.initatt = [0.003; 0.003; 323.03]; % [deg]
+    elseif filepath(end)=='0'
+        cfg.initatt = [0.003; 0.003; 323.03]; % [deg]
     elseif is_case07
         % case-07降低初始对准精度：真值姿态叠加可控初始误差。
         cfg.initatt = case07_truth(1, 9:11)' + [0.05; 0.05; 0.50]; % [deg]

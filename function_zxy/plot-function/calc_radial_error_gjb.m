@@ -1,14 +1,24 @@
 function [fig,finalExcelData] = calc_radial_error_gjb(truthpath, varargin)
-% CALC_RADIAL_ERROR 计算并绘制多个导航结果的径向误差对比 (带 Excel 自动导出功能)
+% CALC_RADIAL_ERROR_GJB 计算并绘制多个导航结果的水平径向误差。
 %
 % 输入:
 %   truthpath - 真值文件路径
 %   varargin  - 一个或多个测试结果文件路径。
-%               【新特性】：最后一个参数若为 logical 类型 (true/false)，则作为 apply_grubbs 的开关。
+%               最后一个参数若为 logical 类型，则作为 apply_grubbs 开关。
+%
+% 输出统计量（单次试验）:
+%   RMS    - 评价时段内水平径向误差均方根，单位 m；
+%   Max    - 评价时段内最大水平径向误差，单位 m；
+%   RER    - 评价终点水平径向误差除以累计运行时间，单位 n mile/h；
+%   Median - 评价时段内水平径向误差中位数，单位 m。
+%
+% 说明:
+%   评价时长最多取前3600 s；不足3600 s时使用全部公共有效数据。
+%   本函数不计算R50。R50应由多次独立试验各自的RER另行统计。
 %
 % 调用示例:
-%   calc_radial_error('truth.txt', 'test1.txt', 'test2.txt')        % 默认不剔除
-%   calc_radial_error('truth.txt', 'test1.txt', 'test2.txt', true)  % 开启 Grubbs 剔除
+%   calc_radial_error_gjb('truth.txt', 'test1.txt', 'test2.txt')
+%   calc_radial_error_gjb('truth.txt', 'test1.txt', 'test2.txt', true)
     %% 1. 参数检查和初始化
     if nargin < 2
         error('至少需要提供真值文件和一个测试结果文件');
@@ -139,63 +149,57 @@ function [fig,finalExcelData] = calc_radial_error_gjb(truthpath, varargin)
     if ~isempty(valid_indices)
          xlim([0, max(cellfun(@(x) max(x), {all_results(valid_indices).time}))]);
     end
-    %% 6. 提取统计结果并自动导出 Excel
-    % 同时计算两类指标：
-    % 1) 标准 CEP50：水平径向误差的 50% 分位数，单位 m；
-    % 2) 舰艇惯导位置误差率：保持原有 GJB 口径，
-    %    RER = (水平径向误差 / 1852) / (运行时间 / 3600)，
-    %    位置误差率 = 0.8326 * RMS(RER)，单位 nmi/h。
-    % 位置误差率超过 3600 s 时仅统计前 3600 s；
-    % 不足 3600 s 时使用全部有效数据，并在备注中标记。
-    excelHeader = {'系统模型组件', ...
-        '最大径向误差 (Max/m)', '最大径向误差 (Max/nmi)', ...
-        '均方根误差 (RMS/m)', '均值 (Mean/m)', ...
-        '中位数 (Median/m)', '95%分位数 (95%/m)', ...
-        'CEP50 (m)', 'CEP50 (nmi)', '位置误差率 (nmi/h)', '误差率备注'};
+    %% 6. 单次试验统计：RMS、Max、终点RER、中位数
+    % RER只取本次试验评价终点的一个值：
+    %   RER = [终点水平径向误差(n mile)] / [累计运行时间(h)]。
+    % 不再把同一次试验的各个时间历元当成独立RER样本，也不在这里计算R50。
+    excelHeader = {'系统模型组件', 'RMS (m)', 'Max (m)', ...
+        'RER (n mile/h)', 'Median (m)'};
     num_valid = length(valid_indices);
-    excelBody = cell(num_valid, 11);
+    excelBody = cell(num_valid, 5);
     row_cnt = 1;
+
+    fprintf('\n============================================================\n');
+    fprintf('单次导航试验水平位置误差统计\n');
+    fprintf('RER = 评价终点径向误差(n mile) / 累计运行时间(h)\n');
+    fprintf('本函数不计算R50；R50请使用多次独立试验的RER另行计算。\n');
+    fprintf('============================================================\n');
+
     for i = valid_indices
         re = all_results(i).radial;
         time = all_results(i).time;
         if ~isempty(re)
-            rms_val = sqrt(mean(re.^2));
-            max_val = max(re);
-            max_val_nmi = max_val / 1852;
-            mean_val = mean(re);
-            median_val = median(re);
-            quantile_95 = quantile(re, 0.95);
-            % 标准 CEP50：50% 的水平位置误差落在该半径以内。
-            cep50_val = quantile(re, 0.50);
-            cep50_nmi = cep50_val / 1852;
-            % 舰艇惯导位置误差率。t=0 时分母为零，因此从正时间点开始统计。
-            rate_end_time = min(3600, time(end));
-            rate_mask = time > 0 & time <= rate_end_time;
-            if any(rate_mask)
-                elapsed_time = time(rate_mask);
-                radial_rate = re(rate_mask);
-                RER = (radial_rate / 1852) ./ (elapsed_time / 3600);
-                RER_RMS = sqrt(mean(RER.^2));
-                position_error_rate = 0.8326 * RER_RMS;
+            evaluation_end_time = min(3600, time(end));
+            evaluation_mask = time >= 0 & time <= evaluation_end_time;
+            evaluation_time = time(evaluation_mask);
+            evaluation_radial = re(evaluation_mask);
+
+            rms_val = sqrt(mean(evaluation_radial.^2));
+            max_val = max(evaluation_radial);
+            median_val = median(evaluation_radial);
+
+            % 评价终点使用最后一个不晚于评价时长的有效历元。
+            endpoint_time_s = evaluation_time(end);
+            endpoint_radial_m = evaluation_radial(end);
+            if endpoint_time_s > 0
+                rer_nmi_per_h = (endpoint_radial_m / 1852) / ...
+                    (endpoint_time_s / 3600);
             else
-                position_error_rate = NaN;
+                rer_nmi_per_h = NaN;
             end
-            if time(end) >= 3600
-                rate_note = '前3600s';
-            else
-                rate_note = sprintf('有效时长不足3600s，仅%.1fs', time(end));
-            end
+
             excelBody{row_cnt, 1} = all_results(i).label;
-            excelBody{row_cnt, 2} = max_val;
-            excelBody{row_cnt, 3} = max_val_nmi;
-            excelBody{row_cnt, 4} = rms_val;
-            excelBody{row_cnt, 5} = mean_val;
-            excelBody{row_cnt, 6} = median_val;
-            excelBody{row_cnt, 7} = quantile_95;
-            excelBody{row_cnt, 8} = cep50_val;
-            excelBody{row_cnt, 9} = cep50_nmi;
-            excelBody{row_cnt, 10} = position_error_rate;
-            excelBody{row_cnt, 11} = rate_note;
+            excelBody{row_cnt, 2} = rms_val;
+            excelBody{row_cnt, 3} = max_val;
+            excelBody{row_cnt, 4} = rer_nmi_per_h;
+            excelBody{row_cnt, 5} = median_val;
+
+            fprintf('\n[%s]\n', all_results(i).label);
+            fprintf('评价时长 : %.3f s\n', endpoint_time_s);
+            fprintf('RMS      : %.6f m\n', rms_val);
+            fprintf('Max      : %.6f m\n', max_val);
+            fprintf('RER      : %.9f n mile/h\n', rer_nmi_per_h);
+            fprintf('Median   : %.6f m\n', median_val);
             row_cnt = row_cnt + 1;
         end
     end
@@ -204,6 +208,10 @@ end
 %% ================== 辅助函数区域 ==================
 %% 辅助函数：时间对齐和误差计算 (已更新为 GJB 4727A 逐点公式)
 function [time, err] = align_and_calculate_error(test_data, truth_data)
+    [test_data, test_dt] = select_longest_continuous_segment(...
+        test_data, 'test navigation');
+    [truth_data, ~] = select_longest_continuous_segment(...
+        truth_data, 'reference navigation');
     res_start = test_data(1, 1);
     res_end   = test_data(end, 1);
     ref_start = truth_data(1, 1);
@@ -213,7 +221,13 @@ function [time, err] = align_and_calculate_error(test_data, truth_data)
     if starttime >= endtime
         error('测试数据与真值数据时间无重叠');
     end
-    dt = mean(diff(test_data(:, 1)));
+    dt = test_dt;
+    n_interp = floor((endtime - starttime) / dt) + 1;
+    if n_interp > 5e7
+        error('calc_radial_error_gjb:ExcessiveInterpolation', ...
+            ['公共时间范围将产生%d个插值点，请检查时间戳是否存在' ...
+             '异常跳变。'], n_interp);
+    end
     time = (starttime:dt:endtime)'; 
     new_test  = interp1(test_data(:, 1), test_data(:, 2:10), time, 'linear', 'extrap');
     new_truth = interp1(truth_data(:, 1), truth_data(:, 2:10), time, 'linear', 'extrap');
@@ -234,6 +248,38 @@ function [time, err] = align_and_calculate_error(test_data, truth_data)
     end
     err(:, 4)    = -error_raw(:, 3); % 垂向高度误差
     err(:, 5:10) = error_raw(:, 4:9);
+end
+
+function [data, nominal_dt_s] = select_longest_continuous_segment( ...
+        data, axis_name)
+% Select the longest valid block before interpolation. Never fill a large
+% timestamp hole with a fictitious linear navigation trajectory.
+
+    time_s = double(data(:, 1));
+    delta_s = diff(time_s);
+    positive_delta = delta_s(delta_s > 0 & isfinite(delta_s));
+    if isempty(positive_delta)
+        error('calc_radial_error_gjb:InvalidTimeAxis', ...
+            '%s has no valid positive interval.', axis_name);
+    end
+    nominal_dt_s = median(positive_delta);
+    % 允许短时间丢帧仍属于同一次试验。原先固定0.05 s会把static-3
+    % 中约0.38 s的短缺测误判成新试验，进而错误地截断评价时长。
+    % 超过0.5 s（或5个正常采样周期）的跳变才作为真正断段处理。
+    max_gap_s = max(0.500, 5 * nominal_dt_s);
+    break_after = find(~isfinite(delta_s) | delta_s <= 0 | ...
+        delta_s > max_gap_s);
+    segment_start = [1; break_after + 1];
+    segment_end = [break_after; size(data, 1)];
+    [~, longest_index] = max(segment_end - segment_start + 1);
+    keep = segment_start(longest_index):segment_end(longest_index);
+    discarded = size(data, 1) - numel(keep);
+    if discarded > 0
+        warning('calc_radial_error_gjb:DiscardedDiscontinuousData', ...
+            '%s discarded %d row(s) outside its longest continuous segment.', ...
+            axis_name, discarded);
+        data = data(keep, :);
+    end
 end
 %% 辅助函数：航向角平滑 (解卷绕)
 function data = smooth_heading(data)

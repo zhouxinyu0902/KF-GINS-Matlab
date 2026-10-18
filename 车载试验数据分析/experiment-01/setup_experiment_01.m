@@ -11,7 +11,6 @@ function paths = setup_experiment_01()
     addpath(fullfile(project_root, 'function_zxy'));
     addpath(fullfile(project_root, 'function_zxy', 'Update'));
     addpath(fullfile(project_root, 'function_zxy', 'ErrorFeedback'));
-    addpath(fullfile(project_root, 'GINS-KF'));
     addpath(topic_root);
     addpath(fullfile(topic_root, 'functions'));
     addpath(fullfile(topic_root, 'data-process'));

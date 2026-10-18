@@ -6,14 +6,14 @@ clc;
 % 潜标真实初始位置在指定圆/圆环内，导航使用的名义坐标则是对该
 % 真实初始位置的一次带误差测量。该名义坐标在后续时段内始终固定。
 % 每个工况写入独立study_id目录，不覆盖其它误差工况。
-data_source = "experiment";           % "simulation" / "experiment"
-dataset_id = 'case-09';               % 数据目录名；不再限制为case-06
-% data_source = "simulation";           % "simulation" / "experiment"
-% dataset_id = 'case-06';               % 数据目录名；不再限制为case-06
+% data_source = "experiment";           % "simulation" / "experiment"
+% dataset_id = 'case-09';               % 数据目录名；不再限制为case-06
+data_source = "simulation";           % "simulation" / "experiment"
+dataset_id = 'case-00';               % 数据目录名；不再限制为case-06
 start_time_s = [];                    % []：首个公共range时刻
 generation_duration_s = 24*3600;      % []：使用全部公共range时段
 motion_region_mode = 'circle';       % 'circle' / 'annulus'
-activity_radius_m = 61;              % circle: 0~R
+activity_radius_m = 60;              % circle: 0~R
 
 annulus_inner_radius_m = 40;         % annulus
 annulus_outer_radius_m = 200;
@@ -579,79 +579,7 @@ exportgraphics(fig,png_path,'Resolution',600);
 savefig(fig,fig_path);
 if ~show_figure, close(fig); end
 end
-% function plot_time_varying_beacons(time_s,physical_offset_enu_m, ...
-%         navigation_error_enu_m,navigation_error_radius_m, ...
-%         navigation_nominal_offset_enu_m,mode,rmin,rmax,png_path,fig_path,show_figure)
-% if show_figure
-%     visibility = 'on';
-% else
-%     visibility = 'off';
-% end
-% colors = lines(3);
-% stride = max(1,floor(numel(time_s)/12000));
-% idx = 1:stride:numel(time_s);
-% a = linspace(0,2*pi,721);
-% fig = myfigurestartup(10,7,'prese');
-% set(fig,'Visible',visibility);
-% tl = tiledlayout(2,2,'TileSpacing','compact','Padding','compact');
-% nexttile; hold on;
-% hOuter = plot(rmax*cos(a),rmax*sin(a),'k--','LineWidth',1.2);
-% if rmin > 0, hInner = plot(rmin*cos(a),rmin*sin(a),'k:','LineWidth',1.2); else, hInner = gobjects(0); end
-% hTraj = gobjects(3,1);
-% hNominal = gobjects(3,1);
-% for i = 1:3
-%     hTraj(i) = plot(physical_offset_enu_m(idx,1,i), ...
-%         physical_offset_enu_m(idx,2,i),'Color',colors(i,:),'LineWidth',0.8);
-%     plot(physical_offset_enu_m(1,1,i),physical_offset_enu_m(1,2,i), ...
-%         'o','Color',colors(i,:),'MarkerFaceColor',colors(i,:), ...
-%         'HandleVisibility','off');
-%     hNominal(i) = plot(navigation_nominal_offset_enu_m(i,1), ...
-%         navigation_nominal_offset_enu_m(i,2),'x','Color',colors(i,:), ...
-%         'MarkerSize',9,'LineWidth',1.5);
-% end
-% plot(0,0,'k+','MarkerSize',10,'LineWidth',1.5,'HandleVisibility','off');
-% plot_limit = max(rmax,max(vecnorm(navigation_nominal_offset_enu_m(:,1:2),2,2)));
-% axis equal; 
-% grid on; 
-% % xlim(1.08*plot_limit*[-1,1]); ylim(1.08*plot_limit*[-1,1]);
-% xlabel('East offset (m)'); ylabel('North offset (m)');
-% if strcmpi(mode,'circle')
-%     title(sprintf('Physical motion inside %.0f m radius',rmax));
-%     legend([hOuter;hTraj;hNominal(1)], ...
-%         {'Boundary','Beacon 1','Beacon 2','Beacon 3','Fixed initial coordinates'}, ...
-%         'Location','best');
-% else
-%     title(sprintf('Physical motion in %.0f~%.0f m annulus',rmin,rmax));
-%     legend([hOuter;hInner;hTraj;hNominal(1)], ...
-%         {'Outer','Inner','Beacon 1','Beacon 2','Beacon 3','Fixed initial coordinates'}, ...
-%         'Location','best');
-% end
-% nexttile; hold on;
-% for i = 1:3
-%     plot(time_s/3600,navigation_error_radius_m(:,i), ...
-%         'Color',colors(i,:),'LineWidth',0.8);
-% end
-% grid on; xlabel('Time (h)'); ylabel('Error radius (m)');
-% title('Error relative to fixed initial coordinates');
-% nexttile; hold on;
-% for i = 1:3
-%     plot(time_s/3600,navigation_error_enu_m(:,1,i), ...
-%         'Color',colors(i,:),'LineWidth',0.7);
-% end
-% grid on; xlabel('Time (h)'); ylabel('East error (m)');
-% title('East error relative to fixed coordinates');
-% nexttile; hold on;
-% for i = 1:3
-%     plot(time_s/3600,navigation_error_enu_m(:,2,i), ...
-%         'Color',colors(i,:),'LineWidth',0.7);
-% end
-% grid on; xlabel('Time (h)'); ylabel('North error (m)');
-% title('North error relative to fixed coordinates');
-% title(tl,sprintf('case-06 physical beacon motion and fixed coordinates (24 h, %s)',mode));
-% exportgraphics(fig,png_path,'Resolution',600);
-% savefig(fig,fig_path);
-% if ~show_figure, close(fig); end
-% end
+
 %%
 function plot_beacon_uncertainty_growth(time_s,initial_std_m,final_std_m,horizon_s,png_path,fig_path,show_figure)
 if show_figure

@@ -3,9 +3,9 @@ clear; clc; close all;
 project_root = 'D:\Github\KF-GINS-Matlab';
 % dataset_mode = 'simulation';              % 'simulation' 或 'experiment'
 % case_name = 'case-00';                    
-% dataset_mode = 'experiment';              
-% case_name = 'case-06';   
-phasestd = 15;
+dataset_mode = 'experiment';              
+case_name = 'case-06';   
+phasestd = 5;
 beacon_count = 3;
 switch lower(dataset_mode)
     case 'simulation'
@@ -164,7 +164,28 @@ if show_figures
     sgtitle(sprintf('%s/%s：正确候选假设下的到达角误差，分析周期 = %.1f s', dataset_mode, case_name, measurement_interval_s));
     exportgraphics(fig1,fullfile(output_dir,'error.png'),'Resolution',600)
 end
-
+%% 导出相位差与角度误差表格
+for i = 1:beacon_count
+    phase = phase_results{i};
+    angle = angle_results{i};
+    % 相位差误差（全部历元）
+    phase_error = wrap180(phase(:,2)-phase(:,3));
+    T_phase = table(phase(:,1),phase(:,3),phase(:,2),phase_error, ...
+        'VariableNames',{'Time_s','TruePhase_deg','MeasuredPhase_deg','PhaseError_deg'});
+    writetable(T_phase,fullfile(output_dir,sprintf('phase_error%d.csv',i)));
+    % 到达角误差（按设定测角周期）
+    T_angle = table(angle(:,1),angle(:,3),angle(:,4),angle(:,5),angle(:,8), ...
+        'VariableNames',{'Time_s','TrueAngle_deg','EstimatedAngle_deg','AngleError_deg','PhaseError_deg'});
+    writetable(T_angle,fullfile(output_dir,sprintf('angle_error%d.csv',i)));
+end
+% 各信标误差统计汇总
+statistics_table.Beacon = statistics_table.Properties.RowNames;
+writetable(statistics_table,fullfile(output_dir,'error_statistics.csv'));
+%%
+% figure
+% deltatheta = lambda./(2*pi*baseline_m.*cos(theta_true));
+% plot(time,deltatheta)
+% ylim([-1,1])
 %% 局部函数
 function phase_output = generate_phase_output(range_data, truth, truth_time, yaw_unwrapped_rad, truth_col, range_col, baseline_m, cfg)
 range_time = range_data(:, range_col.time);

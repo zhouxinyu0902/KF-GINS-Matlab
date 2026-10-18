@@ -1,0 +1,4 @@
+Test,EffectiveNavigationDuration_s,IMUInputFrequency_Hz,SimulatedAcousticRangePeriod_s,RangeObservationCount,ValidRangeUpdateCount,NavigationOutputFrequency_Hz,NavigationOutputAnomalyCount
+第1次,10500,100.000000052387,420,25,25,100.000000052387,0
+第2次,12180,99.9999999068677,420,29,29,99.9999999068677,0
+第3次,17220,99.9999999068677,420,41,41,99.9999999068677,0

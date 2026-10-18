@@ -150,6 +150,11 @@ for out_index = 1:n_dataset
     source = Static120(selected_indices(out_index));
     auxa = source.auxa_raw;
     imu_fur_raw = source.imu_raw;
+    if size(imu_fur_raw, 2) >= 9 && any(imu_fur_raw(:, 9) ~= 1)
+        error('export_static_120_inputs:InvalidSTDIMUChecksum', ...
+            ['Parsed STDIMU still contains checksum-failed records. ' ...
+             'Delete the old processed/static_120_raw.mat and rerun parsing.']);
+    end
     result = empty_export();
     result.id = source.id;
     result.name = source.name;
@@ -187,6 +192,7 @@ for out_index = 1:n_dataset
     anchor_nav_time = pva_initial(2);
 
     imu_machine_time = double(imu_fur_raw(:, 7)) / 200;
+    validate_continuous_time_axis(imu_machine_time, 'STDIMU machine time');
     [imu_anchor_error_s, imu_anchor_index] = min(...
         abs(imu_machine_time - auxa_anchor_machine_time));
     if isempty(imu_anchor_index) || imu_anchor_error_s > imu_match_tolerance_s
@@ -222,6 +228,7 @@ for out_index = 1:n_dataset
     [imu_fur_raw, imu_machine_time, imu_anchor_index] = ...
         aggregate_imu_rate_samples(imu_fur_raw, imu_machine_time, ...
         imu_anchor_index, decimation_factor);
+    validate_continuous_time_axis(imu_machine_time, 'exported IMU time');
     actual_rate_hz = 1 / median(diff(imu_machine_time));
 
     % Anchor the STDIMU time axis to AUXA navigation time. The early part
@@ -430,11 +437,37 @@ if isempty(positive_delta_s)
     error('export_static_120_inputs:InvalidTimeAxis', ...
         'Cannot determine a positive IMU sample interval.');
 end
+
 nominal_dt_s = median(positive_delta_s);
 interval_s = repmat(nominal_dt_s, numel(time_s), 1);
 regular = delta_s > 0 & delta_s <= 5 * nominal_dt_s;
 regular_index = find(regular);
 interval_s(regular_index + 1) = delta_s(regular_index);
+end
+
+function validate_continuous_time_axis(time_s, axis_name)
+% Reject non-increasing timestamps and gaps too large for inertial
+% mechanization. Missing samples must not be replaced by interpolation or by
+% integrating one instantaneous IMU sample across the whole time hole.
+
+time_s = double(time_s(:));
+delta_s = diff(time_s);
+positive_delta = delta_s(delta_s > 0 & isfinite(delta_s));
+if isempty(positive_delta)
+    error('export_static_120_inputs:InvalidTimeAxis', ...
+        '%s has no valid positive sample interval.', axis_name);
+end
+nominal_dt_s = median(positive_delta);
+max_gap_s = max(0.050, 5 * nominal_dt_s);
+bad_index = find(~isfinite(delta_s) | delta_s <= 0 | ...
+    delta_s > max_gap_s, 1);
+if ~isempty(bad_index)
+    error('export_static_120_inputs:DiscontinuousTimeAxis', ...
+        ['%s is discontinuous at row %d: %.9f -> %.9f s ' ...
+         '(dt %.9f s, nominal %.9f s). Rerun parse_static_120.'], ...
+        axis_name, bad_index, time_s(bad_index), ...
+        time_s(bad_index + 1), delta_s(bad_index), nominal_dt_s);
+end
 end
 
 function comparison = compare_auxa_stdimu(auxa_time, auxa_frd, auxa_dt_s, ...

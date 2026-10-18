@@ -17,7 +17,7 @@ clc;
 % static-x 在 pva_file.txt 存在时额外加入设备 PVA 对比。
 % ========================================================================
 %% 1. 参数设置
-caseNo = 2;                 % 0: static；1...5: static-1...static-5
+caseNo = 4;                 % 0: static；1...5: static-1...static-5
 % imuRateHz = [];             % []: 保持现有频率；static-2 可设为 100 或 200
 imuRateHz = 100; 
 alignmentTimeSeconds = 430.010;
@@ -182,12 +182,25 @@ end
 if any(~isfinite(imu), 'all')
     error('IMU 数据中存在 NaN 或 Inf。');
 end
-if any(diff(imu(:, 1)) <= 0)
+imu_dt_s = diff(imu(:, 1));
+if any(imu_dt_s <= 0)
     error('IMU 时间轴存在重复或倒序。');
 end
 
-nominal_dt_s = median(diff(imu(:, 1)));
+nominal_dt_s = median(imu_dt_s);
 nominal_rate_hz = 1 / nominal_dt_s;
+max_allowed_gap_s = max(0.050, 5 * nominal_dt_s);
+bad_gap_index = find(~isfinite(imu_dt_s) | ...
+    imu_dt_s > max_allowed_gap_s, 1);
+if ~isempty(bad_gap_index)
+    error('run_static_pureins:DiscontinuousIMUTime', ...
+        ['IMU时间轴在第%d行后不连续：%.9f -> %.9f s，dt=%.9f s，' ...
+         '名义dt=%.9f s。请重新运行parse_static_120和' ...
+         'export_static_120_inputs。'], ...
+        bad_gap_index, imu(bad_gap_index, 1), ...
+        imu(bad_gap_index + 1, 1), imu_dt_s(bad_gap_index), ...
+        nominal_dt_s);
+end
 specific_force_mps2 = median(vecnorm(imu(:, 5:7), 2, 2)) / ...
     nominal_dt_s;
 if specific_force_mps2 < 5 || specific_force_mps2 > 15
@@ -219,7 +232,9 @@ for imu_index = 2:sample_count
     last_imu = imu(imu_index - 1, :).';
     this_imu = imu(imu_index, :).';
     imu_dt = this_imu(1) - last_imu(1);
-    if ~isfinite(imu_dt) || imu_dt <= 0
+    max_allowed_gap_s = max(0.050, 5 * cfg.nominal_imu_dt_s);
+    if ~isfinite(imu_dt) || imu_dt <= 0 || ...
+            imu_dt > max_allowed_gap_s
         error('第 %d 行 IMU 时间间隔异常。', imu_index);
     end
 

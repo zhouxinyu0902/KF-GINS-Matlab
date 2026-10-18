@@ -19,9 +19,24 @@ end
 result_all(:, 10) = rad2deg(unwrap(deg2rad(result_all(:, 10))));
 ref(:, 10) = rad2deg(unwrap(deg2rad(ref(:, 10))));
 %% 3. 时间对齐与内插
+[result_all, result_dt] = select_longest_continuous_segment(...
+    result_all, 'test navigation');
+[ref, ~] = select_longest_continuous_segment(...
+    ref, 'reference navigation');
+result_end = result_all(end, 1);
+ref_end = ref(end, 1);
 starttime = max(result_all(1, 1), ref(1, 1));
-endtime = min(result_all(end, 1), ref(end, 1));
-dt = mean(diff(result_all(:, 1)));
+endtime = min(result_end, ref_end);
+dt = result_dt;
+if starttime >= endtime
+    error('测试结果与参考结果没有有效的公共时间范围。');
+end
+n_interp = floor((endtime - starttime) / dt) + 1;
+if n_interp > 5e7
+    error('calc_error_gjb:ExcessiveInterpolation', ...
+        ['公共时间范围将产生%d个插值点，请检查时间戳是否存在' ...
+         '异常跳变。'], n_interp);
+end
 time = (starttime:dt:endtime)';
 % 内插
 newresult = interp1(result_all(:, 1), result_all(:, 2:10), time, 'linear', 'extrap');
@@ -148,6 +163,37 @@ fprintf('CEP50             : %8.3f m (%.6f nmi)\n', CEP50, CEP50_nmi);
 fprintf('位置误差率        : %8.6f nmi/h\n', position_error_rate);
 fprintf('----------------------------\n');
 end
+
+function [data, nominal_dt_s] = select_longest_continuous_segment( ...
+        data, axis_name)
+% Select the longest continuous block before interpolation. A timestamp
+% hole must never be bridged by interp1 because that creates a fictitious
+% navigation path. A warning makes any discarded tail explicit.
+
+time_s = double(data(:, 1));
+delta_s = diff(time_s);
+positive_delta = delta_s(delta_s > 0 & isfinite(delta_s));
+if isempty(positive_delta)
+    error('calc_error_gjb:InvalidTimeAxis', ...
+        '%s has no valid positive interval.', axis_name);
+end
+nominal_dt_s = median(positive_delta);
+max_gap_s = max(0.050, 5 * nominal_dt_s);
+break_after = find(~isfinite(delta_s) | delta_s <= 0 | ...
+    delta_s > max_gap_s);
+segment_start = [1; break_after + 1];
+segment_end = [break_after; size(data, 1)];
+[~, longest_index] = max(segment_end - segment_start + 1);
+keep = segment_start(longest_index):segment_end(longest_index);
+discarded = size(data, 1) - numel(keep);
+if discarded > 0
+    warning('calc_error_gjb:DiscardedDiscontinuousData', ...
+        '%s discarded %d row(s) outside its longest continuous segment.', ...
+        axis_name, discarded);
+    data = data(keep, :);
+end
+end
+
 %% =========================================================================
 %% 局部函数：格拉布斯(Grubbs)异常值自适应剔除算法 (GJB 4727A 附录A)
 %% =========================================================================

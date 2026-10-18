@@ -3,8 +3,8 @@ close all;
 clc;
 %% 连续丢两帧：仅测距与测距+测向的前向 EKF、一次 RTS、二次 RTS 对比
 % 默认测试 simulation / case-00 / Phase STD = 5°，连续删除第 3、4 帧。
-% 可在运行前覆盖 data_source、case_name、phasestd、azistd、
-% drop_measurement_indices 和 attitude_feedback_mode。
+% 可在运行前覆盖 data_source、case_name、phasestd、azistd 和
+% drop_measurement_indices；测距+测向链固定采用完整姿态反馈。
 data_source = "experiment";
 case_name = 'case-06';
 if ~exist('data_source', 'var') || isempty(data_source)
@@ -22,10 +22,6 @@ end
 if ~exist('drop_measurement_indices', 'var') || ...
         isempty(drop_measurement_indices)
     drop_measurement_indices = [3, 4];
-end
-if ~exist('attitude_feedback_mode', 'var') || ...
-        isempty(attitude_feedback_mode)
-    attitude_feedback_mode = "heading-only";
 end
 if ~exist('show_result_figure', 'var') || isempty(show_result_figure)
     show_result_figure = true;
@@ -47,24 +43,7 @@ if numel(drop_measurement_indices) ~= 2 || ...
     error('drop_measurement_indices 必须是两个连续帧编号，例如 [3, 4]。');
 end
 
-attitude_feedback_mode = lower(string(attitude_feedback_mode));
-switch attitude_feedback_mode
-    case "full"
-        match_range_only_feedback = false;
-        feedback_heading_only = false;
-        feedback_attitude = true;
-    case "heading-only"
-        match_range_only_feedback = true;
-        feedback_heading_only = true;
-        feedback_attitude = false;
-    case "none"
-        match_range_only_feedback = true;
-        feedback_heading_only = false;
-        feedback_attitude = false;
-    otherwise
-        error(['attitude_feedback_mode 只能设置为 "full"、' ...
-            '"heading-only" 或 "none"。']);
-end
+attitude_feedback_mode = "full";
 
 name = sprintf('double-hydrophone-phasestd%ddeg', phasestd);
 phase_name = sprintf('phase-%ddeg', phasestd);
@@ -75,10 +54,7 @@ phase_options = struct( ...
     'carrier_hz', 2e3, ...
     'sound_speed_mps', 1500, ...
     'filter_azimuth_std_deg', azistd, ...
-    'match_range_only_feedback', match_range_only_feedback, ...
-    'feedback_heading_only', feedback_heading_only, ...
     'estimate_attitude_error', true, ...
-    'feedback_attitude', feedback_attitude, ...
     'estimate_imu_bias_error', true, ...
     'feedback_imu_bias', true);
 
@@ -343,11 +319,6 @@ for measurement_mode_index = 1:2
             end
 
             terminal_error = kf.x;
-            if use_azimuth && ~phase_options.feedback_attitude && ...
-                    ~phase_options.match_range_only_feedback
-                terminal_error = kf.last_measurement_state_correction;
-                terminal_error(7:end) = 0;
-            end
 
             if buffer_index > 1
                 valid_length = buffer_index - 1;
@@ -362,10 +333,6 @@ for measurement_mode_index = 1:2
                     current_state, terminal_error, param, range_index, ...
                     'RTS', 'rad', current_corrected_covariance, ...
                     current_predicted_covariance, current_transition);
-                if use_azimuth && ~phase_options.feedback_attitude && ...
-                        ~phase_options.match_range_only_feedback
-                    bridge_error(7:end) = 0;
-                end
                 single_rts_nav = [single_rts_nav, single_nav]; %#ok<AGROW>
                 if isempty(previous_single_state)
                     previous_single_state = single_state;
@@ -401,19 +368,8 @@ for measurement_mode_index = 1:2
             end
 
             if use_azimuth
-                if phase_options.match_range_only_feedback
-                    if phase_options.feedback_heading_only
-                        [kf, navstate] = feedback_range_azimuth_state( ...
-                            kf, navstate, false, true, true);
-                    else
-                        [kf, navstate] = ...
-                            myErrorFeedback_range(kf, navstate);
-                    end
-                else
-                    [kf, navstate] = feedback_range_azimuth_state( ...
-                        kf, navstate, phase_options.feedback_attitude, ...
-                        phase_options.feedback_imu_bias);
-                end
+                [kf, navstate] = feedback_range_azimuth_state( ...
+                    kf, navstate, phase_options.feedback_imu_bias);
             else
                 [kf, navstate] = myErrorFeedback_range(kf, navstate);
             end

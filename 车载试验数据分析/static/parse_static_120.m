@@ -172,11 +172,29 @@ for k = 1:n_dataset
 
     auxa_decoded_records = size(auxa_raw, 2);
     imu_decoded_records = size(imu_raw, 1);
+
+    % 校验失败帧不能进入时间轴或惯导数据。static-4 的最后一帧虽然
+    % 时间计数器仍为递增值，但已经损坏为一个约1.57e7 s的异常时间；
+    % 仅检查“严格递增”无法发现它，因此先按校验标志剔除。
+    checksum_valid = imu_raw(:, 9) == 1;
+    checksum_failed_records = sum(~checksum_valid);
+    if checksum_failed_records > 0
+        fprintf('  Discarded %d STDIMU checksum-failed record(s).\n', ...
+            checksum_failed_records);
+        imu_raw = imu_raw(checksum_valid, :);
+    end
+
+    % 同一有效采集段内不允许跨越超过5个名义采样周期的数据空洞。发现复位、损坏
+    % 计数器或长时间断流时，只保留最长连续段，避免后续跨缺口积分。
+    max_continuous_gap_s = [];
     [auxa_raw, auxa_discarded_records] = ...
-        keep_longest_increasing_segment(auxa_raw, auxa_raw(1, :), 2);
-    [imu_raw, imu_discarded_records] = ...
         keep_longest_increasing_segment( ...
-        imu_raw, double(imu_raw(:, 7)) / 200, 1);
+        auxa_raw, auxa_raw(1, :), 2, max_continuous_gap_s);
+    [imu_raw, imu_segment_discarded_records] = ...
+        keep_longest_increasing_segment( ...
+        imu_raw, double(imu_raw(:, 7)) / 200, 1, max_continuous_gap_s);
+    imu_discarded_records = ...
+        checksum_failed_records + imu_segment_discarded_records;
     if auxa_discarded_records > 0 || imu_discarded_records > 0
         fprintf(['  Kept longest increasing segment; discarded ' ...
             '%d AUXA and %d STDIMU record(s).\n'], ...
@@ -202,7 +220,7 @@ for k = 1:n_dataset
     info.stdimu_discarded_records = imu_discarded_records;
     info.stdimu_skipped_frames = numel(header_positions) - imu_decoded_records;
     info.stdimu_checksum_ok = checksum_ok;
-    info.stdimu_checksum_failed = size(imu_raw, 1) - checksum_ok;
+    info.stdimu_checksum_failed = checksum_failed_records;
     info.auxa_time = auxa_time_stats;
     info.stdimu_time = imu_time_stats;
     info.duration_difference_s = duration_difference;
@@ -326,14 +344,26 @@ positions = candidate_positions(phase == dominant_phase_index - 1);
 end
 
 function [data, discarded_records] = keep_longest_increasing_segment( ...
-        data, time, sample_dimension)
-% Keep the longest continuous segment with a strictly increasing time axis.
+        data, time, sample_dimension, max_gap_s)
+% Keep the longest continuous segment with a valid increasing time axis.
 % Static recordings can contain a short pre-reset fragment followed by the
-% single effective acquisition beginning near zero.
+% single effective acquisition beginning near zero. A very large positive
+% jump is also a segment boundary; otherwise a corrupted counter can pass a
+% simple monotonicity test and later be integrated as a huge time interval.
 
 time = double(time(:));
+delta_time = diff(time);
+if nargin < 4 || isempty(max_gap_s)
+    positive_delta = delta_time(delta_time > 0 & isfinite(delta_time));
+    if isempty(positive_delta)
+        max_gap_s = inf;
+    else
+        max_gap_s = max(0.050, 5 * median(positive_delta));
+    end
+end
 break_after = find(~isfinite(time(1:end - 1)) | ...
-    ~isfinite(time(2:end)) | diff(time) <= 0);
+    ~isfinite(time(2:end)) | delta_time <= 0 | ...
+    delta_time > max_gap_s);
 segment_start = [1; break_after + 1];
 segment_end = [break_after; numel(time)];
 segment_length = segment_end - segment_start + 1;
