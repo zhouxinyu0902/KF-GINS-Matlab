@@ -1,57 +1,98 @@
-%% Step 1: extract useful fields from the two original USBL calibration logs
-% Purpose
-%   This script performs extraction only. It does not calculate range,
-%   estimate beacon coordinates, reject outliers, or modify raw values.
+%% 步骤1：从选定的USBL标定日志中提取有效字段
+% 功能说明
+%   本脚本仅执行数据提取，不进行距离计算、信标坐标估计、异常值剔除，也不修改任何原始数据。
+
+% 批量选择（修改脚本开头的runBeaconIds变量）
+%   runBeaconIds = [93 91];  提取第一组标定数据
+%   runBeaconIds = [92 90];  提取第二组标定数据
+%   runBeaconIds = 93;       仅提取单个信标的数据
+%   runBeaconIds = [];       提取所有已列出的标定日志
 %
-% Usage
-%   Save this file under:
-%     20230504海试数据\scripts\range_cmp
-%   Then open it in MATLAB and click Run. No input arguments are required.
+% 核心输出文件：step1_usbl_core.mat
+%   ptsag
+%       所有PTSAG记录，包括ID0船舶记录和各信标记录
 %
-% Input logs
-%   USBL-BOX-R-20230429-230048.log  (beacon ID93 calibration)
-%   USBL-BOX-R-20230430-030644.log  (beacon ID91 calibration)
+%   shipNavigation
+%       ID0对应的PTSAG船舶位置数据，
+%       并关联时间最近的PTSAH航向信息
 %
-% Core output: step1_usbl_core.mat
-%   ptsag                 all PTSAG records, including ship ID0 and beacons
-%   shipNavigation       ID0 PTSAG ship positions with nearest PTSAH heading
-%   usblSolutions        beacon PTSAG joined with PTSAX, PTSAY, PPC ship pose
-%                        and the nearest independent ID0/PTSAH ship solution
-%   travelTimeChannel    long-form DBG/DETEC data, one row per channel
-%   travelTimeFourChannel wide-form channel 0..3 propagation times and metrics
-%   ppcDetection         PPC/DETEC ship pose and selected channel information
+%   usblSolutions
+%       信标PTSAG定位记录，
+%       关联PTSAX、PTSAY、PPC船舶位姿数据，
+%       以及时间最近的独立ID0/PTSAH船舶导航结果
 %
-% Auxiliary output: step1_usbl_auxiliary.mat
-%   auxiliaryMessages    every non-core raw message, unchanged
-%   messageCatalog       counts of all message types in each source file
+%   travelTimeChannel
+%       DBG/DETEC数据的长表形式，
+%       每行对应一个通道的数据
 %
-% Per-beacon outputs
-%   step1_usbl_core_id91.mat / step1_usbl_core_id93.mat
-%   step1_usbl_auxiliary_id91.mat / step1_usbl_auxiliary_id93.mat
-%   Every combined table also contains calibration_beacon_id, so the two
-%   calibration stages remain explicit even for ship ID0 and auxiliary rows.
+%   travelTimeFourChannel
+%       通道0～3传播时间及相关指标的宽表形式，
+%       每行汇总四个通道的数据
 %
-% Time convention
-%   utc_time is the timestamp encoded in the USBL messages. local_time_utc8
-%   is the same instant displayed in UTC+8 for comparison with filenames.
+%   ppcDetection
+%       PPC/DETEC中的船舶位姿信息及选定通道信息
+%
+% 辅助输出文件：step1_usbl_auxiliary.mat
+%   auxiliaryMessages
+%       所有非核心类型的原始报文，保持原始内容不变
+%
+%   messageCatalog
+%       各源文件中不同报文类型的数量统计
+%
+% 按信标分别输出的文件
+%   step1_usbl_core_id91.mat
+%   step1_usbl_core_id93.mat
+%   step1_usbl_auxiliary_id91.mat
+%   step1_usbl_auxiliary_id93.mat
+%
+%   所有合并后的数据表均包含calibration_beacon_id字段，
+%   用于标识所属的标定信标。
+%   因此，即使是ID0船舶记录及辅助报文，
+%   也能够明确区分其所属的标定阶段。
+%
+% 时间约定
+%   utc_time
+%       USBL报文中记录的UTC时间
+%
+%   local_time_utc8
+%       将同一时刻转换为UTC+8时区后的本地时间，
+%       便于与原始数据文件名中的时间进行对照。
 
 clearvars;
 clc;
 
-%% Paths and source files
+%% 路径和源文件
 scriptDir = fileparts(mfilename('fullpath'));
-scriptsDir = fileparts(scriptDir);
-projectDir = fileparts(scriptsDir);
-dataDir = string(fullfile(projectDir, '信标标定试验数据'));
-outputDir = string(fullfile(projectDir, '解析后的数据', 'range_cmp'));
+calibrationScriptDir = fileparts(scriptDir);
+legacyDataDir = fileparts(calibrationScriptDir);
+repositoryDir = fileparts(legacyDataDir);
+analysisDir = string(fullfile(repositoryDir, 'data', '20230504', ...
+    '标定实验分析'));
+dataDir = fullfile(analysisDir, '信标标定试验数据');
+outputDir = fullfile(analysisDir, '解析后的数据', 'USBL_range_cmp');
 
-fileNames = ["USBL-BOX-R-20230429-230048.log"; ...
+runBeaconIds = [92,91,90];
+
+allFileNames = ["USBL-BOX-R-20230429-230048.log"; ...
     "USBL-BOX-R-20230430-030644.log";...
     "USBL-BOX-R-20230501-033958.log";
     "USBL-BOX-R-20230501-081206.log"];
-expectedBeaconIds = [93; 91; 92; 90];
-fileNames=fileNames(3:4);
-expectedBeaconIds=expectedBeaconIds(3:4);
+allExpectedBeaconIds = [93; 91; 92; 90];
+if isempty(runBeaconIds)
+    selectedFileIndex = (1:numel(allExpectedBeaconIds))';
+else
+    runBeaconIds = runBeaconIds(:);
+    [requestedIdExists, selectedFileIndex] = ismember(runBeaconIds, ...
+        allExpectedBeaconIds);
+    if any(~requestedIdExists) || numel(unique(runBeaconIds)) ~= ...
+            numel(runBeaconIds)
+        error('USBL:InvalidRunBeaconIds', ...
+            'runBeaconIds must contain unique IDs from: %s', ...
+            strjoin(string(allExpectedBeaconIds'), ', '));
+    end
+end
+fileNames = allFileNames(selectedFileIndex);
+expectedBeaconIds = allExpectedBeaconIds(selectedFileIndex);
 if ~isfolder(dataDir)
     error('USBL:MissingDataDirectory', ...
         'Raw USBL directory does not exist: %s', dataDir);
@@ -60,7 +101,7 @@ if ~isfolder(outputDir)
     mkdir(outputDir);
 end
 
-%% Extract each file without filtering
+%% 提取更加细致的文件，使用内部函数
 nFiles = numel(fileNames);
 ptsagCell = cell(nFiles, 1);
 shipCell = cell(nFiles, 1);
@@ -74,24 +115,22 @@ catalogCell = cell(nFiles, 1);
 for fileIndex = 1:nFiles
     inputFile = fullfile(dataDir, fileNames(fileIndex));
     mustBeFile(inputFile);
-    fprintf('Extracting %s (expected beacon ID %d) ...\n', ...
-        inputFile, expectedBeaconIds(fileIndex));
+    fprintf('提取信标%d的数据 ...\n', expectedBeaconIds(fileIndex));
 
     lines = readlines(inputFile, 'WhitespaceRule', 'preserve', ...
         'EmptyLineRule', 'skip');
     sourceName = fileNames(fileIndex);
 
-    ptsagFile = parse_ptsag(lines, sourceName);
-    ptsahFile = parse_ptsah(lines, sourceName);
-    ptsaxFile = parse_ptsax(lines, sourceName);
-    ptsayFile = parse_ptsay(lines, sourceName);
-    ptsaqFile = parse_ptsaq(lines, sourceName);
+    ptsagFile = parse_ptsag(lines, sourceName); % 定位数据
+    ptsahFile = parse_ptsah(lines, sourceName); % 船舶航向
+    ptsaxFile = parse_ptsax(lines, sourceName); % 局部阵列相关距离
+    ptsayFile = parse_ptsay(lines, sourceName); % 局部阵列相关距离
+    ptsaqFile = parse_ptsaq(lines, sourceName); % 声学定位质量、角度/几何信息
     ppcFile = parse_ppc_detection(lines, sourceName);
     shipFile = build_ship_navigation(ptsagFile, ptsahFile);
     solutionFile = build_usbl_solutions(ptsagFile, ptsaxFile, ...
         ptsayFile, ptsaqFile, ppcFile, shipFile);
-    [channelFile, fourChannelFile] = parse_travel_time( ...
-        lines, sourceName, ppcFile);
+    [channelFile, fourChannelFile] = parse_travel_time(lines, sourceName, ppcFile);
     [auxiliaryFile, catalogFile] = collect_auxiliary_messages( ...
         lines, sourceName);
 
@@ -105,7 +144,7 @@ for fileIndex = 1:nFiles
     catalogCell{fileIndex} = catalogFile;
 end
 
-%% Combine the two calibration stages
+%% Combine the selected calibration stages
 ptsag = vertcat(ptsagCell{:});
 shipNavigation = vertcat(shipCell{:});
 usblSolutions = vertcat(solutionCell{:});

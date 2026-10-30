@@ -1,4 +1,4 @@
-function result = parse_ramses_usbl(inputSpec, outputDir)
+function result = parse_usbl(inputSpec, outputDir)
 %PARSE_RAMSES_USBL Parse one or more RAMSES 6000 USBL text logs.
 %   INPUTSPEC may be a file, a folder, or a wildcard such as
 %   "USBL-BOX-R-*.log". PTSAG positions are converted from degrees/minutes
@@ -26,7 +26,7 @@ allCounts = table(strings(0, 1), strings(0, 1), zeros(0, 1), ...
 
 for fileIndex = 1:numel(files)
     file = string(fullfile(files(fileIndex).folder, files(fileIndex).name));
-    fprintf('Reading RAMSES USBL log: %s\n', file);
+    fprintf('Reading USBL log: %s\n', file);
     lines = readlines(file, 'WhitespaceRule', 'preserve', 'EmptyLineRule', 'skip');
     source = repmat(file, numel(lines), 1);
 

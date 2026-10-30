@@ -3,11 +3,11 @@ clear;
 clc;
 close all;
 
-%% Paths and USBL parsing
+%% 路径和数据解析
 scriptsDir = 'D:\Github\KF-GINS-Matlab\20230504海试数据\标定试验';
 projectDir = 'D:\Github\KF-GINS-Matlab\data\20230504\标定实验分析';
 dataDir = fullfile(projectDir, "信标标定试验数据");
-outputDir = fullfile(projectDir, "解析后的数据", "usbl_analysis");
+outputDir = fullfile(projectDir, "解析后的数据", "USBL_analysis");
 parserFile = fullfile(scriptsDir, "parse_usbl.m");
 
 mustBeFolder(dataDir);
@@ -20,6 +20,29 @@ parserScratch = string(tempname);
 mkdir(parserScratch);
 cleanupScratch = onCleanup(@() cleanup_parser_scratch(parserScratch)); 
 
+% % 示例看一下帧头
+% file =  fullfile(dataDir, "USBL-BOX-R-20230429-230048.log"); % 修改文件路径
+% txt = fileread(file);
+% % 提取所有$开头的报文类型
+% types = regexp(txt, '\$[A-Za-z0-9_]+', 'match');
+% [u, ~, idx] = unique(types);
+% counts = accumarray(idx(:), 1);
+% % 按出现次数降序显示
+% T = table(u(:), counts, 'VariableNames', {'Type','Count'});
+% T = sortrows(T, 'Count', 'descend');
+% disp(T);
+%        Type         Count   
+%     __________    __________
+% 
+%     {'$PIXOG'}    1.3605e+05
+%     {'$PTSAG'}         15868
+%     {'$PTSAH'}         14474
+%     {'$PTSAQ'}          1394
+%     {'$PTSAX'}          1394
+%     {'$PTSAY'}          1394
+%     {'$PIXSE'}           289
+
+% 数据解析
 displayUtcOffsetHours = 8;
 usblSpec = fullfile(dataDir, "USBL-BOX-R-*.log");
 usbl = parse_usbl(usblSpec, parserScratch);
